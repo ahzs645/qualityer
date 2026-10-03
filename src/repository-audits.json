@@ -71,10 +71,10 @@
     "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/requal.md",
     "evidence": "Pinned source audit plus current app contracts/browser rehearsals. See completion verification for tested scope and runtime limits.",
     "gaps": [
-      "One-way RQDA import; no native RQDA exporter",
+      "One-way native Requal/RQDA import; no native exporter",
       "R/Requal runtime roundtrip not executed"
     ],
-    "implemented": "Blind server isolation, permissions, encoding preview, RQDA migration, overlap"
+    "implemented": "Blind server isolation, permissions, encoding preview, native Requal/RQDA migration, overlap"
   },
   {
     "id": "whisperx",

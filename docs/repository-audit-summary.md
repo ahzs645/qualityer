@@ -18,3 +18,5 @@ Real English OCR runs in the browser using locally hosted Tesseract worker, WebA
 Private interviews and histories stay in the owner-private app. GitHub contains synthetic seeds, source and public-safe tests only. The GitHub Pages workflow builds a browser-local synthetic demo; it does not provide shared D1/R2 state, authenticated collaboration or hosted model inference.
 
 See [completion verification](completion-verification.md), [audio contract](audio-speaker-completion.md) and [team isolation](team-permissions-and-blind-coding.md) for acceptance evidence and practical limits. Application source was independently implemented; upstream applications were inspected/tested as references, not vendored as application code.
+
+A subsequent [public example import audit](public-sample-import-audit.md) exercised actual committed educational projects, populated RQDA data and upstream-generated examples. It added native Requal, exact SQLite text decoding, speech table formats and explicit case-table mapping, with sample-specific verification limits.

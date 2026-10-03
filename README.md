@@ -20,7 +20,7 @@ npm run build:pages
 node scripts/check-pages.mjs
 ```
 
-This checkpoint passed the sanitized app build and 187 automated checks, the owner-private app build and 209 checks, 30 Python transcription-service checks, and a ten-flow browser rehearsal using the original private interview. Live AI/transcription providers still require configuration and real-model testing.
+This checkpoint passed the sanitized app build and 220 automated checks, the owner-private app build and 242 checks, 30 Python transcription-service checks, and a ten-flow browser rehearsal using the original private interview. Live AI/transcription providers still require configuration and real-model testing.
 
 ## Features and deployment
 
@@ -28,6 +28,8 @@ The app includes exact quotation coding, timestamp history, HTML/ODT/EPUB/RTF an
 
 GitHub Actions checks the app on pushes and pull requests. The **Publish synthetic Pages demo** workflow is manual: enable **Settings → Pages → Source: GitHub Actions**, then run it. Pages provides browser-local storage, not collaborative server storage. The full private app requires the authenticated Worker backend.
 
-This checkpoint corresponds to private source revision `de845322e6eaac7b569b49a0899dfcf4a0387a1b`. It saves the application code without copying private source history or research data.
+This checkpoint corresponds to private source revision `3ffbd6c02d35bddc1371a21f09f13dfec338103c`. It saves the application code without copying private source history or research data.
 
 Eight dedicated repository audits and implemented fixes are recorded in [repository audit summary](docs/repository-audit-summary.md). Full external-app parity and real-model transcription/diarization are not claimed. The separately hosted transcription service source and synthetic contract tests are included under `services/transcription`; model installation/accuracy requires its own host verification.
+
+The [public example import audit](docs/public-sample-import-audit.md) records committed projects, upstream-generated fixtures, encoding fixes and the fields each sample actually exercised. Native Requal, exact SQLite TEXT decoding, STM/TSV speech formats and explicit case-column mapping are included. Original sample datasets are not bundled.

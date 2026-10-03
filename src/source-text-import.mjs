@@ -49,7 +49,7 @@ export function inspectDocumentArchive(bytes){
  return {count,total,paths,members};
 }
 const CRC_TABLE=Uint32Array.from({length:256},(_,i)=>{let value=i;for(let bit=0;bit<8;bit++)value=(value&1)?0xedb88320^(value>>>1):value>>>1;return value>>>0;});
-function documentArchive(bytes){
+export function documentArchive(bytes){
  const inspected=inspectDocumentArchive(bytes),archive=Object.create(null),seen=new Set();let total=0;
  const unzip=new Unzip(file=>{
   const expected=inspected.members.get(file.name);if(!expected||seen.has(file.name))throw Error('Archive local entries disagree with its directory.');seen.add(file.name);
@@ -85,8 +85,8 @@ export function extractHTML(raw){
 }
 export function extractODT(bytes){
  const archive=documentArchive(bytes),doc=xml(memberText(archive,'content.xml')),body=first(doc,'text');if(!body)throw Error('ODT has no text body.');let output='';
- const walk=(node,inText=false)=>{if(node.nodeType===3){if(inText)output+=node.nodeValue;return;}if(node.nodeType!==1)return;const name=node.localName;if(['tracked-changes','annotation','annotation-end','binary-data','scripts'].includes(name))return;if(name==='s'){const count=Number(node.getAttributeNS('urn:oasis:names:tc:opendocument:xmlns:text:1.0','c')||1);if(!Number.isInteger(count)||count<1||count>10000)throw Error('ODT space run is invalid.');output+=' '.repeat(count);return;}if(name==='tab'){output+='\t';return;}if(name==='line-break'){output+='\n';return;}for(const child of node.childNodes)walk(child,inText||['p','h'].includes(name));if(['p','h'].includes(name))output+='\n';if(name==='table-cell'&&!output.endsWith('\n'))output+='\t';};
- walk(body);return {text:checkText(output.replace(/\n$/,'')),direction:'auto',warnings:['ODT paragraphs, headings, lists and table cells are imported as canonical plain text. Formatting, images, page layout, annotations and tracked-change records are omitted.']};
+ const walk=(node,inText=false)=>{if(node.nodeType===3){if(inText)output+=node.nodeValue;return;}if(node.nodeType!==1)return;const name=node.localName;if(['tracked-changes','annotation','annotation-end','binary-data','scripts','note','note-body','note-citation'].includes(name))return;if(name==='s'){const count=Number(node.getAttributeNS('urn:oasis:names:tc:opendocument:xmlns:text:1.0','c')||1);if(!Number.isInteger(count)||count<1||count>10000)throw Error('ODT space run is invalid.');output+=' '.repeat(count);return;}if(name==='tab'){output+='\t';return;}if(name==='line-break'){output+='\n';return;}for(const child of node.childNodes)walk(child,inText||['p','h'].includes(name));if(['p','h'].includes(name))output+='\n';if(name==='table-cell'&&!output.endsWith('\n'))output+='\t';};
+ walk(body);return {text:checkText(output.replace(/\n$/,'')),direction:'auto',warnings:['ODT paragraphs, headings, lists and table cells are imported as canonical plain text. Formatting, images, page layout, annotations, footnotes/endnotes and tracked-change records are omitted.']};
 }
 function resolveArchivePath(base,href){if(!href||/^[a-z]+:|^\/|^\\/i.test(href))throw Error('EPUB uses an external or absolute content path.');let decoded;try{decoded=decodeURIComponent(href.split(/[?#]/)[0]);}catch{throw Error('EPUB content path has invalid escaping.');}const parts=base.split('/').slice(0,-1);for(const part of decoded.split('/')){if(!part||part==='.')continue;if(part==='..'){if(!parts.length)throw Error('EPUB content path escapes the archive.');parts.pop();}else parts.push(part);}return safePath(parts.join('/'));}
 export function extractEPUB(bytes){

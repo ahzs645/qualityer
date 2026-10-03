@@ -1,0 +1,30 @@
+[
+  {
+    "filename": "test_basic.requal",
+    "url": "https://raw.githubusercontent.com/RE-QDA/requal/dd266149b291aec3df13ca29ba3ef6ff7458aeae/tests/test_basic.requal",
+    "sha256": "dcbe912c84f5cc6b7ce906ecbf9cb1d04c501c43b1bb13d15d70a586d8afc8e7",
+    "bytes": 106496,
+    "licenseEvidence": "MIT repository; direct committed empty fixture"
+  },
+  {
+    "filename": "test_basic_backup.requal",
+    "url": "https://raw.githubusercontent.com/RE-QDA/requal/dd266149b291aec3df13ca29ba3ef6ff7458aeae/tests/test_basic_backup.requal",
+    "sha256": "dcbe912c84f5cc6b7ce906ecbf9cb1d04c501c43b1bb13d15d70a586d8afc8e7",
+    "bytes": 106496,
+    "licenseEvidence": "MIT repository; same empty fixture bytes"
+  },
+  {
+    "filename": "stakeholders.rqda",
+    "url": "https://raw.githubusercontent.com/YuxiaoLuo/RQDA-Workshop/5ff4879187264958f0fe4399179b508169378818/R%20script/stakeholders.rqda",
+    "sha256": "e8117b8ccdd98fc9ff732f929cb395559fd251286a7356a53a00e7f6f9e14db1",
+    "bytes": 328704,
+    "licenseEvidence": "No redistribution license located; scratch-only public verification"
+  },
+  {
+    "filename": "v1-document-code.R",
+    "url": "https://raw.githubusercontent.com/RE-QDA/requal/ae6fb8eb8d4b5634a7978036b5cfa8e7fbb08877/R/mod_document_code_utils_document_code.R",
+    "sha256": "779e63c948e41e57d396c9e2bf595ad3b05d7c6add35d3ebb03c388dc40c592f",
+    "bytes": 18994,
+    "licenseEvidence": "MIT; contract source inspected, not copied into adapter"
+  }
+]

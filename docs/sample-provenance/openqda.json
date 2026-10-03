@@ -1,0 +1,144 @@
+{
+  "repository": "https://github.com/openqda/openqda",
+  "commit": "5d528415de54c824f4cafebdfb7de9df15833b79",
+  "sourceLicense": "AGPL-3.0 repository source; LICENSE_MEDIA CC-BY-NC-SA-4.0 for media. These snippets are source test fixtures, not research/media datasets. Kept in scratch only.",
+  "licenseSHA256": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef",
+  "sourceHashes": {
+    "web/app/Http/Controllers/CodebookCodesController.php": "13d29bdbcabb03bf9b77b1eb0b5392f6f57f932034b72829c6ca7c2d99d6351e",
+    "web/tests/Controllers/CodebookCodesControllerTest.php": "f54f45e26534995da55f703cb7143d14e147cfbaf521b5de1033c4bc8c1aa2a6",
+    "web/tests/Controllers/CodingControllerTest.php": "8444c6d34da724326007109218abe09d0a7b603ba27099042c7444e6e6bcee71",
+    "web/resources/js/exchange/useExport.js": "c0b84353ff5b72dcc856e9b4d6366b39552d12955330f96dfec3a195384f137d"
+  },
+  "upstreamFixtures": [
+    {
+      "file": "invalid-root.qdc",
+      "upstreamPath": "web/tests/Controllers/CodebookCodesControllerTest.php",
+      "line": 193,
+      "sha256": "28560f96d0a1f6182dcc3fa87d1ddcc66b990f26e18a434a265ec5041862f703",
+      "bytes": 101,
+      "kind": "Verbatim upstream PHPUnit XML fixture, no reconstruction"
+    },
+    {
+      "file": "missing-codebook.qdc",
+      "upstreamPath": "web/tests/Controllers/CodebookCodesControllerTest.php",
+      "line": 568,
+      "sha256": "afdb23ae10b2df3738ff84d2fe3ee2cb8a41f1425ba288542b0e0afa93bf78d8",
+      "bytes": 164,
+      "kind": "Verbatim upstream PHPUnit XML fixture, no reconstruction"
+    },
+    {
+      "file": "malformed.qdc",
+      "upstreamPath": "web/tests/Controllers/CodebookCodesControllerTest.php",
+      "line": 215,
+      "sha256": "29f244ae1a8b6356df498bee50309e2197052dbed5952e4e2c2478331679105b",
+      "bytes": 111,
+      "kind": "Verbatim upstream PHPUnit XML fixture, no reconstruction"
+    },
+    {
+      "file": "source-content.html",
+      "upstreamPath": "web/tests/Controllers/CodingControllerTest.php",
+      "line": 391,
+      "sha256": "eea8355fd700f00c0efea1978243e7967cd54a97765e5f0c99d4f117951caae5",
+      "bytes": 19,
+      "kind": "Verbatim upstream PHPUnit HTML source fixture, no reconstruction"
+    }
+  ],
+  "before": [
+    {
+      "fixture": "invalid-root.qdc",
+      "accepted": true,
+      "count": 0,
+      "codes": []
+    },
+    {
+      "fixture": "missing-codebook.qdc",
+      "accepted": true,
+      "count": 1,
+      "codes": [
+        {
+          "id": "68e0f174-1223-4f61-bc73-a55c372ead5c",
+          "name": "Test",
+          "parentId": null,
+          "codable": true,
+          "description": ""
+        }
+      ]
+    },
+    {
+      "fixture": "malformed.qdc",
+      "accepted": false,
+      "error": "Invalid XML project."
+    },
+    {
+      "fixture": "source-content.html",
+      "accepted": true,
+      "text": "Test content",
+      "turns": 0,
+      "provenance": {
+        "kind": "file",
+        "name": "source-content.html",
+        "mediaType": "text/html",
+        "byteLength": 19,
+        "sha256": "eea8355fd700f00c0efea1978243e7967cd54a97765e5f0c99d4f117951caae5",
+        "format": "html",
+        "extractor": "research-weave-plain-text-v1",
+        "originalBytesRetained": false,
+        "encoding": "utf-8",
+        "bomBytes": 0,
+        "losses": [
+          "HTML is imported as canonical plain text. Scripts, styles, hidden elements, images, links, formatting and layout are omitted; no page is executed."
+        ],
+        "chapters": []
+      }
+    }
+  ],
+  "after": [
+    {
+      "fixture": "invalid-root.qdc",
+      "accepted": false,
+      "error": "Codebook XML needs a CodeBook root or one Project/CodeBook element."
+    },
+    {
+      "fixture": "missing-codebook.qdc",
+      "accepted": false,
+      "error": "Codebook XML needs a CodeBook root or one Project/CodeBook element."
+    },
+    {
+      "fixture": "malformed.qdc",
+      "accepted": false,
+      "error": "Invalid XML codebook."
+    },
+    {
+      "fixture": "source-content.html",
+      "accepted": true,
+      "text": "Test content",
+      "turns": 0,
+      "provenance": {
+        "kind": "file",
+        "name": "source-content.html",
+        "mediaType": "text/html",
+        "byteLength": 19,
+        "sha256": "eea8355fd700f00c0efea1978243e7967cd54a97765e5f0c99d4f117951caae5",
+        "format": "html",
+        "extractor": "research-weave-plain-text-v1",
+        "originalBytesRetained": false,
+        "encoding": "utf-8",
+        "bomBytes": 0,
+        "losses": [
+          "HTML is imported as canonical plain text. Scripts, styles, hidden elements, images, links, formatting and layout are omitted; no page is executed."
+        ],
+        "chapters": []
+      }
+    }
+  ],
+  "unitChecksPassed": 2,
+  "browserFixtureChecks": 4,
+  "nativeAdapterAdded": false,
+  "scope": "Pinned upstream source/testfixture audit plus actual Research Weave browser importer execution in an isolated HTTPS browser document. No OpenQDA runtime, PHP fixture generator, server or end-to-end roundtrip executed. No native project sample found.",
+  "remainingLosses": [
+    "OpenQDA controller exports only QDC codebooks; its export hardcodes isCodable=true and recreates IDs on import, so category identity/semantics roundtrips are not certified.",
+    "HTML source becomes canonical plain text with declared layout/link/style losses; OpenQDA richtext selection offsets are not inferred or imported.",
+    "OpenQDA source/coding/note/variable/audit CSV are reports, not complete native projects. No projectJSON format was invented from controller responses."
+  ],
+  "patch": "patch-v1"
+}

@@ -1,0 +1,214 @@
+{
+  "generatedOnUTC": "2026-10-03",
+  "artifacts": [
+    {
+      "artifact": "aqda-tests/test_document_delete_reports_i0/delete/aqda.db",
+      "sha256": "bca584b2aaba18e7ed770b90747cf242e9a85517021193b383dbba86a0b1e26f",
+      "bytes": 110592,
+      "upstream": "AQDA",
+      "upstreamCommit": "1db606dc2664a4c6f8a540b326f9f04751c5bd08",
+      "license": "MIT",
+      "provenance": "Retained original upstream pytest-produced database",
+      "testDataNotPublishedResearchProject": true
+    },
+    {
+      "artifact": "artifacts/aqda-upstream-delete.qdpx",
+      "sha256": "ef50a122bdbd5d569d8e2184d2501f08f436a2bcc5ea1a4b0642e08f30f21f08",
+      "bytes": 676,
+      "upstream": "AQDA",
+      "upstreamCommit": "1db606dc2664a4c6f8a540b326f9f04751c5bd08",
+      "license": "MIT",
+      "provenance": "Retained original upstream pytest-produced database; exported by exact pinned export_qdpx",
+      "testDataNotPublishedResearchProject": true
+    },
+    {
+      "artifact": "artifacts/aqda-upstream-delete.qdc",
+      "sha256": "2efad96157ad1967f70eddd54e3bbb48578b7e10013ce6d40e14410b3dfd7cde",
+      "bytes": 220,
+      "upstream": "AQDA",
+      "upstreamCommit": "1db606dc2664a4c6f8a540b326f9f04751c5bd08",
+      "license": "MIT",
+      "provenance": "Retained original upstream pytest-produced database; exported by exact pinned export_codebook",
+      "testDataNotPublishedResearchProject": true
+    },
+    {
+      "artifact": "aqda-tests/test_docx_imports_as_text_and_0/docx/aqda.db",
+      "sha256": "d6a48df82ca60a24af0ada558eb883c217463dad612d1036b8c719f4f94c6433",
+      "bytes": 110592,
+      "upstream": "AQDA",
+      "upstreamCommit": "1db606dc2664a4c6f8a540b326f9f04751c5bd08",
+      "license": "MIT",
+      "provenance": "Retained original upstream pytest-produced database",
+      "testDataNotPublishedResearchProject": true
+    },
+    {
+      "artifact": "artifacts/aqda-upstream-docx.qdpx",
+      "sha256": "64294791fc579c8191e49960bf4dd9a1518a26da17dcd90b89ded223f2139c4d",
+      "bytes": 844,
+      "upstream": "AQDA",
+      "upstreamCommit": "1db606dc2664a4c6f8a540b326f9f04751c5bd08",
+      "license": "MIT",
+      "provenance": "Retained original upstream pytest-produced database; exported by exact pinned export_qdpx",
+      "testDataNotPublishedResearchProject": true
+    },
+    {
+      "artifact": "aqda-tests/test_export_fidelity_and_api_40/exports/aqda.db",
+      "sha256": "8fd1933e3375f9a66d9fc583e72b4ba659cb9477db58a3615fd4b5dcf6182d53",
+      "bytes": 110592,
+      "upstream": "AQDA",
+      "upstreamCommit": "1db606dc2664a4c6f8a540b326f9f04751c5bd08",
+      "license": "MIT",
+      "provenance": "Retained original upstream pytest-produced database",
+      "testDataNotPublishedResearchProject": true
+    },
+    {
+      "artifact": "artifacts/aqda-upstream-exports.qdpx",
+      "sha256": "981577453bbd4cb5f23e510abec7a96a58d858f91a7a5ebbd7c3e37d72d28a9f",
+      "bytes": 715,
+      "upstream": "AQDA",
+      "upstreamCommit": "1db606dc2664a4c6f8a540b326f9f04751c5bd08",
+      "license": "MIT",
+      "provenance": "Retained original upstream pytest-produced database; exported by exact pinned export_qdpx",
+      "testDataNotPublishedResearchProject": true
+    },
+    {
+      "artifact": "aqda-tests/test_offsets_repair_utf16_and_0/offsets/aqda.db",
+      "sha256": "b78d5cbc61f64984b943445a79909392e5f703e47397bcbe9c3d914304be8b91",
+      "bytes": 110592,
+      "upstream": "AQDA",
+      "upstreamCommit": "1db606dc2664a4c6f8a540b326f9f04751c5bd08",
+      "license": "MIT",
+      "provenance": "Retained original upstream pytest-produced database",
+      "testDataNotPublishedResearchProject": true
+    },
+    {
+      "artifact": "artifacts/aqda-upstream-offsets.qdpx",
+      "sha256": "acc475ea904436a01b8a4eb3927a123df467cad31c518cdc70a8bc01804fdc9e",
+      "bytes": 854,
+      "upstream": "AQDA",
+      "upstreamCommit": "1db606dc2664a4c6f8a540b326f9f04751c5bd08",
+      "license": "MIT",
+      "provenance": "Retained original upstream pytest-produced database; exported by exact pinned export_qdpx",
+      "testDataNotPublishedResearchProject": true
+    },
+    {
+      "artifact": "artifacts/aqda-upstream-offsets.qdc",
+      "sha256": "29243f7ec9862ce5f2d18e1332a11cf282b118fd0e012b25b80dce2116c59eb2",
+      "bytes": 220,
+      "upstream": "AQDA",
+      "upstreamCommit": "1db606dc2664a4c6f8a540b326f9f04751c5bd08",
+      "license": "MIT",
+      "provenance": "Retained original upstream pytest-produced database; exported by exact pinned export_codebook",
+      "testDataNotPublishedResearchProject": true
+    },
+    {
+      "artifact": "aqda-tests/test_qdpx_exports_variables_an0/refi/aqda.db",
+      "sha256": "4f0835cfbdcfcb79c294551de9d4cac98ae721c3ef65c2a3257966b5e027f440",
+      "bytes": 110592,
+      "upstream": "AQDA",
+      "upstreamCommit": "1db606dc2664a4c6f8a540b326f9f04751c5bd08",
+      "license": "MIT",
+      "provenance": "Retained original upstream pytest-produced database",
+      "testDataNotPublishedResearchProject": true
+    },
+    {
+      "artifact": "artifacts/aqda-upstream-refi.qdpx",
+      "sha256": "2d401ffdedbdc66f40a18561dde51568ffcb5be38ce869f9ea6e8053b7805817",
+      "bytes": 1180,
+      "upstream": "AQDA",
+      "upstreamCommit": "1db606dc2664a4c6f8a540b326f9f04751c5bd08",
+      "license": "MIT",
+      "provenance": "Retained original upstream pytest-produced database; exported by exact pinned export_qdpx",
+      "testDataNotPublishedResearchProject": true
+    },
+    {
+      "artifact": "artifacts/aqda-upstream-refi.qdc",
+      "sha256": "e0d13e077c5f18ecfbb594359da42b98ab9161aaf7dfaa954242b16f02a4cbd4",
+      "bytes": 221,
+      "upstream": "AQDA",
+      "upstreamCommit": "1db606dc2664a4c6f8a540b326f9f04751c5bd08",
+      "license": "MIT",
+      "provenance": "Retained original upstream pytest-produced database; exported by exact pinned export_codebook",
+      "testDataNotPublishedResearchProject": true
+    },
+    {
+      "artifact": "artifacts/taguette-upstream-public-unit-corpus.sqlite3",
+      "sha256": "9bb5e4c1afa8a8842ab091d3ca3042abb75ae5a12167d079fc7e88d884228fa6",
+      "bytes": 126976,
+      "upstream": "Taguette",
+      "upstreamCommit": "52fcdce95709375a4085cb10852bf7dd251ccb3d",
+      "license": "BSD-3-Clause",
+      "provenance": "Exact original tests.py::TestMeasure method corpus, real upstream extractor outputs, real upstream SQLAlchemy ORM persisted rows; dummy credential sentinel added independently",
+      "testDataNotPublishedResearchProject": true
+    }
+  ],
+  "sourceFiles": [
+    {
+      "repository": "aqda-audit",
+      "sha256": "b2c2bcf5f83f9c23d34595a32f0e5c29651620898ad619abdc360d5b414cd355"
+    },
+    {
+      "repository": "aqda-audit",
+      "sha256": "8099188f6a0261b29880330136fb6f692a5a7aae231b3058ea79dd2dcbd69d2e"
+    },
+    {
+      "repository": "aqda-audit",
+      "sha256": "52e8e87b0afa8f924f4ebd49749ec6d4ad30c1ddc1f8259027b3b6c15d6c0e98"
+    },
+    {
+      "repository": "aqda-audit",
+      "sha256": "0ea1ee50525153e8a4a9722c0f0f3066d878c0cb99d0c53a96c53b22aa38c01e"
+    },
+    {
+      "repository": "taguette-audit",
+      "sha256": "ef55b31b5ed7f16e7139e859c5fbde716264d26829073553956c387f114f40f4"
+    },
+    {
+      "repository": "taguette-audit",
+      "sha256": "8020d749eb5728d98762d5379ffdd04b5549d612a35d984ab063938957b47d62"
+    },
+    {
+      "repository": "taguette-audit",
+      "sha256": "50022c9f1fb69e7eb49c4b07bbf9e676ab96cfd13d95e77bc66df39c54b4b148"
+    },
+    {
+      "repository": "taguette-audit",
+      "sha256": "f711d94f71c945eadc0a5f857e20d2419b76f0ea532dcae3d9ed8e9ad534a594"
+    }
+  ],
+  "remoteReleaseDiscovery": "Public GitHub releases API requests denied by session proxy HTTP403; not exhaustively inspected.",
+  "importerSourceHashes": [
+    {
+      "sha256": "60a4f08c4996b71fa1d97f0dcc6a46231a7eff1bec98c2be21a418c666938264"
+    },
+    {
+      "sha256": "5c5ef6ea99f0bf95c063281ccf3e968494f32d8b23d4a6902dd92cfeb19e0e07"
+    },
+    {
+      "sha256": "5ea0c27cec794f5171be60ed94d87c9edad6ff789f0f710ad017faec558a37e2"
+    },
+    {
+      "sha256": "8f1fe4bcb7716e7fc16e3373cd9a997683309fdd4fe15e7164bef3959bbd04f1"
+    }
+  ],
+  "packagedTreeDiscovery": [
+    {
+      "repository": "aqda-audit",
+      "filesExamined": 61,
+      "projectDatabaseArchiveMatches": []
+    },
+    {
+      "repository": "taguette-audit",
+      "filesExamined": 155,
+      "projectDatabaseArchiveMatches": []
+    }
+  ],
+  "finalVerification": {
+    "standaloneArtifacts": 14,
+    "semanticChecksPassed": 226,
+    "actualFilePickerChecksPassed": 33,
+    "browserErrors": 0,
+    "privateProjectInteractions": 0,
+    "remoteModelRequests": 0
+  }
+}
