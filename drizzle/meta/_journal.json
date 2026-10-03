@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1790991051516,
+      "tag": "0000_shocking_firestar",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1790992148020,
+      "tag": "0001_cute_nebula",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790998786794,
+      "tag": "0002_grey_zaladane",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1790999847734,
+      "tag": "0003_faithful_apocalypse",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791010745847,
+      "tag": "0005_recording_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1791015480121,
+      "tag": "0005_chief_longshot",
+      "breakpoints": true
+    }
+  ]
+}

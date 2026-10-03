@@ -1,0 +1,24 @@
+name: Check research app
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run ci
+      - run: npm run build:pages
+      - run: node scripts/check-pages.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-pages-demo
+          path: dist/pages

@@ -1,0 +1,3 @@
+import {spawn} from 'node:child_process';
+const child=spawn(process.execPath,['scripts/dev.mjs'],{stdio:'inherit'});
+let code=1;try{let ready=false;for(let attempt=0;attempt<80;attempt++){try{const r=await fetch('http://127.0.0.1:5173/api/me');if(r.ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,250));}if(!ready)throw Error('Local Worker did not start.');code=await new Promise(resolve=>{const test=spawn(process.execPath,['--test',process.env.RESEARCH_TEST_GLOB||'tests/*.test.mjs'],{stdio:'inherit'});test.on('exit',resolve);});}finally{child.kill('SIGTERM');}process.exit(code||0);

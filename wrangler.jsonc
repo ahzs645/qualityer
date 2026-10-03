@@ -1,0 +1,21 @@
+{
+  "name": "research-weave",
+  "main": "src/server.js",
+  "compatibility_date": "2025-10-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "research-weave",
+      "database_id": "local-research-weave"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "research-weave-media"
+    }
+  ]
+}
