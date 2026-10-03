@@ -26,7 +26,7 @@ Pages is a static, browser-local demo using TanStack Router and the same modular
 
 `npm run build:pages` generates `dist/pages/index.html`. `PAGES_BASE_PATH=/repository-name/` supports project Pages URLs. `scripts/check-pages.mjs` checks the artifact for private server/fixture markers. `check.yml` builds the private/synthetic app, runs checks with a local Worker, builds Pages and uploads the demo artifact. `pages.yml` deploys the static artifact through GitHub's Pages Actions on main or manual dispatch.
 
-Application source is saved in `ahzs645/qualityer` on `main`. The check workflow runs on pushes and pull requests. The Pages workflow is manual; enable Settings → Pages → Source: GitHub Actions before running it. This repository contains a sanitized source checkpoint without original interviews, private audit documents, credentials, generated Worker bundles or private Git history. Research data continues to live in the private app storage and is exported separately.
+Sanitized application source is saved in `ahzs645/qualityer` on `main`, with successful push/PR CI. GitHub Pages remains a manual workflow; enable Settings → Pages → Source: GitHub Actions before running it. Public source excludes original interviews, private research state, credentials, generated Worker bundles and private Git history. Repository-specific audits and their integrated changes are documented in [repository audit summary](repository-audit-summary.md).
 
 ## Analysis and study workflow additions
 

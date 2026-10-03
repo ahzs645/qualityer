@@ -1,0 +1,106 @@
+[
+  {
+    "id": "aqda",
+    "name": "AQDA",
+    "repository": "https://github.com/tseidl/aqda",
+    "commit": "1db606dc2664a4c6f8a540b326f9f04751c5bd08",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/aqda.md",
+    "evidence": "Pinned upstream source comparison; app test results in report. AQDA upstream tests executed; other upstream UI/runtime verification remains limited.",
+    "gaps": [
+      "Example-seeded whole-corpus suggestions",
+      "Provider context budgets",
+      "Native AQDA import"
+    ]
+  },
+  {
+    "id": "taguette",
+    "name": "Taguette",
+    "repository": "https://github.com/remram44/taguette",
+    "commit": "52fcdce95709375a4085cb10852bf7dd251ccb3d",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/taguette.md",
+    "evidence": "Pinned upstream source comparison; app test results in report. AQDA upstream tests executed; other upstream UI/runtime verification remains limited.",
+    "gaps": [
+      "Rich document formats and RTL",
+      "Localization",
+      "Native Taguette exchange"
+    ]
+  },
+  {
+    "id": "qualcoder",
+    "name": "QualCoder",
+    "repository": "https://github.com/ccbogel/QualCoder",
+    "commit": "b95e021c93eb29a646ee7a8de196c281b7890ddf",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/qualcoder.md",
+    "evidence": "Pinned upstream source comparison; app test results in report. AQDA upstream tests executed; other upstream UI/runtime verification remains limited.",
+    "gaps": [
+      "Media/image coder agreement",
+      "Additional text formats",
+      "Deterministic autocoding and undo"
+    ]
+  },
+  {
+    "id": "sift",
+    "name": "Sift QDA",
+    "repository": "https://github.com/tarunv13/sift-qda",
+    "commit": "a34f26a2d67f51c71aef942ec0dd26682acc8c59",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/sift.md",
+    "evidence": "Pinned upstream source comparison; app test results in report. AQDA upstream tests executed; other upstream UI/runtime verification remains limited.",
+    "gaps": [
+      "Interval subtraction/intersection query mode",
+      "Project-wide uncoded literal search",
+      "Editable graphs and case-linked memos"
+    ]
+  },
+  {
+    "id": "openqda",
+    "name": "OpenQDA",
+    "repository": "https://github.com/openqda/openqda",
+    "commit": "5d528415de54c824f4cafebdfb7de9df15833b79",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/openqda.md",
+    "evidence": "Pinned upstream source comparison; app test results in report. AQDA upstream tests executed; other upstream UI/runtime verification remains limited.",
+    "gaps": [
+      "Multi-source application portraits",
+      "Structured before/after audit diffs",
+      "Reusable codebook collections"
+    ]
+  },
+  {
+    "id": "requal",
+    "name": "Requal",
+    "repository": "https://github.com/RE-QDA/requal",
+    "commit": "dd266149b291aec3df13ca29ba3ef6ff7458aeae",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/requal.md",
+    "evidence": "Pinned upstream source comparison; app test results in report. AQDA upstream tests executed; other upstream UI/runtime verification remains limited.",
+    "gaps": [
+      "Blind server isolation and fine permissions",
+      "Text encoding preview",
+      "Native RQDA migration and segment overlap"
+    ]
+  },
+  {
+    "id": "whisperx",
+    "name": "WhisperX",
+    "repository": "https://github.com/m-bain/whisperX",
+    "commit": "771b4a14a9486f8fd5aef18ef49e35d639523dd3",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/whisperx.md",
+    "evidence": "Pinned upstream source comparison; app test results in report. AQDA upstream tests executed; other upstream UI/runtime verification remains limited.",
+    "gaps": [
+      "Real inference/quality verification",
+      "Alignment/language and job-output checks",
+      "Stage progress and long-job recovery"
+    ]
+  },
+  {
+    "id": "pyannote",
+    "name": "pyannote.audio",
+    "repository": "https://github.com/pyannote/pyannote-audio",
+    "commit": "b749285c5cdd4636b2edc7f766f1352c8dde9369",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/pyannote.md",
+    "evidence": "Pinned upstream source comparison; app test results in report. AQDA upstream tests executed; other upstream UI/runtime verification remains limited.",
+    "gaps": [
+      "Separate overlap/exclusive speaker tracks",
+      "Per-turn reassignment and count hints",
+      "Global speaker clustering and pinned models"
+    ]
+  }
+]

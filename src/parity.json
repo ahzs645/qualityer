@@ -63,13 +63,13 @@
     "feature": "Word frequency and theme counts",
     "reference": "Sift · QualCoder",
     "status": "Implemented",
-    "note": "Clickable word and theme counts plus source/speaker word-share, turn sequence, proportional theme treemap, exact-excerpt code network and evidence reports. Speaker and coding-layer filters; CSV/SVG/report exports. Multilingual stop lists remain a gap."
+    "note": "Clickable word/theme counts, source/speaker shares, turn sequence and evidence-linked visualizations. English/French/Spanish/custom stop lists, Unicode concordance and 1–3 word phrases. Whole-source vocabulary uses source/case and typed attribute scope; code/coder/decision filters govern coding evidence separately."
   },
   {
     "feature": "Independent coder comparison",
     "reference": "Requal · QualCoder",
     "status": "Implemented",
-    "note": "Exact-span code-set agreement, character-level Cohen’s kappa with explicit unitization, disagreements, and separate immutable consensus records."
+    "note": "Exact-span code-set agreement, interval-union Jaccard and character-level Cohen kappa with eligible Unicode corpus denominators. Source/decision filters and selected/all-pair CSV. Reference sources and consent-review/stale anchors withheld. Text only: media/region agreement and blind server isolation remain absent."
   },
   {
     "feature": "Review decisions and history",
@@ -105,7 +105,7 @@
     "feature": "DOCX / TXT / Markdown / timestamped imports",
     "reference": "AQDA · Taguette · Sift",
     "status": "Implemented",
-    "note": "DOCX extracted as text; JSON segments/turns, SRT and VTT retain timings and speaker labels. Formatting is not retained."
+    "note": "DOCX extracted as text; JSON segments/turns retain supplied timestamps and speaker labels. SRT/VTT retain cue timing/body text, with canonical speaker Unassigned until corrected. Formatting is not retained."
   },
   {
     "feature": "Text PDF import and original view",
@@ -123,7 +123,7 @@
     "feature": "Audio / video span coding",
     "reference": "QualCoder",
     "status": "Partial",
-    "note": "Private 2GB multipart uploads, byte-range streaming, time-range coding, timestamped transcript playback links and media exchange. Waveform remains a gap."
+    "note": "Private multipart uploads, byte-range playback, fractional time-span coding, transcript links and media exchange. Browser-local audio waveform/range preview up to 40 MB; long waveforms require processing. Real long-recording inference remains unverified."
   },
   {
     "feature": "Automatic transcription / alignment",
@@ -147,19 +147,19 @@
     "feature": "Semantic search / embeddings",
     "reference": "AQDA · Sift",
     "status": "Connection required",
-    "note": "Persistent index, cosine retrieval, source exclusions, content-hash invalidation, multi-batch progress and stop after current batch. Connected-provider fixture tests pass; real model execution and paragraph chunking remain unverified/not implemented."
+    "note": "Persistent cosine index, paragraph/speaker-line or fixed-window modes, Unicode anchors, source exclusions, content/revision/chunk-mode cache partitioning and stoppable multi-batch indexing. Fixture tests pass; real provider/model quality remains unverified."
   },
   {
     "feature": "AI consistency / hierarchy / definition review",
     "reference": "AQDA",
     "status": "Connection required",
-    "note": "Grounded editable summaries/definitions, selectable editable hierarchy groups, explicit all/accepted scope, spread sampling, LLM consistency and separate leave-one-out embedding centroid outliers. Findings can enter durable processing desk. Exact citation recheck before saving/applying; fixture tests only, real model pending."
+    "note": "Editable grounded drafts, selectable parent groups, explicit all/accepted scope and spread sampling. Adaptive leave-one-out centroid outlier threshold can return no findings; requires at least four excerpts. Truncated/withheld provider responses rejected centrally. Durable processing tasks and exact citation rechecks; real models pending."
   },
   {
     "feature": "JSON / CSV project exports",
     "reference": "All references",
     "status": "Implemented",
-    "note": "Native JSON plus scoped CSV/XLSX/HTML-print/Markdown/ODT evidence reports, chart SVG, GraphML, word and matrix tables. Includes text/time/recording/region anchors. IRaMuTeQ corpus export remains absent."
+    "note": "Native JSON, scoped CSV/XLSX/HTML-print/Markdown/ODT evidence, chart SVG, GraphML and matrix/word tables retain timing/recording/region provenance. Coded-excerpt IRaMuTeQ TXT plus manifest added; actual IRaMuTeQ import unverified. Overlapping excerpts can repeat words."
   },
   {
     "feature": "QDC hierarchy exchange",
@@ -183,7 +183,7 @@
     "feature": "Accessible responsive browser UI",
     "reference": "Browser product requirement",
     "status": "Implemented",
-    "note": "Keyboard forms, named controls, responsive panels. Formal accessibility and cross-browser audit remain pending."
+    "note": "Keyboard forms, responsive panels and named controls. Dialogs focus on open, wrap Tab/Shift+Tab, close with Escape and restore focus. Browser rehearsal validates this flow; formal accessibility and cross-browser certification remain pending."
   },
   {
     "feature": "Example-driven guided demo",
@@ -238,5 +238,11 @@
     "reference": "QualCoder · OpenQDA · WhisperX",
     "status": "Partial",
     "note": "Existing text/DOCX/text-PDF/JSON/SRT/VTT and private multipart recording uploads retained. CSV/XLSX case tables added. OCR, EPUB/RTF extraction and cross-chunk global speaker diarization are not implemented; long-recording real-worker execution remains unverified."
+  },
+  {
+    "feature": "Previewed CSV / QDC / JSON codebook import",
+    "reference": "Taguette · AQDA · QualCoder",
+    "status": "Implemented",
+    "note": "CSV path/name/tag and quoted multiline definitions; literal tag names or explicit hierarchy separator. Existing definitions retained, conflicts shown, validated CSV export. All formats preview/cancel and import atomically with hierarchy validation. Native Taguette/AQDA database exchange remains absent."
   }
 ]
