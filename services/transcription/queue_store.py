@@ -6,6 +6,7 @@ from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
 from result_validation import validate_result
+from bounded_adapter import execute_bounded
 
 TERMINAL={'completed','failed','cancelled','expired'}
 class Queue:
@@ -13,6 +14,13 @@ class Queue:
         self.root=Path(root);self.root.mkdir(parents=True,exist_ok=True);self.clock=clock;self.max_bytes=max_bytes
         with self.db() as d:
             d.execute('''CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY,project TEXT NOT NULL,idem TEXT NOT NULL,digest TEXT NOT NULL,state TEXT NOT NULL,attempt INTEGER DEFAULT 0,max_attempts INTEGER NOT NULL,available REAL NOT NULL,lease_until REAL,lease_id TEXT,cancel INTEGER DEFAULT 0,created REAL NOT NULL,updated REAL NOT NULL,expires REAL NOT NULL,config TEXT NOT NULL,result TEXT,error TEXT,UNIQUE(project,idem))''')
+        with self.db() as d:
+            columns={row[1] for row in d.execute('PRAGMA table_info(jobs)')}
+            if 'stage' not in columns:d.execute('ALTER TABLE jobs ADD COLUMN stage TEXT')
+    def stage(self,job,stage):
+        if stage not in {'decoding','loading_model','transcribing','aligning','diarizing','validating'}:raise ValueError('Invalid inference stage')
+        now=self.clock()
+        with self.db() as d:return d.execute("UPDATE jobs SET stage=?,updated=? WHERE id=? AND lease_id=? AND state='running' AND cancel=0 AND expires>? AND lease_until>?",(stage,now,job['id'],job['lease'],now,now)).rowcount==1
     def db(self):
         d=sqlite3.connect(self.root/'queue.sqlite',timeout=20);d.row_factory=sqlite3.Row;d.execute('PRAGMA journal_mode=WAL');return d
     def submit(self,project,idem,audio,config=None,retention=86400,max_attempts=3):
@@ -44,7 +52,7 @@ class Queue:
             d.execute("UPDATE jobs SET state='expired',result=NULL,error=NULL,updated=? WHERE expires<=? AND state!='expired'",(now,now))
             row=d.execute("SELECT * FROM jobs WHERE state='queued' AND cancel=0 AND available<=? AND expires>? ORDER BY created,id LIMIT 1",(now,now)).fetchone()
             if not row:return None
-            lease=uuid.uuid4().hex;d.execute("UPDATE jobs SET state='running',attempt=attempt+1,lease_id=?,lease_until=?,updated=? WHERE id=?",(lease,now+lease_seconds,now,row['id']))
+            lease=uuid.uuid4().hex;d.execute("UPDATE jobs SET state='running',stage=NULL,attempt=attempt+1,lease_id=?,lease_until=?,updated=? WHERE id=?",(lease,now+lease_seconds,now,row['id']))
             return {'id':row['id'],'project':row['project'],'lease':lease,'input':str(self.root/(row['id']+'.wav')),'config':json.loads(row['config'])}
     def heartbeat(self,job,lease_seconds=60):
         now=self.clock()
@@ -107,24 +115,5 @@ def server(queue,token,port=0):
     handler=type('BoundAPI',(API,),{'queue':queue,'token':token});return ThreadingHTTPServer(('127.0.0.1',port),handler)
 
 
-def execute_subprocess(queue,job,command):
-    """Execute a trusted adapter command; cancel kills process group, fences output.
-    Command comes from server-owned adapter configuration, never user input.
-    Adapter stdout must contain one bounded-size JSON result.
-    """
-    proc=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True)
-    while True:
-        try:out,err=proc.communicate(timeout=.05);break
-        except subprocess.TimeoutExpired:
-            if not queue.heartbeat(job):
-                os.killpg(proc.pid,signal.SIGTERM)
-                try:proc.communicate(timeout=1)
-                except subprocess.TimeoutExpired:os.killpg(proc.pid,signal.SIGKILL);proc.communicate()
-                return {'cancelled':True,'pid':proc.pid}
-    if proc.returncode:
-        queue.retry(job,'adapter failed: '+err.decode(errors='replace')[:300]);return {'failed':True,'pid':proc.pid}
-    if len(out)>4_000_000:
-        queue.retry(job,'adapter response exceeds limit',transient=False);return {'failed':True,'pid':proc.pid}
-    try:result=json.loads(out);completed=queue.complete(job,result)
-    except (ValueError,json.JSONDecodeError):queue.retry(job,'invalid adapter output',transient=False);completed=False
-    return {'completed':completed,'pid':proc.pid}
+def execute_subprocess(queue,job,command,**limits):
+    return execute_bounded(queue,job,command,**limits)

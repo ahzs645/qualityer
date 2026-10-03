@@ -3,6 +3,8 @@ import asyncio, hashlib, hmac, json, os, shutil, sqlite3, subprocess, sys, threa
 from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException
 from queue_store import Queue, execute_subprocess
+from job_options import normalize_options
+from global_recording import resource_limits
 
 ROOT=Path(os.environ.get('AUDIO_DATA_DIR','/data'));ROOT.mkdir(parents=True,exist_ok=True)
 TOKEN=os.environ.get('AUDIO_WORKER_TOKEN','')
@@ -12,14 +14,16 @@ app=FastAPI(docs_url=None,redoc_url=None)
 def authorize(req):
     if not hmac.compare_digest(req.headers.get('authorization',''),'Bearer '+TOKEN):raise HTTPException(401,'Unauthorized')
 def view(row):
-    return {'id':row['id'],'status':'failed' if row['state']=='expired' else row['state'],'progress':100 if row['state']=='completed' else 0,'result':row['result'],'error':row['error'],'attempt':row['attempt']}
+    return {'id':row['id'],'status':'failed' if row['state']=='expired' else row['state'],'progress':100 if row['state']=='completed' else None,'stage':row['state'] if row['state'] in {'completed','cancelled','failed','expired','queued'} else (row.get('stage') or 'running'),'options':row['config'],'result':row['result'],'error':row['error'],'attempt':row['attempt']}
 @app.get('/health')
 async def health(request:Request):
-    authorize(request);return {'queue':'ready','model':os.environ.get('WHISPER_MODEL','small'),'engine':'whisperx','gpu':os.environ.get('WHISPER_DEVICE','cpu')}
+    authorize(request);return {'queue':'ready','model':os.environ.get('WHISPER_MODEL','small'),'engine':'whisperx','gpu':os.environ.get('WHISPER_DEVICE','cpu'),'models_verified':False,'capabilities':{'speaker_count_hints':True,'regular_track':True,'exclusive_track':False,'global_chunk_diarization':True,'global_diarization_seconds_limit':resource_limits()['global_seconds'],'global_waveform_bytes_limit':resource_limits()['global_waveform_bytes'],'stage_progress':True,'percentage_progress':False}}
 @app.post('/jobs',status_code=202)
-async def submit(request:Request,project_id:str,job_id:str,diarize:bool=False,name:str='recording'):
+async def submit(request:Request,project_id:str,job_id:str,diarize:bool=False,name:str='recording',num_speakers:int=None,min_speakers:int=None,max_speakers:int=None,language:str=None,batch_size:int=None):
     authorize(request)
     if not project_id or not __import__('re').fullmatch(r'[a-fA-F0-9-]{32,36}',job_id) or request.headers.get('idempotency-key')!=job_id:raise HTTPException(400,'Project and idempotency key required')
+    try:config=normalize_options(diarize,num_speakers,min_speakers,max_speakers,language,batch_size)
+    except ValueError as error:raise HTTPException(400,str(error))
     if diarize and not os.environ.get('HF_TOKEN'):raise HTTPException(503,'Diarization requires HF_TOKEN and acceptance of the configured model terms.')
     temp=ROOT/(uuid.uuid4().hex+'.upload');digest=hashlib.sha256();size=0
     try:
@@ -31,9 +35,19 @@ async def submit(request:Request,project_id:str,job_id:str,diarize:bool=False,na
                 f.write(chunk);digest.update(chunk)
         if not size:raise HTTPException(400,'Empty recording')
         probe=await asyncio.create_subprocess_exec('ffprobe','-v','error','-select_streams','a:0','-show_entries','stream=codec_type','-of','json',str(temp),stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.DEVNULL)
-        output,_=await asyncio.wait_for(probe.communicate(),30)
+        async def read_probe():
+            output=bytearray()
+            while True:
+                block=await probe.stdout.read(4096)
+                if not block:break
+                output.extend(block)
+                if len(output)>65536:raise HTTPException(400,'Audio probe output exceeds limit')
+            await probe.wait();return bytes(output)
+        try:output=await asyncio.wait_for(read_probe(),30)
+        finally:
+            if probe.returncode is None:probe.kill();await probe.wait()
         if probe.returncode or not json.loads(output).get('streams'):raise HTTPException(400,'Recording has no decodable audio stream')
-        config={'diarize':diarize};cfg=json.dumps(config,sort_keys=True,separators=(',',':'));digest.update(b'\0'+cfg.encode());hashed=digest.hexdigest();jid=job_id;now=time.time()
+        cfg=json.dumps(config,sort_keys=True,separators=(',',':'));digest.update(b'\0'+cfg.encode());hashed=digest.hexdigest();jid=job_id;now=time.time()
         with queue.db() as db:
             db.execute('BEGIN IMMEDIATE');existing=db.execute('SELECT * FROM jobs WHERE project=? AND idem=?',(project_id,job_id)).fetchone()
             if existing:

@@ -10,7 +10,9 @@
     "db:generate": "drizzle-kit generate",
     "dev:vite": "vite --host 0.0.0.0 --port 5174",
     "build:pages": "vite build --config vite.pages.config.js --mode pages",
-    "ci": "node scripts/check.mjs"
+    "ci": "node scripts/check.mjs",
+    "prebuild:pages": "node scripts/prepare-ocr-assets.mjs",
+    "predev:vite": "node scripts/prepare-ocr-assets.mjs"
   },
   "dependencies": {
     "@tanstack/react-router": "1.170.41",
@@ -22,7 +24,9 @@
     "pdfjs-dist": "^5.4.149",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "sql.js": "^1.13.0"
+    "sql.js": "^1.13.0",
+    "tesseract.js": "7.0.0",
+    "@tesseract.js-data/eng": "1.0.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.62.5",

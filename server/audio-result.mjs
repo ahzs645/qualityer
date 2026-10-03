@@ -1,3 +1,4 @@
+import {normalizeDiarization} from '../src/speaker-tracks.mjs';
 // This boundary validates generated worker JSON without filling missing seconds.
 const invalid=message=>{throw Object.assign(Error(message),{status:502});};
 const object=x=>!!x&&typeof x==='object'&&!Array.isArray(x);
@@ -22,5 +23,6 @@ export function validateAudioResult(result){
    }
   }
  }
+ if(result.speaker_tracks!=null){try{normalizeDiarization({...result.speaker_tracks,sourceId:'worker-result',recordingKey:'worker-recording',runId:'worker-run'});}catch(error){invalid(error.message);}}
  return result;
 }

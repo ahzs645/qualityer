@@ -40,4 +40,18 @@ def validate_result(result):
             _pair(word)
             if word.get('speaker') is not None and not isinstance(word['speaker'], str):
                 raise ValueError('Word speaker must be a string')
+    tracks=result.get('speaker_tracks')
+    if tracks is not None:
+        if not isinstance(tracks,dict):raise ValueError('Speaker tracks must be an object')
+        for kind in ('regular','exclusive'):
+            rows=tracks.get(kind,[])
+            if not isinstance(rows,list) or len(rows)>100000:raise ValueError('Speaker tracks must be bounded arrays')
+            for row in rows:
+                if not isinstance(row,dict) or not isinstance(row.get('speaker'),str) or not row['speaker'].strip():raise ValueError('Speaker interval needs a label')
+                start,end=_time(row,'timeStart'),_time(row,'timeEnd')
+                if start is None or end is None or end<=start:raise ValueError('Speaker interval needs positive seconds range')
+            if kind=='exclusive':
+                ordered=sorted(rows,key=lambda row:(row['timeStart'],row['timeEnd']))
+                for previous,current in zip(ordered,ordered[1:]):
+                    if current['timeStart']<previous['timeEnd']:raise ValueError('Exclusive speaker track overlaps')
     return result

@@ -18,7 +18,7 @@ Optional HF_TOKEN is required for diarization and the team must separately accep
 
 The protocol is authenticated POST /jobs?project_id=…&job_id=…&diarize=true|false with a streamed recording and matching Idempotency-Key, GET /jobs/{id}?project_id=…, and DELETE at the same scoped URL. A submit acknowledgement uses the same durable job UUID; an interrupted acknowledgement can be reconciled by polling it. Completed status returns {result:{segments:[{text,start,end,speaker?,words?}],model,engine,language,diarization}}. WhisperX word timestamps are retained in the app's transcript turns.
 
-The adapter splits long recordings into 20-minute transcription parts. It refuses diarization for multiple parts: assigning the same local speaker label in different chunks would fabricate identity. Connect a worker implementing whole-recording speaker clustering when that capability is required. Human naming, transcription correction and attribution checks remain part of the workflow.
+The adapter normalizes and checks the complete recording, then transcribes/aligns 20-minute parts. When requested, a single WhisperX 3.8.0 diarizer processes the complete recording before every chunk is shifted to absolute seconds and assigned against the same global speaker track. Default diarization gates are two hours and a 512 MB float32 waveform budget (excluding model/intermediate memory); longer transcription-only jobs remain available up to the configurable 12-hour recording limit. See ../../docs/audio-speaker-completion.md for resource and missing-timing contracts. Human naming, transcription correction and attribution checks remain part of the workflow.
 
 Run gateway/queue checks without downloading models (httpx is a test dependency):
 

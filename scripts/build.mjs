@@ -2,6 +2,7 @@ import {spawnSync} from 'node:child_process';
 import {readFile,writeFile,mkdir,cp,readdir,rm} from 'node:fs/promises';
 import path from 'node:path';
 import {build} from 'esbuild';
+await import('./prepare-ocr-assets.mjs');
 await rm('dist/server',{recursive:true,force:true});
 await rm('dist/client',{recursive:true,force:true});
 await rm('.sites-runtime/start',{recursive:true,force:true});

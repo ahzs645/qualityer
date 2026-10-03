@@ -1,21 +1,21 @@
 [
   {
     "feature": "Shared persistent projects",
-    "reference": "OpenQDA · Taguette",
+    "reference": "OpenQDA \u00b7 Taguette",
     "status": "Implemented",
     "note": "Server database; optimistic revision checks prevent silent overwrites. Polls for updates every 15 seconds."
   },
   {
     "feature": "Authenticated coder / reviewer / viewer roles",
-    "reference": "Requal · Taguette",
+    "reference": "Requal \u00b7 Taguette",
     "status": "Implemented",
     "note": "Platform sign-in plus server-side project membership. Site sharing must be configured separately."
   },
   {
     "feature": "Hierarchical codes and definitions",
-    "reference": "AQDA · QualCoder · Sift",
+    "reference": "AQDA \u00b7 QualCoder \u00b7 Sift",
     "status": "Implemented",
-    "note": "Editable category hierarchies, code/category moves, manual order controls, archive/restore and merge reference integrity. Drag-and-drop ordering remains absent."
+    "note": "Editable category/code hierarchies, drag ordering and accessible order controls, archive/restore and merge reference integrity."
   },
   {
     "feature": "Precise text coding and coder attribution",
@@ -31,51 +31,51 @@
   },
   {
     "feature": "Passage / source / code / project memos",
-    "reference": "AQDA · QualCoder · Sift",
+    "reference": "AQDA \u00b7 QualCoder \u00b7 Sift",
     "status": "Implemented",
-    "note": "Linked shared memos preserve linkage and edit history; editable journals and account-scoped private notes stored separately from project/AI/export/backups. Rich mentions remain absent."
+    "note": "Shared project/source/code/case/passage memos, journals and private account notes. Explicit Unicode-safe record-ID mentions and picker/clickable previews preserve linkage across renames; unavailable/deleted/hidden links do not redirect by name. Native snapshots retain metadata; REFI standard-only exports carry text with disclosed link losses."
   },
   {
     "feature": "Cases and attributes",
-    "reference": "QualCoder · Sift",
+    "reference": "QualCoder \u00b7 Sift",
     "status": "Implemented",
     "note": "Whole-source and exact passage-level case assignments, typed text/number/boolean/date source/case forms, previewed CSV/XLSX case tables, numeric/date analysis filters and case-attribute matrices. Imported originals preserved."
   },
   {
     "feature": "Coding matrices",
-    "reference": "QualCoder · Sift",
+    "reference": "QualCoder \u00b7 Sift",
     "status": "Implemented",
     "note": "Direct/subtree/category/all-code rows across sources, cases and case attributes; applications/excerpts/union codepoints/current-recording seconds/distinct rectangle area measures. Drilldowns and scoped export; nonadditive totals explicitly labelled."
   },
   {
     "feature": "AND / OR / NOT / NEAR queries",
-    "reference": "QualCoder · Sift",
-    "status": "Partial",
-    "note": "Saved specifications and frozen result-as-code with selected application IDs and complete analysis scope. Whole-application NOT remains; interval subtraction and media query algebra are not implemented."
+    "reference": "QualCoder \u00b7 Sift",
+    "status": "Implemented",
+    "note": "Separate original-application and interval-result modes. Unicode text intersection, connected union, subtraction and NEAR; same-recording seconds; current revision/consent scope, uncoded literal search and provenance-checked saved/frozen fragments. Geometry algebra remains separate."
   },
   {
     "feature": "Code co-occurrence",
     "reference": "QualCoder",
     "status": "Implemented",
-    "note": "Exact/overlap/contains/touch/near/same-source relations, complete relationship table and GraphML; capped 40-node graph preview and linked evidence. Media ranges require matching recordings. Generic editable project-map canvas remains absent."
+    "note": "Exact/overlap/contains/touch/near/same-source statistical relations with GraphML and evidence, plus a separate editable saved researcher concept map with positions, zoom/pan, keyboard movement and scoped evidence links."
   },
   {
     "feature": "Word frequency and theme counts",
-    "reference": "Sift · QualCoder",
+    "reference": "Sift \u00b7 QualCoder",
     "status": "Implemented",
-    "note": "Clickable word/theme counts, source/speaker shares, turn sequence and evidence-linked visualizations. English/French/Spanish/custom stop lists, Unicode concordance and 1–3 word phrases. Whole-source vocabulary uses source/case and typed attribute scope; code/coder/decision filters govern coding evidence separately."
+    "note": "Clickable word/theme counts, source/speaker shares, turn sequence and evidence-linked visualizations. English/French/Spanish/custom stop lists, Unicode concordance and 1\u20133 word phrases. Whole-source vocabulary uses source/case and typed attribute scope; code/coder/decision filters govern coding evidence separately."
   },
   {
     "feature": "Independent coder comparison",
-    "reference": "Requal · QualCoder",
+    "reference": "Requal \u00b7 QualCoder",
     "status": "Implemented",
-    "note": "Exact-span code-set agreement, interval-union Jaccard and character-level Cohen kappa with eligible Unicode corpus denominators. Source/decision filters and selected/all-pair CSV. Reference sources and consent-review/stale anchors withheld. Text only: media/region agreement and blind server isolation remain absent."
+    "note": "Text exact-span sets, interval-union Jaccard and eligible-corpus Cohen kappa. Recording-second Jaccard and image/PDF rectangle-union IoU stay separate with units. Blind coders receive only own decisions from the server; reviewers compare full layers. No metric certifies agreement or consensus."
   },
   {
     "feature": "Review decisions and history",
     "reference": "Team workflow",
     "status": "Implemented",
-    "note": "Accept/flag review history, soft-removed coding, original coder layers, separate consensus records, and attributed operation payloads."
+    "note": "Accept/flag reviews, soft-remove/restore, original coder layers and separate consensus. Atomic operation history adds target/quotation filters and bounded field-level before/after values with revision metadata; blind histories omit raw payloads and deny hidden-text filters."
   },
   {
     "feature": "NHHR evidence / stance checks",
@@ -103,15 +103,15 @@
   },
   {
     "feature": "DOCX / TXT / Markdown / timestamped imports",
-    "reference": "AQDA · Taguette · Sift",
+    "reference": "AQDA \u00b7 Taguette \u00b7 Sift",
     "status": "Implemented",
-    "note": "DOCX extracted as text; JSON segments/turns retain supplied timestamps and speaker labels. SRT/VTT retain cue timing/body text, with canonical speaker Unassigned until corrected. Formatting is not retained."
+    "note": "Browser-local TXT/Markdown encoding chooser, HTML, ODT, EPUB, RTF, DOCX, pasted text, timestamped JSON/SRT/VTT. Exact canonical text, extraction-loss warnings, original-byte SHA256 provenance, RTL/auto direction and supplied turn times retained."
   },
   {
     "feature": "Text PDF import and original view",
-    "reference": "AQDA · QualCoder · Sift",
-    "status": "Partial",
-    "note": "Canvas page rendering, drag rectangle coding, page-point geometry, overlays and true PDFSource/PDFSelection exchange verified in browser and actual QualCoder importer. Scanned-PDF OCR remains a gap."
+    "reference": "AQDA \u00b7 QualCoder \u00b7 Sift",
+    "status": "Implemented",
+    "note": "Text extraction, original PDF page rendering, region coding and PDFSource/PDFSelection exchange. Optional genuine browser-local English OCR previews scanned PDFs, up to 12 pages/16MiB/12MP; warnings and confidence require correction. Exact text and source provenance retained."
   },
   {
     "feature": "Image region coding",
@@ -122,30 +122,30 @@
   {
     "feature": "Audio / video span coding",
     "reference": "QualCoder",
-    "status": "Partial",
-    "note": "Private multipart uploads, byte-range playback, fractional time-span coding, transcript links and media exchange. Browser-local audio waveform/range preview up to 40 MB; long waveforms require processing. Real long-recording inference remains unverified."
+    "status": "Implemented",
+    "note": "Private multipart upload, byte-range playback, fractional recording ranges, timestamp links and media exchange. Browser waveform preview remains bounded to40MB; actual long-recording model quality and externally generated long waveforms remain unverified."
   },
   {
     "feature": "Automatic transcription / alignment",
     "reference": "WhisperX",
     "status": "Connection required",
-    "note": "Durable jobs, 2GB multipart uploads, private byte-range playback, polling, cancellation/retry, reviewed transcript application and deployable CPU/GPU WhisperX gateway. 20-minute transcription chunks bound memory. Queue/transport tests pass; real inference not connected."
+    "note": "Durable jobs,2GB multipart upload, private playback,cancel/retry, reviewed application and deployable pinned WhisperX gateway. Full recording normalized once; bounded20min chunks with truncation/duration checks. Actual ffmpeg/contracts pass; real speech inference needs configured models and reachable worker."
   },
   {
     "feature": "Speaker diarization",
     "reference": "pyannote.audio",
     "status": "Connection required",
-    "note": "Timestamped words, speaker labels, correction and optional WhisperX/pyannote worker operation. Real models require a configured worker and approved model access. Bundled adapter rejects diarization across multiple chunks rather than invent global speaker identities."
+    "note": "Canonical recording/source/run-bound regular tracks, separately supplied exclusive tracks, overlap timeline, selected speaker corrections, original labels/history, RTTM and corrected subtitles. Optional single whole-recording diarizer precedes chunk assignment, with default2h/512MB waveform resource gates. Real models/accuracy unverified; no fabricated cross-chunk labels or exclusive tracks."
   },
   {
     "feature": "AI code suggestions",
-    "reference": "AQDA · Sift",
+    "reference": "AQDA \u00b7 Sift",
     "status": "Connection required",
-    "note": "OpenAI-compatible model adapter validates unique exact quotes; accept/dismiss queue. No model service connected by default."
+    "note": "All eligible source paragraph windows, code-definition and up to6 current example seeds, optional embedding ranking and explicit paged coverage/model budgets/provider finish. Exact current quotes, exclusions and consent validated again at review. Local reviewed literal/restricted-regex autocoding with own-run undo also works without a model."
   },
   {
     "feature": "Semantic search / embeddings",
-    "reference": "AQDA · Sift",
+    "reference": "AQDA \u00b7 Sift",
     "status": "Connection required",
     "note": "Persistent cosine index, paragraph/speaker-line or fixed-window modes, Unicode anchors, source exclusions, content/revision/chunk-mode cache partitioning and stoppable multi-batch indexing. Fixture tests pass; real provider/model quality remains unverified."
   },
@@ -153,7 +153,7 @@
     "feature": "AI consistency / hierarchy / definition review",
     "reference": "AQDA",
     "status": "Connection required",
-    "note": "Editable grounded drafts, selectable parent groups, explicit all/accepted scope and spread sampling. Adaptive leave-one-out centroid outlier threshold can return no findings; requires at least four excerpts. Truncated/withheld provider responses rejected centrally. Durable processing tasks and exact citation rechecks; real models pending."
+    "note": "Grounded summary/definition/consistency/hierarchy drafts, explicit all/accepted scope, sampled coverage, configured context/response budgets and provider finish metadata. Adaptive outliers may return none. Truncated replies rejected; decisions/citations rechecked. Actual service inference/model accuracy remains unverified."
   },
   {
     "feature": "JSON / CSV project exports",
@@ -163,19 +163,19 @@
   },
   {
     "feature": "QDC hierarchy exchange",
-    "reference": "AQDA · Taguette · QualCoder",
+    "reference": "AQDA \u00b7 Taguette \u00b7 QualCoder",
     "status": "Implemented",
     "note": "Actual QualCoder importer preserves category, nested codes, definitions and colours in synthetic fixture. AQDA expects native SQLite; Taguette uses a separate path/definition CSV export. No claim that those apps accept QDC."
   },
   {
     "feature": "REFI-QDA QDPX text exchange",
-    "reference": "AQDA · Sift · QualCoder",
+    "reference": "AQDA \u00b7 Sift \u00b7 QualCoder",
     "status": "Partial",
     "note": "Typed zero, false, date and fractional number variables schema-valid, imported by actual QualCoder and reimported in the browser without native sidecars. Native sidecar retains passage cases, pins/links, review/query provenance and timing/history with explicit loss report. QualCoder SourceRef case-link loss and unverified Sift runtime remain limitations."
   },
   {
     "feature": "Backups / portable media project archive",
-    "reference": "AQDA · QualCoder",
+    "reference": "AQDA \u00b7 QualCoder",
     "status": "Implemented",
     "note": "Every successful save creates an immutable checksum-verified recovery point. Owner restore uses revision checks and preserves current state; verify/download UI. Multipart media QDPX reimport. This is project recovery, not an offsite backup of infrastructure or credentials."
   },
@@ -199,50 +199,56 @@
   },
   {
     "feature": "Import preview and processing-stage comparison",
-    "reference": "Taguette · Requal · OpenQDA",
+    "reference": "Taguette \u00b7 Requal \u00b7 OpenQDA",
     "status": "Implemented",
     "note": "Preview/cancel project and source imports, explicit protocol/source role, supported QualCoder provenance and attribute definitions/important flags/inert queries. Three NHHR stages are one interview. Six same-text broad-to-claim windows drill down to preserved originals."
   },
   {
     "feature": "Saved queries and explicit reading progress",
-    "reference": "QualCoder · researcher workflow",
+    "reference": "QualCoder \u00b7 researcher workflow",
     "status": "Implemented",
     "note": "Named dynamic code/source/coder/status/text/NEAR specifications persist. Read-range markers and resume stay separate from coding coverage; transcript edits invalidate affected markers."
   },
   {
     "feature": "Labelled coding range overview and source sequence",
-    "reference": "Sift stripes · QualCoder",
+    "reference": "Sift stripes \u00b7 QualCoder",
     "status": "Implemented",
     "note": "Exact range overview, source sequence and geometric transcript-side stripes with resize tracking; up to eight shared color lanes, every decision accessible through the range overview. Real browser-local audio waveform/range coding added with a 40 MB preview limit. Longer waveform generation requires external processing."
   },
   {
     "feature": "Grouped and stacked analysis charts; code hierarchy",
-    "reference": "QualCoder · Sift",
+    "reference": "QualCoder \u00b7 Sift",
     "status": "Implemented",
-    "note": "Scoped code × source/case bars, heatmap matrix, application-weighted sunburst and treemap, SVG export, nested definitions and evidence links. Counts describe coding, not prevalence."
+    "note": "Scoped bars/heatmap matrix, multi-source text coding portrait, measure-weighted sunburst/treemap (applications,codepoints,seconds,area), SVG/XLSX and evidence drilldowns. Summed code allocation and deduplicated scope totals are explicitly separate; counts are not prevalence."
   },
   {
     "feature": "Multilingual word analysis and concordance",
-    "reference": "QualCoder · Requal",
+    "reference": "QualCoder \u00b7 Requal",
     "status": "Implemented",
-    "note": "Unicode anchors, English/French/Spanish/custom/no stop list, 1–3 word phrases, frequency CSV and linked concordance. Consent-review passages withheld; vocabulary uses explicit whole-source scope."
+    "note": "Unicode anchors, English/French/Spanish/custom/no stop list, 1\u20133 word phrases, frequency CSV and linked concordance. Consent-review passages withheld; vocabulary uses explicit whole-source scope."
   },
   {
     "feature": "Team audit and private notes",
-    "reference": "OpenQDA · Requal · Taguette",
-    "status": "Partial",
-    "note": "Owner role changes and grant/revoke audit; paginated researcher/action/date filters and history CSV. Private notes isolated per account and project. Blind-coding server isolation, detailed permission presets and real-time presence remain absent."
+    "reference": "OpenQDA \u00b7 Requal \u00b7 Taguette",
+    "status": "Implemented",
+    "note": "Owner-managed role capabilities and manual/focused presets; server blind-coding projection for state,AI,exports and actor-only minimal audit. Authenticated private notes; permission-safe recovery. Shared-source metadata remains visible. Presence/cursor synchronization and formal independent-coding certification are not claimed."
   },
   {
     "feature": "Advanced source ingestion and long audio",
-    "reference": "QualCoder · OpenQDA · WhisperX",
-    "status": "Partial",
-    "note": "Existing text/DOCX/text-PDF/JSON/SRT/VTT and private multipart recording uploads retained. CSV/XLSX case tables added. OCR, EPUB/RTF extraction and cross-chunk global speaker diarization are not implemented; long-recording real-worker execution remains unverified."
+    "reference": "QualCoder \u00b7 OpenQDA \u00b7 WhisperX",
+    "status": "Implemented",
+    "note": "Local HTML/ODT/EPUB/RTF, encodings,paste,RTL and genuine English image/PDF OCR with original-byte/loss provenance. Multi-part long transcription with single global recording diarizer and resource gates implemented in separate worker; actual model execution remains connection required."
   },
   {
     "feature": "Previewed CSV / QDC / JSON codebook import",
-    "reference": "Taguette · AQDA · QualCoder",
+    "reference": "Taguette \u00b7 AQDA \u00b7 QualCoder",
     "status": "Implemented",
-    "note": "CSV path/name/tag and quoted multiline definitions; literal tag names or explicit hierarchy separator. Existing definitions retained, conflicts shown, validated CSV export. All formats preview/cancel and import atomically with hierarchy validation. Native Taguette/AQDA database exchange remains absent."
+    "note": "Previewed atomic CSV/QDC/JSON codebooks with explicit CSV hierarchy; schema-detected AQDA/Taguette/QualCoder SQLite import. Active exact anchors and attribution retained; uncertain anchors quarantined, credentials/permissions omitted. AQDA/Taguette native imports are one-way; outward exchange uses REFI with field-loss notes."
+  },
+  {
+    "feature": "Reusable named code sets",
+    "reference": "AQDA \u00b7 QualCoder",
+    "status": "Implemented",
+    "note": "Reusable existing-code selections filter analysis/reports. Portable JSON/QDC collections include required non-codable category/code ancestors, preview/reimport with fresh IDs, and omit source/coding/notes/configuration. Own-set/blind permissions enforced."
   }
 ]

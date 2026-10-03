@@ -9,3 +9,6 @@ __pycache__/
 
 dist/
 server/html.generated.mjs
+
+# Generated locally hosted OCR assets; recreated from pinned npm packages.
+public/ocr/tesseract-7-v1/

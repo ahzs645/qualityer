@@ -4,7 +4,7 @@ const supplied=(record,keys)=>{for(const key of keys)if(record[key]!==undefined)
 export function timestampedTranscript(x){
  if(x?.format==='research-weave-transcript'){
   if(typeof x.text!=='string'||!Array.isArray(x.turns))throw Error('Invalid timestamped transcript export.');
-  return {text:x.text,turns:structuredClone(x.turns),transcriptMetadata:structuredClone(x.transcriptMetadata),alignment:structuredClone(x.alignment),transcription:structuredClone(x.transcription),speakerMappings:structuredClone(x.speakerMappings||[]),versions:structuredClone(x.versions||[])};
+  return {text:x.text,direction:x.direction||x.source?.direction||'auto',importProvenance:structuredClone(x.importProvenance||null),ocr:structuredClone(x.ocr||null),turns:structuredClone(x.turns),transcriptMetadata:structuredClone(x.transcriptMetadata),alignment:structuredClone(x.alignment),transcription:structuredClone(x.transcription),speakerMappings:structuredClone(x.speakerMappings||[]),diarization:structuredClone(x.diarization||null),versions:structuredClone(x.versions||[])};
  }
  const canonical=Array.isArray(x?.turns),segments=x.segments||x.transcription||x.turns||x;
  if(!Array.isArray(segments))throw Error('Transcript JSON needs a segments or turns array.');
@@ -19,5 +19,5 @@ export function timestampedTranscript(x){
   turns.push({id:uid(),sourceId:seg.id??null,sourceIndex:index,start,end:cp(text).length,speaker,rawSpeaker:speaker,...times,words,wordTiming,raw:structuredClone(seg),timingStatus:'supplied'});
  }
  const metadata=Array.isArray(x)?{}:Object.fromEntries(Object.entries(x).filter(([k])=>!['segments','turns','transcription'].includes(k)));
- return {text,turns,transcriptMetadata:{format:canonical?'turns':'segments',units:'seconds',provider:structuredClone(metadata)},alignment:{recordingKey:null,status:turns.some(t=>Number.isFinite(t.timeStart))?'unbound':'untimed',units:'seconds'}};
+ return {text,turns,speakerTracks:structuredClone(metadata.speaker_tracks||null),transcriptMetadata:{format:canonical?'turns':'segments',units:'seconds',provider:structuredClone(metadata)},alignment:{recordingKey:null,status:turns.some(t=>Number.isFinite(t.timeStart))?'unbound':'untimed',units:'seconds'}};
 }
