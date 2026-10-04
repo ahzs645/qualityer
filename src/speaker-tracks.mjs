@@ -24,18 +24,20 @@ export function speakerOverlaps(track){
  for(let i=0;i<points.length;){const time=points[i].time;if(previous!==null&&time>previous&&active.size>1)out.push({timeStart:previous,timeEnd:time,intervalIds:[...active.keys()],speakers:[...new Set([...active.values()].map(x=>x.speaker))]});while(i<points.length&&points[i].time===time){const {row,kind}=points[i++];if(kind<0)active.delete(row.id);else active.set(row.id,row);}previous=time;}
  return out;
 }
-export function correctSpeakers(document,{sourceId,recordingKey,runId,turnIds=[],intervalIds=[],track='regular',to},actor='researcher',date=stamp()){
+export function correctSpeakers(document,{sourceId,sourceRevision,recordingKey,runId,turnIds=[],intervalIds=[],track='regular',to,note='',sourceBasis='researcher-recorded'},actor='researcher',date=stamp()){
  if(document.id!==sourceId||!label(to)||!Array.isArray(turnIds)||!Array.isArray(intervalIds)||!['regular','exclusive'].includes(track))throw Error('Choose this source and a valid speaker correction.');
  const turns=document.turns||[],selected=new Set(turnIds),intervals=new Set(intervalIds),run=document.diarization;
  if(!selected.size&&!intervals.size)throw Error('Select turns or speaker intervals to correct.');
  if(selected.size!==turnIds.length||intervals.size!==intervalIds.length)throw Error('Duplicate selections are invalid.');
  if(turnIds.some(id=>!turns.some(t=>t.id===id)))throw Error('A selected turn is missing.');
+ const machineTurns=turns.filter(t=>selected.has(t.id)&&(t.speakerRunId||t.speakerAssignment?.runId||t.speakerAssignment?.status==='machine-estimate'));
+ if(machineTurns.length&&(sourceRevision!==(document.revision||1)||!runId||!recordingKey||run?.recordingKey!==document.mediaKey||machineTurns.some(t=>(t.speakerRunId||t.speakerAssignment?.runId)!==runId||t.anchorStatus==='needs_review'||t.timingStatus==='needs_review')))throw Error('Review the current source revision, speaker run and recording before correcting machine labels.');
  if(runId!==undefined&&runId!==null){if(!run||run.runId!==runId||run.recordingKey!==recordingKey||recordingKey!==document.mediaKey)throw Error('Speaker correction belongs to a different recording run.');if(turnIds.some(id=>turns.find(t=>t.id===id)?.speakerRunId!==runId))throw Error('A selected turn belongs to another speaker run.');}
  if(intervals.size){if(!runId||!recordingKey||document.mediaKey!==recordingKey)throw Error('Interval correction requires the current recording and run.');normalizeDiarization(run,{sourceId,recordingKey,runId});if(intervalIds.some(id=>!run[track].some(row=>row.id===id)))throw Error('A selected interval is missing.');}
  const result=clone(document),changes=[];
- result.turns=turns.map(t=>{if(!selected.has(t.id))return clone(t);changes.push({kind:'turn',id:t.id,from:t.speaker,to});return {...clone(t),rawSpeaker:t.rawSpeaker??t.speaker,speaker:to};});
+ result.turns=turns.map(t=>{if(!selected.has(t.id))return clone(t);changes.push({kind:'turn',id:t.id,from:t.speaker,to});return {...clone(t),rawSpeaker:t.rawSpeaker??t.speaker,speaker:to,speakerAssignment:{...(t.speakerAssignment||{}),status:'researcher-recorded',reviewer:actor,reviewedAt:date,note:String(note).slice(0,4000),sourceBasis:'researcher-recorded',identityVerified:false}};});
  if(intervals.size)result.diarization[track]=run[track].map(row=>{if(!intervals.has(row.id))return clone(row);changes.push({kind:track,id:row.id,from:row.speaker,to});return {...clone(row),rawSpeaker:row.rawSpeaker??row.speaker,speaker:to};});
- const history={sourceId,recordingKey:recordingKey??null,runId:runId??null,actor,date,to,changes};result.speakerMappings??=[];result.speakerMappings.push(history);if(intervals.size){result.diarization.history??=[];result.diarization.history.push(history);}return result;
+ const history={sourceId,recordingKey:recordingKey??null,runId:runId??null,actor,date,to,note:String(note).slice(0,4000),sourceBasis:'researcher-recorded',identityVerified:false,changes};result.speakerMappings??=[];result.speakerMappings.push(history);if(intervals.size){result.diarization.history??=[];result.diarization.history.push(history);}return result;
 }
 export function importRTTM(text,scope,{track='regular',recordingId=null}={}){
  if(!['regular','exclusive'].includes(track)||typeof text!=='string'||text.length>16000000)throw Error('Invalid RTTM input.');binding(scope);const rows=[];let declared=recordingId;

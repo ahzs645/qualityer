@@ -13,6 +13,12 @@ export function speakerColor(label){
  let hash=2166136261;for(const character of label.normalize('NFC'))hash=Math.imul(hash^character.codePointAt(0),16777619);
  return codePalette[(hash>>>0)%codePalette.length];
 }
+export function speakerAssignmentStatus(turn){
+ const status=turn?.speakerAssignment?.status;
+ if(['machine-estimate','unresolved','researcher-recorded'].includes(status))return status;
+ return !turn?.speaker||/^(unassigned|unknown|unidentified|speaker unknown)$/iu.test(turn.speaker.trim())?'unresolved':'supplied';
+}
+export function speakerAssignmentLabel(turn){return {'machine-estimate':'Machine estimate · review needed',unresolved:'Unresolved speaker','researcher-recorded':'Researcher-recorded label · identity unverified',supplied:'Supplied label · review not recorded'}[speakerAssignmentStatus(turn)];}
 export function readableInk(color){
  if(!/^#[0-9a-f]{6}$/iu.test(color||''))return '#fff';
  const rgb=[1,3,5].map(i=>parseInt(color.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
@@ -39,7 +45,7 @@ export function chunksForRow(row,chunks){return chunks.filter(c=>c.start<row.end
 export function speakerTimeline(doc,track='regular'){
  const run=doc.diarization;
  if(run&&run.recordingKey!==doc.mediaKey)return {rows:[],kind:'stale',message:'Speaker track belongs to another recording. Review it before playback.'};
- if(run){const rows=(run[track]||[]).filter(r=>Number.isFinite(r.timeStart)&&Number.isFinite(r.timeEnd)&&r.timeStart>=0&&r.timeEnd>r.timeStart);return {rows,kind:'diarization',message:rows.length?'Supplied speaker separation; identities require review.':'No intervals in this speaker track.'};}
+ if(run){const rows=(run[track]||[]).filter(r=>Number.isFinite(r.timeStart)&&Number.isFinite(r.timeEnd)&&r.timeStart>=0&&r.timeEnd>r.timeStart),machineEstimated=run.provenance?.machineEstimated===true;return {rows,kind:'diarization',machineEstimated,message:rows.length?(machineEstimated?'Estimated voice separation; anonymous labels and mixed segments require recording review.':'Supplied speaker separation; identities require review.')+(run.provenance?.overlapDetection===false?' Overlapping speech was not detected by this method; these tracks do not establish that overlap is absent.':''):'No intervals in this speaker track.'};}
  const rows=(doc.turns||[]).filter(t=>canSeekTurn(doc,t)&&Number.isFinite(t.timeEnd)&&t.timeEnd>t.timeStart);
  return {rows,kind:'transcript',message:'Speaker separation has not been loaded. This timeline uses supplied transcript segment timing.'};
 }
