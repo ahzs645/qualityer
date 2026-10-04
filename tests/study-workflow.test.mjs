@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {studyWorkflow} from '../src/study-workflow.mjs';
+const fixture=()=>({name:'Synthetic study',documents:[{id:'d',name:'Recording label — machine draft',text:'😀abcdefghijklmno',revision:1,reviewStatus:'Pending',sourceRole:'interview'}],codes:[{id:'c',name:'Working code'}],codings:[],cases:[],memos:[],settings:{researchDesign:{question:'How is the process experienced?',approach:'framework'}},readingProgress:[],frameworkStudies:[],frameworkCells:[]});
+const anchor=(s,start,end)=>({documentId:'d',sourceRevision:1,start,end,text:Array.from(s.documents[0].text).slice(start,end).join('')});
+test('Overview unions overlapping current reading and coded ranges, preserving applications, statuses and source labels',()=>{
+  const s=fixture();s.readingProgress=[{...anchor(s,0,8),status:'read',actor:'AI analyst'},{...anchor(s,4,12),status:'read',actor:'AI analyst'},{...anchor(s,12,16),status:'deferred',actor:'researcher'}];s.codings=[{...anchor(s,0,6),id:'a',codeId:'c',coder:'AI analyst',status:'provisional'},{...anchor(s,0,6),id:'b',codeId:'c',coder:'reviewer',status:'coded'},{...anchor(s,4,10),id:'c',codeId:'c',coder:'AI analyst',status:'provisional'}];const before=JSON.stringify(s),w=studyWorkflow(s),source=w.sources[0];
+  assert.equal(source.readCodepoints,12);assert.equal(source.eligibleCodepoints,16);assert.equal(source.selectedRanges,2);assert.equal(source.textApplications,3);assert.equal(source.codedCodepoints,10);assert.equal(source.deferredReadingMarks,1);assert.deepEqual(source.readingActors,['AI analyst']);assert.equal(source.provisionalApplications,2);assert.equal(source.document.name,s.documents[0].name);assert.equal(JSON.stringify(s),before);assert.equal(w.nextAction.label,'Check transcript wording');assert.equal(w.nextAction.view,'workspace');
+});
+test('Consent scopes and stale exact anchors fail closed; reference sources stay separate and get no source cards',()=>{
+  const s=fixture();s.documents[0].reviewFlags=[{start:4,end:8}];s.documents[0].consentDecisions=[{status:'pending'},{status:'included',anchorStatus:'current'}];s.documents.push({id:'r',name:'Reference',text:'text',sourceRole:'reference'});s.readingProgress=[{...anchor(s,0,6),status:'read'},{...anchor(s,10,14),status:'read',sourceRevision:0}];s.codings=[{...anchor(s,0,6),id:'a',codeId:'c',coder:'one',status:'coded'}];const w=studyWorkflow(s),source=w.sources[0];assert.equal(w.sources.length,1);assert.equal(w.counts.referenceSources,1);assert.equal(source.eligibleCodepoints,12);assert.equal(source.readCodepoints,0);assert.equal(source.textApplications,0);assert.equal(source.staleReadingMarks,2);assert.equal(source.includedConsent,1);assert.equal(source.pendingConsent,1);assert.equal(w.nextAction.view,'source-review');assert.equal(w.nextAction.label,'Review source permissions');
+});
+function addFramework(s,status='agent-reviewed'){
+  s.frameworkStudies=[{id:'f',name:'Working framework',method:'Framework Method',researchQuestion:'Legacy framework question',documentIds:['d'],themes:[{id:'t',title:'A theme',codeIds:['c']},{id:'missing',title:'Another',codeIds:['c']}],stages:[{name:'Familiarization',status:'complete'}]}];
+  s.frameworkCells=[{id:'cell',studyId:'f',documentId:'d',sourceRevision:1,themeId:'t',finding:'observed',summary:'Provisional interpretation',status,evidence:[{...anchor(s,0,6),relation:'support'}]}];
+}
+test('Framework overview keeps current, stale, missing, agent and researcher decisions distinct; completed stage records do not confer verification',()=>{
+  const s=fixture();addFramework(s);const w=studyWorkflow(s),f=w.frameworks[0];assert.equal(f.currentCells,1);assert.equal(f.agentReviewed,1);assert.equal(f.researcherReviewed,0);assert.equal(f.missingCells,1);assert.equal(f.recordedStages[0].status,'complete');assert.equal(w.sources[0].wordingReviewRecorded,false);assert.equal(w.question,s.settings.researchDesign.question);
+  s.documents[0].revision=2;const stale=studyWorkflow(s);assert.equal(stale.frameworks[0].staleCells,1);assert.equal(stale.frameworks[0].agentReviewed,0);assert.equal(stale.nextAction.view,'framework');assert.equal(stale.nextAction.label,'Revisit changed chart evidence');
+});
+test('Research design controls the journey without making framework coding or coder agreement mandatory',()=>{
+  const s=fixture();s.settings.researchDesign={question:'What meanings are constructed?',approach:'reflexive-thematic'};s.documents[0].reviewStatus='Reviewed';s.readingProgress=[{...anchor(s,0,16),status:'read'}];s.codings=[{...anchor(s,0,6),id:'a',codeId:'c',coder:'one',status:'coded'}];const w=studyWorkflow(s);assert.equal(w.method,'Reflexive thematic analysis');assert.equal(w.usesFramework,false);assert.equal(w.nextAction.view,'memos');assert.equal(w.journey.find(s=>s.id==='chart').view,'memos');assert.match(w.journey.find(s=>s.id==='challenge').fact,/not a required/);
+});
+test('Missing context prompts design, blank projects prompt import, while blind scope explains unavailable shared context',()=>{
+  const s=fixture();delete s.settings.researchDesign;assert.equal(studyWorkflow(s).nextAction.view,'design');s.documents=[];assert.equal(studyWorkflow(s).nextAction.kind,'import');
+  const blind=fixture();delete blind.settings.researchDesign;const w=studyWorkflow(blind,{access:{blind:true}});assert.equal(w.contextHidden,true);assert.notEqual(w.nextAction.view,'design');assert.match(w.journey[0].fact,/unavailable/);assert.match(w.journey.find(s=>s.id==='challenge').fact,/hidden/);
+  const old=fixture();old.codings=[{...anchor(old,0,6),id:'stale',codeId:'c',coder:'one',status:'needs_review'}];assert.equal(studyWorkflow(old).nextAction.view,'review');
+});
+test('Recorded wording review remains explicit and researcher review counts only current chart cells',()=>{
+  const s=fixture();s.documents[0].reviewStatus='Reviewed';addFramework(s,'reviewed');let w=studyWorkflow(s);assert.equal(w.sources[0].wordingReviewRecorded,true);assert.equal(w.frameworks[0].researcherReviewed,1);s.documents[0].attributes={'Transcript reviewed':'Pending'};const markedPending=studyWorkflow(s).sources[0];assert.equal(markedPending.wordingReviewStatus,'Pending');assert.equal(markedPending.wordingReviewRecorded,false);delete s.documents[0].attributes;
+  s.frameworkCells[0].evidence[0].text='changed quote';w=studyWorkflow(s);assert.equal(w.frameworks[0].researcherReviewed,0);assert.equal(w.frameworks[0].staleCells,1);
+  s.documents[0].name='Unverified field notes';s.documents[0].reviewStatus='Pending';assert.equal(studyWorkflow(s).sources[0].machineDraft,false,'Unverified wording alone does not establish machine provenance');
+});

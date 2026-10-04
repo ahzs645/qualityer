@@ -27,6 +27,12 @@ Analyst and critical-review subagents can rehearse the researcher review loop by
 
 New normalized coverage reports measure union-covered eligible codepoints, and separately saved applications per 1,000 eligible codepoints. Consent restrictions and current case-passage scope affect the denominator. Parent codes/cases may overlap and are nonadditive. The coder heatmap preserves code/source dimensions; relationship drilldowns keep text codepoints distinct from recording seconds. Counts and visualizations describe the selected evidence and decisions rather than thematic prevalence or causal effects.
 
+## Research-led interface
+
+The study overview and question/method setup make the purpose, approach, source context and researcher perspective explicit. Grouped navigation follows the main research tasks. Source cards distinguish whole-source reading from selected coding and keep agent review separate from real researcher decisions. The Framework workbench separates a compact comparison from focused editing, with bounded evidence and dialogue context beside interpretation. Unsaved changes must be saved before review. Source tools are disclosed in the reading workspace; selected quotation scope can be previewed before consent decisions.
+
+The design follows Gale's Framework Method, Braun and Clarke's reflexive thematic-analysis guidance and Surrey CAQDAS guidance, with reporting transparency informed by verified SRQR/COREQ abstracts. The app does not force one method or infer quality from completion counts. See [research sources and design requirements](qualitative-interface-research.md) for the source-access limits and implementation mapping.
+
 ## Consent scopes and source review
 
 The source-review screen detects candidate off-record/nonattribution phrases for researcher review, supports exact passage scopes, and records pending, included or withheld decisions with authorization reasoning, reviewer attribution and prior history. Phrase detection does not establish where a recording returns on record or automatically authorize inclusion.
@@ -45,9 +51,11 @@ Server membership, audit history, processing jobs and recovery indexes are refer
 
 Focused follow-up checks cover exact Unicode/consent anchors, model-response contracts, revision/role checks, optional CPU backend capabilities, native timing semantics, coder/case union arithmetic, redacted HTML/DOCX and an independent Word parser. The detailed reports distinguish synthetic fixtures from local runtime/model checks and earlier actual upstream importer rehearsals. A full external-application round trip is not inferred from matching format names.
 
-Final integrated validation: **312/312 Node checks** through `npm run ci` against the freshly built authenticated Worker, and **34/34 transcription-service checks**. Production and GitHub Pages builds passed; the Pages privacy check found only the synthetic browser-local demo.
+Final integrated validation: **318/318 Node checks** through `npm run ci` against the freshly built authenticated Worker, and **34/34 transcription-service checks**. Production and GitHub Pages builds passed; the Pages privacy check found only the synthetic browser-local demo.
 
 The private full-recording Framework Method rehearsal retained both canonical drafts, reviewed 94 exact selected passages, saved 182 code applications under 12 working definitions, and charted six themes across two source recordings. All 12 chart cells remain current. Proposals produced zero coding before reviewer decisions; the analyst's attempt to approve them was rejected. An idempotent rerun produced no duplicate records or operations.
+
+The interface follow-up additionally passed 21 independent read-only interface checks, 24 final workspace checks and ten browser workflows across actual read-only and synthetic projects. The actual interview project was unchanged; study setup/history and saved-interpretation review were verified on synthetic material.
 
 Actual Chromium checks passed framework quotation navigation, consent inclusion/history, native probability triage, annotated HTML/DOCX downloads with independent Word parsing, normalized coverage/CSV/SVG/coder heatmap, phone view and ZIP re-import with no page errors. Native archives with and without both original recordings preserved exact native state, timing, consent/framework history and supplied metadata. Included audio hashes matched originals; missing recordings detached safely on import. Archive assembly is memory-based: the approximately 529 MB binary archive used about 2.1 GB peak process RSS in this local check.
 
