@@ -32,6 +32,11 @@ export function decideReviewTask(state,data,actor,role,newId,checkProtocol){
  if(!['accepted','revised','rejected','deferred'].includes(data.status)||!String(data.note||'').trim())throw Error('Choose a decision and record its reasoning.');
  const accepting=['accepted','revised'].includes(data.status),codeIds=[...new Set(data.codeIds||[])],created=[],reused=[];
  if(accepting&&!taskAnchor(state,task))throw Error('The source changed. Re-anchor this recommendation before accepting it.');
+ if(accepting){
+  const evidence=[task,...(task.relatedEvidence||[])];
+  if(evidence.some(e=>!taskAnchor(state,e)))throw Error('Linked evidence changed. Review and re-anchor the evidence before accepting this recommendation.');
+  if(evidence.some(e=>(state.documents.find(d=>d.id===e.documentId)?.reviewFlags||[]).some(f=>intersects(f,e))))throw Error('Resolve consent review for the recommendation and its linked evidence before accepting it.');
+ }
  if(data.createCoding&&accepting){
   if(!codeIds.length||codeIds.some(id=>!state.codes.some(c=>c.id===id&&c.codable!==false)))throw Error('Select at least one existing code.');
   const d=state.documents.find(d=>d.id===task.documentId);if((d.reviewFlags||[]).some(f=>intersects(f,task)))throw Error('Resolve consent review before creating coding from this recommendation.');
@@ -39,7 +44,8 @@ export function decideReviewTask(state,data,actor,role,newId,checkProtocol){
   if(state.protocol==='nhhr'&&checkProtocol(state).some(i=>i.type==='protocol'&&i.coding.documentId===task.documentId&&i.coding.start===task.start&&i.coding.end===task.end&&i.coding.coder===actor))throw Error('Select exactly one evidence grade and stance alongside substantive NHHR codes.');
   task.codingIds=[...created,...reused];
  }
- task.status=data.status;task.reviewedBy=actor;task.reviewNote=String(data.note).trim();task.history??=[];task.history.push({status:data.status,note:task.reviewNote,codeIds,createdCoding:created.length>0,createdCodingIds:created,reusedCodingIds:reused,evidence:{documentId:task.documentId,start:task.start,end:task.end,text:task.text,sourceRevision:task.sourceRevision,anchorCurrent:taskAnchor(state,task)},reviewer:actor,date:new Date().toISOString()});
+ const snapshot=e=>({documentId:e.documentId,start:e.start,end:e.end,text:e.text,sourceRevision:e.sourceRevision,anchorCurrent:taskAnchor(state,e),consentRestricted:(state.documents.find(d=>d.id===e.documentId)?.reviewFlags||[]).some(f=>intersects(f,e))});
+ task.status=data.status;task.reviewedBy=actor;task.reviewNote=String(data.note).trim();task.history??=[];task.history.push({status:data.status,note:task.reviewNote,codeIds,createdCoding:created.length>0,createdCodingIds:created,reusedCodingIds:reused,evidence:snapshot(task),relatedEvidence:(task.relatedEvidence||[]).map(snapshot),reviewer:actor,date:new Date().toISOString()});
 }
 export function reanchorReviewTask(state,data,actor,role){
  if(!['owner','reviewer'].includes(role))throw Error('Reviewer access required.');const task=state.reviewTasks?.find(t=>t.id===data.id),d=state.documents.find(d=>d.id===task?.documentId);if(!task||!d)throw Error('Review task missing.');

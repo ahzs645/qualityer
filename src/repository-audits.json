@@ -4,102 +4,103 @@
     "name": "AQDA",
     "repository": "https://github.com/tseidl/aqda",
     "commit": "1db606dc2664a4c6f8a540b326f9f04751c5bd08",
-    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/aqda.md",
-    "evidence": "Pinned source audit plus current app contracts/browser rehearsals. See completion verification for tested scope and runtime limits.",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/feature-gaps-ai-query.md",
+    "evidence": "Pinned source inspection and focused current implementation checks; follow-up report distinguishes fixtures, runtime evidence and remaining gaps. Final integrated verification is recorded separately.",
     "gaps": [
-      "Live language/embedding providers require connection",
-      "Outward native AQDA snapshots and full upstream UI parity not certified"
+      "Reachable language/embedding provider required; real-model quality unverified",
+      "No desktop model manager, divergent offline merge or outward native AQDA export"
     ],
-    "implemented": "Example-seeded corpus suggestions, context budgets, native SQLite import"
+    "implemented": "Definition/example-grounded corpus suggestions, overlap suppression, semantic chunks, native SQLite import"
   },
   {
     "id": "taguette",
     "name": "Taguette",
     "repository": "https://github.com/remram44/taguette",
     "commit": "52fcdce95709375a4085cb10852bf7dd251ccb3d",
-    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/taguette.md",
-    "evidence": "Pinned source audit plus current app contracts/browser rehearsals. See completion verification for tested scope and runtime limits.",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/feature-gaps-team-import.md",
+    "evidence": "Pinned source inspection and focused current implementation checks; follow-up report distinguishes fixtures, runtime evidence and remaining gaps. Final integrated verification is recorded separately.",
     "gaps": [
-      "Full interface localization absent",
-      "Outward native Taguette exchange not certified"
+      "Full localization and direct PDF/RTF generation absent",
+      "Native Taguette import is one-way; imported shared authors remain unidentified"
     ],
-    "implemented": "HTML/ODT/EPUB/RTF, encodings, RTL, native database import"
+    "implemented": "Exact highlighting, document/encoding/RTL imports, native SQLite import, consent-aware annotated HTML/DOCX"
   },
   {
     "id": "qualcoder",
     "name": "QualCoder",
     "repository": "https://github.com/ccbogel/QualCoder",
-    "commit": "b95e021c93eb29a646ee7a8de196c281b7890ddf",
-    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/qualcoder.md",
-    "evidence": "Pinned source audit plus current app contracts/browser rehearsals. See completion verification for tested scope and runtime limits.",
+    "commit": "1486cb697704ca7ac1dd354a7e84568e73bd315e",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/feature-gaps-visual-analysis.md",
+    "evidence": "Pinned source inspection and focused current implementation checks; follow-up report distinguishes fixtures, runtime evidence and remaining gaps. Final integrated verification is recorded separately.",
     "gaps": [
       "Current upstream importer loses whole-source case links",
-      "Every desktop workflow/runtime roundtrip not certified"
+      "Full desktop/native merge parity, relation boxplots and long-recording server peaks absent"
     ],
-    "implemented": "Media agreement, local OCR, deterministic autocoding with undo, QDC/QDPX"
+    "implemented": "Text/media/region coding and comparison, OCR, reviewed autocoding/undo, normalized coverage and relationship evidence"
   },
   {
     "id": "sift",
     "name": "Sift QDA",
     "repository": "https://github.com/tarunv13/sift-qda",
     "commit": "a34f26a2d67f51c71aef942ec0dd26682acc8c59",
-    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/sift.md",
-    "evidence": "Pinned source audit plus current app contracts/browser rehearsals. See completion verification for tested scope and runtime limits.",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/feature-gaps-ai-query.md",
+    "evidence": "Pinned source inspection and focused current implementation checks; follow-up report distinguishes fixtures, runtime evidence and remaining gaps. Final integrated verification is recorded separately.",
     "gaps": [
-      "Full Tauri runtime and REFI roundtrip not certified"
+      "AI provider required; real-model quality unverified",
+      "Full Tauri/native runtime round trip and desktop model manager absent"
     ],
-    "implemented": "Interval fragments, corpus literal search, editable concept maps, case memos"
+    "implemented": "Interval queries, uncoded literal search, frozen provenance, evidence-grounded reviewer-selected subcode drafts"
   },
   {
     "id": "openqda",
     "name": "OpenQDA",
     "repository": "https://github.com/openqda/openqda",
     "commit": "5d528415de54c824f4cafebdfb7de9df15833b79",
-    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/openqda.md",
-    "evidence": "Pinned source audit plus current app contracts/browser rehearsals. See completion verification for tested scope and runtime limits.",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/feature-gaps-team-import.md",
+    "evidence": "Pinned source inspection and focused current implementation checks; follow-up report distinguishes fixtures, runtime evidence and remaining gaps. Final integrated verification is recorded separately.",
     "gaps": [
-      "Simultaneous rich-text cursors and live presence absent",
-      "Complete OpenQDA runtime parity not certified"
+      "Live presence/navigation broadcasts and simultaneous rich-text cursors absent",
+      "OpenQDA plugin runtime and native selection/variable/notes schemas absent"
     ],
-    "implemented": "Multi-source portraits, structured decision changes, portable codebook collections"
+    "implemented": "Revision-safe authenticated teams, blind coding, structured history, portable codebooks and recovery"
   },
   {
     "id": "requal",
     "name": "Requal",
     "repository": "https://github.com/RE-QDA/requal",
     "commit": "dd266149b291aec3df13ca29ba3ef6ff7458aeae",
-    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/requal.md",
-    "evidence": "Pinned source audit plus current app contracts/browser rehearsals. See completion verification for tested scope and runtime limits.",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/feature-gaps-visual-analysis.md",
+    "evidence": "Pinned source inspection and focused current implementation checks; follow-up report distinguishes fixtures, runtime evidence and remaining gaps. Final integrated verification is recorded separately.",
     "gaps": [
-      "One-way native Requal/RQDA import; no native exporter",
-      "R/Requal runtime roundtrip not executed"
+      "Native Requal/RQDA import is one-way; R/Shiny runtime round trip unverified",
+      "Coder-attribute aggregation absent; metrics do not certify human independence"
     ],
-    "implemented": "Blind server isolation, permissions, encoding preview, native Requal/RQDA migration, overlap"
+    "implemented": "Native Requal/RQDA import, scoped coder overlap heatmap, exact interval measures and evidence drilldowns"
   },
   {
     "id": "whisperx",
     "name": "WhisperX",
     "repository": "https://github.com/m-bain/whisperX",
-    "commit": "771b4a14a9486f8fd5aef18ef49e35d639523dd3",
-    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/whisperx.md",
-    "evidence": "Pinned source audit plus current app contracts/browser rehearsals. See completion verification for tested scope and runtime limits.",
+    "commit": "6187d25a440e6aba916995b01ff5a4d3af894045",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/feature-gaps-audio.md",
+    "evidence": "Pinned source inspection and focused current implementation checks; follow-up report distinguishes fixtures, runtime evidence and remaining gaps. Final integrated verification is recorded separately.",
     "gaps": [
-      "Speech models and compute worker require connection",
-      "Real inference quality and accuracy unverified"
+      "Hosted operation needs configured reachable worker/models",
+      "Live WhisperX alignment quality unverified; CPU fallback has no diarization or forced alignment"
     ],
-    "implemented": "Bounded job output, alignment options, stage progress, long-job recovery"
+    "implemented": "Bounded durable jobs, alignment/global-speaker contracts, optional CPU transcription backend and probability triage"
   },
   {
     "id": "pyannote",
     "name": "pyannote.audio",
     "repository": "https://github.com/pyannote/pyannote-audio",
     "commit": "b749285c5cdd4636b2edc7f766f1352c8dde9369",
-    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/repository-audits/pyannote.md",
-    "evidence": "Pinned source audit plus current app contracts/browser rehearsals. See completion verification for tested scope and runtime limits.",
+    "report": "https://github.com/ahzs645/qualityer/blob/main/docs/feature-gaps-audio.md",
+    "evidence": "Pinned source inspection and focused current implementation checks; follow-up report distinguishes fixtures, runtime evidence and remaining gaps. Final integrated verification is recorded separately.",
     "gaps": [
-      "Real speaker model execution/accuracy unverified",
-      "Exclusive tracks require supplied model output; never fabricated"
+      "Gated speaker model execution/accuracy unverified",
+      "Pinned WhisperX wrapper drops exclusive model output; direct adapter needed"
     ],
-    "implemented": "Recording-wide diarization stage, overlap/exclusive contracts, speaker correction"
+    "implemented": "Global recording diarization contracts, overlap/exclusive input tracks, hints, corrections and RTTM"
   }
 ]

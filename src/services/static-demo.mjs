@@ -15,6 +15,6 @@ export async function demoApi(path,options={}){const db=read(),method=options.me
  if(tail==='members'&&method==='GET')return {ownerId:'demo-researcher',members:[]};
  if(tail==='private-notes'){db.notes??={};db.notes[p.id]??=[];if(method==='GET')return structuredClone(db.notes[p.id]);const n={...body,id:body.id||uid(),revision:(body.revision||0)+1,updated_at:new Date().toISOString()};const i=db.notes[p.id].findIndex(x=>x.id===n.id);if(i>=0)db.notes[p.id][i]=n;else db.notes[p.id].push(n);save(db);return n;}
  if(tail==='events'&&method==='GET'){const all=(db.events[p.id]||[]).filter(e=>(!params.get('actor')||e.actor.includes(params.get('actor')))&&(!params.get('action')||e.action.includes(params.get('action')))&&(!params.get('from')||e.created_at>=params.get('from'))&&(!params.get('to')||e.created_at<params.get('to')+'T23:59:59.999Z'));return params.get('paginated')?{events:all.slice(Number(params.get('offset')||0),Number(params.get('offset')||0)+100),total:all.length}:all;}
- if(['jobs','backups'].includes(tail)&&method==='GET')return [];
+ if(['jobs','backups'].includes(tail)&&method==='GET')return params.get('paginated')==='true'?{records:[],total:0,offset:Number(params.get('offset')||0)}:[];
  throw Error('Team sharing, recording storage, AI services and server backups require the private serverless app. This Pages demo stores edits in this browser; export your project to keep a copy.');
 }

@@ -1,10 +1,13 @@
 import {cp,uid} from './domain.mjs';
 import {timePair} from './transcript-alignment.mjs';
+import {normalizeConsentDecisions} from './source-consent.mjs';
 const supplied=(record,keys)=>{for(const key of keys)if(record[key]!==undefined)return record[key];return null;};
 export function timestampedTranscript(x){
  if(x?.format==='research-weave-transcript'){
   if(typeof x.text!=='string'||!Array.isArray(x.turns))throw Error('Invalid timestamped transcript export.');
-  return {text:x.text,direction:x.direction||x.source?.direction||'auto',importProvenance:structuredClone(x.importProvenance||null),ocr:structuredClone(x.ocr||null),turns:structuredClone(x.turns),transcriptMetadata:structuredClone(x.transcriptMetadata),alignment:structuredClone(x.alignment),transcription:structuredClone(x.transcription),speakerMappings:structuredClone(x.speakerMappings||[]),diarization:structuredClone(x.diarization||null),versions:structuredClone(x.versions||[])};
+  if(x.source?.revision!==undefined&&(!Number.isInteger(x.source.revision)||x.source.revision<1))throw Error('Invalid supplied source revision.');
+  if(!Array.isArray(x.reviewFlags||[])||!Array.isArray(x.consentDecisions||[]))throw Error('Invalid transcript consent records.');
+  return {text:x.text,attributes:structuredClone(x.attributes||{}),excludeAI:!!x.excludeAI,revision:x.source?.revision||1,reviewFlags:structuredClone(x.reviewFlags||[]),consentDecisions:normalizeConsentDecisions(x.consentDecisions),direction:x.direction||x.source?.direction||'auto',importProvenance:structuredClone(x.importProvenance||null),ocr:structuredClone(x.ocr||null),turns:structuredClone(x.turns),transcriptMetadata:structuredClone(x.transcriptMetadata),alignment:structuredClone(x.alignment),transcription:structuredClone(x.transcription),speakerMappings:structuredClone(x.speakerMappings||[]),speakerLabelRuns:structuredClone(x.speakerLabelRuns||[]),speakerReviewStatus:x.speakerReviewStatus||null,diarization:structuredClone(x.diarization||null),versions:structuredClone(x.versions||[])};
  }
  const canonical=Array.isArray(x?.turns),segments=x.segments||x.transcription||x.turns||x;
  if(!Array.isArray(segments))throw Error('Transcript JSON needs a segments or turns array.');
