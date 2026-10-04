@@ -23,7 +23,7 @@ export function authorizeOperation(state,op,access){
  const type=op.type,data=op.data||{};
  if(type==='permissions.update'){if(access.role!=='owner')forbidden('Only the owner can configure project permissions.');normalizeTeamPolicy(data);return;}
  if(type==='settings.save'&&Object.hasOwn(data,'teamAccess'))forbidden('Use the owner permissions control to change team access.');
- const capability=/^(coding\.|autocoding\.|consensus\.|reviewTask|review\.example)/.test(type)?'coding':/^(code\.|codebook\.|category\.|hierarchy\.|query.materialize|query.results.materialize)/.test(type)?'codebook':/^source\./.test(type)?'sources':/^(case\.|attribute\.|protocol\.|settings\.|map\.)/.test(type)?'structure':/^(memo\.|journal\.|reading\.|query\.|passage\.|extraction\.|coverage\.|codeSet\.)/.test(type)?'memos':/^suggestion/.test(type)?'ai':null;
+ const capability=/^(coding\.|autocoding\.|consensus\.|reviewTask|review\.example)/.test(type)?'coding':/^(code\.|codebook\.|subcodes\.|category\.|hierarchy\.|query.materialize|query.results.materialize)/.test(type)?'codebook':/^source\./.test(type)?'sources':/^(case\.|framework\.|attribute\.|protocol\.|settings\.|map\.)/.test(type)?'structure':/^(memo\.|journal\.|reading\.|query\.|passage\.|extraction\.|coverage\.|codeSet\.)/.test(type)?'memos':/^suggestion/.test(type)?'ai':null;
  if(!capability)forbidden('This operation is not enabled by a project permission.');
  requireCapability(access,capability);
  if(!access.blind)return;

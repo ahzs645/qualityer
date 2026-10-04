@@ -10,6 +10,9 @@
 | Speaker tracks RTTM | Supplied speaker intervals and deterministic speaker aliases, with a loss report | None | Diarization interchange; retain JSON for corrections and run metadata |
 | Codebook QDC / Taguette CSV | Code hierarchy and definitions | None | Codebook interchange |
 | Coded excerpts CSV; analysis CSV / XLSX / HTML / Markdown / ODT / GraphML | Scoped coding applications, evidence reports or graph structure | None | Spreadsheet review, reporting, printing or graph interchange |
+| Annotated source HTML / DOCX | Full eligible source with overlapping coding references, coder/status ledger and restricted-text placeholders | None | Readable transcript review; HTML supports browser printing to PDF |
+| Framework CSV / HTML | Source-by-theme summaries, scoped findings, qualifications and exact supporting/contrasting quotations; changed/restricted evidence suppressed | None | Cross-source interpretation and review |
+| Normalized coverage CSV / SVG; coder overlap CSV; relation-pair CSV | Eligible union coverage and application rates, descriptive code/source-specific overlap, exact relation distances/decomposition | None | Standalone plots and inspectable evidence; counts do not establish prevalence |
 | IRaMuTeQ text corpus | Eligible text and selected source metadata in corpus syntax | None | Specialized corpus analysis |
 
 The native ZIP retains original state identifiers in its snapshot. Reimporting included recordings uploads their exact bytes and remaps current and historical media references without treating the upload as a replacement recording. Existing review status, timing and speaker history remain intact. A transcript-only import disables unavailable playback while retaining recording identifiers as provenance.
@@ -23,3 +26,5 @@ Native ZIP generation is asynchronous and stores media without recompressing alr
 Large audit operations are retained in verified object storage, with a bounded pointer and change summary in SQL. Authorized history reading and ZIP metadata export restore the complete operation payload. SQL history text filters search the stored summary for these events, so they do not find every word in a large transcript payload. Blind coding history remains redacted before any object-storage lookup.
 
 Repository regression tests use synthetic sources only. Interview recordings, machine drafts and simulated-review artifacts used for session verification are kept outside the repository.
+
+Native preservation exports retain restricted original text and consent-decision history. Coded-excerpt CSV, framework reports and annotated reports use current consent-cleared analytical evidence; they are not substitutes for the full native archive. A textual restriction excludes media analytical decisions conservatively because its time/region scope cannot safely be inferred.

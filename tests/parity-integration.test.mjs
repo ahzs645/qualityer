@@ -17,11 +17,11 @@ test('CSV hierarchy refuses literal root separator ambiguity and temporary IDs n
  const p=previewCodebookCSV('tag,description\nNew,definition',{codes:[{id:'csv-preview-1',name:'Existing'}]});assert.notEqual(p.codes[0].id,'csv-preview-1');
 });
 test('Application queries use matching recording seconds and keep original identity without interval subtraction',()=>{
- const state={codes:[{id:'a'},{id:'b'}],codings:[{id:'left',codeId:'a',documentId:'d',kind:'media',recordingKey:'r',timeStart:0,timeEnd:.75},{id:'other',codeId:'b',documentId:'d',kind:'media',recordingKey:'other',timeStart:0,timeEnd:.5}]};
+ const state={documents:[{id:'d',text:'0123456789',revision:1,mediaKey:'r',mediaType:'audio/wav',reviewFlags:[]}],codes:[{id:'a'},{id:'b'}],codings:[{id:'left',codeId:'a',documentId:'d',kind:'media',recordingKey:'r',timeStart:0,timeEnd:.75},{id:'other',codeId:'b',documentId:'d',kind:'media',recordingKey:'other',timeStart:0,timeEnd:.5}]};
  const spec={codeA:'a',codeB:'b'};assert.deepEqual(queryCodings(state,spec),[]);assert.deepEqual(queryCodings(state,{...spec,operator:'not'}).map(c=>c.id),['left']);
  state.codings[1].recordingKey='r';assert.deepEqual(queryCodings(state,spec).map(c=>c.id),['left']);
  state.codings[1].timeStart=1;state.codings[1].timeEnd=2;assert.equal(queryCodings(state,{...spec,operator:'near',near:.25}).length,1);
- state.codings[1]={id:'text',codeId:'b',documentId:'d',start:0,end:10};assert.deepEqual(queryCodings(state,spec),[]);assert.deepEqual(queryCodings(state,{...spec,operator:'or'}).map(c=>c.id),['left','text']);
+ state.codings[1]={id:'text',codeId:'b',documentId:'d',start:0,end:10,text:'0123456789',sourceRevision:1};assert.deepEqual(queryCodings(state,spec),[]);assert.deepEqual(queryCodings(state,{...spec,operator:'or'}).map(c=>c.id),['left','text']);
 });
 test('Existing agreement entrypoints exclude consent-review and reference evidence from numerator and denominator',()=>{
  const state={documents:[{id:'d',text:'abcdef',revision:1,reviewFlags:[{start:4,end:6}]},{id:'ref',text:'abcdef',sourceRole:'reference'}],codes:[{id:'c'}],codings:[{id:'a',documentId:'d',codeId:'c',coder:'a',start:0,end:2,text:'ab'},{id:'b',documentId:'d',codeId:'c',coder:'b',start:0,end:2,text:'ab'},{id:'restricted',documentId:'d',codeId:'c',coder:'a',start:4,end:6,text:'ef'},{id:'reference',documentId:'ref',codeId:'c',coder:'a',start:0,end:6,text:'abcdef'}]};

@@ -45,7 +45,7 @@
     "feature": "Coding matrices",
     "reference": "QualCoder · Sift",
     "status": "Implemented",
-    "note": "Direct/subtree/category/all-code rows across sources, cases and case attributes; applications/excerpts/union codepoints/current-recording seconds/distinct rectangle area measures. Drilldowns and scoped export; nonadditive totals explicitly labelled."
+    "note": "Direct/subtree/category/all-code rows across sources, cases and case attributes; applications/excerpts/union codepoints/current-recording seconds/rectangle area. Normalized text coverage and applications per 1,000 eligible codepoints include restricted and case-passage denominators, exact drilldowns and CSV/SVG export. Shared parent/case evidence is nonadditive."
   },
   {
     "feature": "AND / OR / NOT / NEAR queries",
@@ -57,7 +57,7 @@
     "feature": "Code co-occurrence",
     "reference": "QualCoder",
     "status": "Implemented",
-    "note": "Exact/overlap/contains/touch/near/same-source statistical relations with GraphML and evidence, plus a separate editable saved researcher concept map with positions, zoom/pan, keyboard movement and scoped evidence links."
+    "note": "Exact/overlap/contains/touch/near/same-source relations with evidence and GraphML, plus editable saved researcher concept maps. New selected-pair exports give distances and overlap/union lengths; overlapping text decomposes before/shared/after with source/revision identity. Recording seconds stay separate. No distance boxplots/significance tests."
   },
   {
     "feature": "Word frequency and theme counts",
@@ -69,7 +69,7 @@
     "feature": "Independent coder comparison",
     "reference": "Requal · QualCoder",
     "status": "Implemented",
-    "note": "Text exact-span sets, interval-union Jaccard and eligible-corpus Cohen kappa. Recording-second Jaccard and image/PDF rectangle-union IoU stay separate with units. Blind coders receive only own decisions from the server; reviewers compare full layers. No metric certifies agreement or consensus."
+    "note": "Text exact-span sets, union Jaccard, eligible-corpus kappa and evidence-linked coder-overlap heatmap preserve source/code dimensions. Recording-second Jaccard and image/PDF union IoU remain separate. Blind coders receive their own layers; reviewers compare full state. Agent identities do not establish independent human reliability or consensus."
   },
   {
     "feature": "Review decisions and history",
@@ -99,7 +99,7 @@
     "feature": "QualCoder project import",
     "reference": "Existing NHHR project",
     "status": "Partial",
-    "note": "Preview/cancel plus strict required-table/column validation. Preserves supported original rows, attribute definitions, journals, important markers and inert SQL queries. All three uploaded archives tested; binary media and ancillary application tables are not activated."
+    "note": "Preview/cancel plus strict required-table/column validation. Supported original rows, attribute definitions, journals, important markers and inert SQL queries retain provenance. Earlier adapter/runtime sample scopes are documented in the public import audit; ancillary tables and unavailable media paths are not fully activated."
   },
   {
     "feature": "DOCX / TXT / Markdown / timestamped imports",
@@ -129,19 +129,19 @@
     "feature": "Automatic transcription / alignment",
     "reference": "WhisperX",
     "status": "Connection required",
-    "note": "Durable jobs,2GB multipart upload, private playback,cancel/retry, reviewed application and deployable pinned WhisperX gateway. Full recording normalized once; bounded20min chunks with truncation/duration checks. Actual ffmpeg/contracts pass; real speech inference needs configured models and reachable worker."
+    "note": "Durable jobs, bounded full-recording decoding, authenticated uploads/playback, cancel/retry and reviewed application. WhisperX remains default; optional faster-whisper CPU backend preserves native word times/probabilities without forced alignment or diarization. Hosted use needs reachable configured worker/models. Local runtime evidence is documented separately; accuracy remains unverified."
   },
   {
     "feature": "Speaker diarization",
     "reference": "pyannote.audio",
     "status": "Connection required",
-    "note": "Canonical recording/source/run-bound regular tracks, separately supplied exclusive tracks, overlap timeline, selected speaker corrections, original labels/history, RTTM and corrected subtitles. Optional single whole-recording diarizer precedes chunk assignment, with default2h/512MB waveform resource gates. Real models/accuracy unverified; no fabricated cross-chunk labels or exclusive tracks."
+    "note": "Recording/source/run-bound regular and separately supplied exclusive tracks, overlap timeline, count hints, corrections/history, RTTM and subtitles. One global diarizer precedes absolute-time chunk assignment. Real pyannote models/accuracy unverified. Pinned WhisperX wrapper drops exclusive model output; direct adapter needed. No verified speaker identities are inferred."
   },
   {
     "feature": "AI code suggestions",
     "reference": "AQDA · Sift",
     "status": "Connection required",
-    "note": "All eligible source paragraph windows, code-definition and up to6 current example seeds, optional embedding ranking and explicit paged coverage/model budgets/provider finish. Exact current quotes, exclusions and consent validated again at review. Local reviewed literal/restricted-regex autocoding with own-run undo also works without a model."
+    "note": "Eligible corpus paragraphs, definitions/examples, paged budgets/provider finish, exact current quote and consent checks. New candidates overlapping current same-code applications are suppressed with a count; stale/deleted decisions do not block them. Live provider quality unverified. Deterministic literal/restricted-regex preview and own-run undo operate without a model."
   },
   {
     "feature": "Semantic search / embeddings",
@@ -159,7 +159,7 @@
     "feature": "JSON / CSV project exports",
     "reference": "All references",
     "status": "Implemented",
-    "note": "Native JSON, scoped CSV/XLSX/HTML-print/Markdown/ODT evidence, chart SVG, GraphML and matrix/word tables retain timing/recording/region provenance. Coded-excerpt IRaMuTeQ TXT plus manifest added; actual IRaMuTeQ import unverified. Overlapping excerpts can repeat words."
+    "note": "Native JSON and scoped CSV/XLSX/HTML/Markdown/ODT reports, SVG/GraphML, matrices, relation evidence and word tables retain explicit scope/units/provenance. Annotated-source HTML/DOCX redacts restricted passages; native snapshots preserve original data. IRaMuTeQ text plus manifest requires receiving-app verification."
   },
   {
     "feature": "QDC hierarchy exchange",
@@ -177,7 +177,7 @@
     "feature": "Backups / portable media project archive",
     "reference": "AQDA · QualCoder",
     "status": "Implemented",
-    "note": "Every successful save creates an immutable checksum-verified recovery point. Owner restore uses revision checks and preserves current state; verify/download UI. Multipart media QDPX reimport. This is project recovery, not an offsite backup of infrastructure or credentials."
+    "note": "Checksum-verified revisioned recovery and native project ZIP with optional current/historical recordings/images/PDFs, transcript JSON/text, timing, coding, review, framework/consent state and available server metadata. Transcript-only ZIP preserves references without bytes. Media import remaps exact uploaded bytes; metadata does not recreate grants/jobs. Memory-based ZIP, not streaming or offsite infrastructure backup."
   },
   {
     "feature": "Accessible responsive browser UI",
@@ -187,15 +187,15 @@
   },
   {
     "feature": "Example-driven guided demo",
-    "reference": "Uploaded owner-private speaker-text JSON",
+    "reference": "Owner-authorized project examples",
     "status": "Implemented",
-    "note": "Owner-only demo preserves 302 raw turns and labels; 24 exact quotes across eight proposed themes, 33 provisional applications. Four-step visual walkthrough, report and chart exports. No timing, identity, reviewed coding or inference is invented; flagged backstory excluded from illustrative quotations and full source excluded from AI."
+    "note": "Owner-restricted examples preserve source wording and stored labels with provisional coding, guided reading and evidence-linked visuals. Identity, speaker accuracy, reviewed human coding and inference are not invented. Sources excluded from AI remain excluded; examples do not establish research findings."
   },
   {
     "feature": "Assistant processing desk",
     "reference": "AQDA suggestions; proxy researcher rehearsal",
     "status": "Implemented",
-    "note": "Two agent-prepared example roles contribute22 separate recommendations. Exact context/counterpoints, accept/revise/reject/defer, reasons, re-anchoring, evidence snapshots, optional researcher coding, durable history/ledger. No live model execution or human agreement is simulated."
+    "note": "Agent-prepared or manual recommendations stay separate from researcher coding. Exact context/counterpoints, accept/revise/reject/defer, reasons, re-anchoring, evidence snapshots, optional researcher coding and durable ledger. Agent review is identified explicitly and does not establish human agreement."
   },
   {
     "feature": "Import preview and processing-stage comparison",
@@ -256,5 +256,47 @@
     "reference": "AQDA, Taguette, QualCoder, Sift, OpenQDA, Requal/RQDA, WhisperX, pyannote.audio",
     "status": "Implemented",
     "note": "Committed sample projects and exact upstream-generated fixtures were imported with original-byte hashes. Native Requal, SQLite UTF8/UTF16/BOM preservation, QDC envelopes, explicit case-column mapping and STM/TSV units are tested. See public example import tests for sample-specific limits; native Sift uses QDPX and no real inference is claimed."
+  },
+  {
+    "feature": "Framework Method charting and critical review",
+    "reference": "Qualitative-analysis method workflow",
+    "status": "Implemented",
+    "note": "Research question, working themes and method-stage progress; source-by-theme summaries with exact supporting/contrasting evidence, qualifications, observed/not-observed/withheld states, version/review history and CSV/HTML reports. Source rows are not verified participant identities. Changed/restricted evidence withholds the interpretation until reviewed."
+  },
+  {
+    "feature": "Passage consent scopes and authorization history",
+    "reference": "Source review and off-record handling",
+    "status": "Implemented",
+    "note": "Candidate off-record/nonattribution phrases prompt exact-scope reviewer decisions: pending, included or withheld, with reasoning and history. Included scope enters analysis; edits across it suspend authorization. Detection does not infer a return on record or grant consent. Native archives retain original source/history; they are not redacted sharing packages."
+  },
+  {
+    "feature": "Annotated source HTML / DOCX export",
+    "reference": "Taguette",
+    "status": "Implemented",
+    "note": "Complete current source text with overlap references and exact coding ledger, researcher/layer filters, attribution and scope metadata. Restricted text becomes placeholders; intersecting/stale/media/deleted coding and private notes/rationales/versions/attributes are omitted. Word OOXML tested through independent reader; HTML prints to PDF. Direct PDF/RTF generation absent."
+  },
+  {
+    "feature": "Native ASR probability review",
+    "reference": "WhisperX / optional faster-whisper backend",
+    "status": "Implemented",
+    "note": "Source review shows native ASR probability histogram and adjustable flagged-turn threshold with passage navigation and recording-bound listening. Alignment scores are labelled separately, missing values stay unknown and stale anchors are excluded. Review priorities are not calibrated transcription-error estimates."
+  },
+  {
+    "feature": "Evidence-grounded AI subcode drafts",
+    "reference": "Sift QDA",
+    "status": "Connection required",
+    "note": "Accepted parent-code evidence seeds model drafts with editable names/definitions and unchecked selections. Reviewer-created codes revalidate current exact evidence, parent membership, definition provenance, consent and normalized sibling names. Existing coding is not reassigned. Synthetic provider contracts pass; live model quality unverified."
+  },
+  {
+    "feature": "Live team presence and cursor synchronization",
+    "reference": "OpenQDA",
+    "status": "Not implemented",
+    "note": "Shared project revisions poll every 15 seconds and stale writes are rejected. Live authenticated presence/navigation broadcasts and simultaneous rich-text cursor/edit synchronization remain infrastructure work; polling is not equivalent."
+  },
+  {
+    "feature": "Offline divergent-project reconciliation",
+    "reference": "AQDA",
+    "status": "Not implemented",
+    "note": "Native snapshots and revisioned web recovery do not reconcile independently edited offline branches. No automatic offline merge or outward AQDA-native exporter is claimed."
   }
 ]

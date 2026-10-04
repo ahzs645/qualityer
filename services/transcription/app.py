@@ -5,6 +5,8 @@ from fastapi import FastAPI, Request, HTTPException
 from queue_store import Queue, execute_subprocess
 from job_options import normalize_options
 from global_recording import resource_limits
+from backend_config import backend_name,backend_options
+BACKEND=backend_name()
 
 ROOT=Path(os.environ.get('AUDIO_DATA_DIR','/data'));ROOT.mkdir(parents=True,exist_ok=True)
 TOKEN=os.environ.get('AUDIO_WORKER_TOKEN','')
@@ -17,12 +19,12 @@ def view(row):
     return {'id':row['id'],'status':'failed' if row['state']=='expired' else row['state'],'progress':100 if row['state']=='completed' else None,'stage':row['state'] if row['state'] in {'completed','cancelled','failed','expired','queued'} else (row.get('stage') or 'running'),'options':row['config'],'result':row['result'],'error':row['error'],'attempt':row['attempt']}
 @app.get('/health')
 async def health(request:Request):
-    authorize(request);return {'queue':'ready','model':os.environ.get('WHISPER_MODEL','small'),'engine':'whisperx','gpu':os.environ.get('WHISPER_DEVICE','cpu'),'models_verified':False,'capabilities':{'speaker_count_hints':True,'regular_track':True,'exclusive_track':False,'global_chunk_diarization':True,'global_diarization_seconds_limit':resource_limits()['global_seconds'],'global_waveform_bytes_limit':resource_limits()['global_waveform_bytes'],'stage_progress':True,'percentage_progress':False}}
+    authorize(request);return {'queue':'ready','model':os.environ.get('WHISPER_MODEL','small'),'engine':BACKEND,'gpu':os.environ.get('WHISPER_DEVICE','cpu'),'models_verified':False,'capabilities':{'speaker_count_hints':BACKEND=='whisperx','regular_track':BACKEND=='whisperx','exclusive_track':False,'global_chunk_diarization':BACKEND=='whisperx','word_timestamps':'native-asr' if BACKEND=='faster-whisper' else 'forced-alignment','global_diarization_seconds_limit':resource_limits()['global_seconds'],'global_waveform_bytes_limit':resource_limits()['global_waveform_bytes'],'stage_progress':True,'percentage_progress':False}}
 @app.post('/jobs',status_code=202)
 async def submit(request:Request,project_id:str,job_id:str,diarize:bool=False,name:str='recording',num_speakers:int=None,min_speakers:int=None,max_speakers:int=None,language:str=None,batch_size:int=None):
     authorize(request)
     if not project_id or not __import__('re').fullmatch(r'[a-fA-F0-9-]{32,36}',job_id) or request.headers.get('idempotency-key')!=job_id:raise HTTPException(400,'Project and idempotency key required')
-    try:config=normalize_options(diarize,num_speakers,min_speakers,max_speakers,language,batch_size)
+    try:config=backend_options(normalize_options(diarize,num_speakers,min_speakers,max_speakers,language,batch_size),BACKEND)
     except ValueError as error:raise HTTPException(400,str(error))
     if diarize and not os.environ.get('HF_TOKEN'):raise HTTPException(503,'Diarization requires HF_TOKEN and acceptance of the configured model terms.')
     temp=ROOT/(uuid.uuid4().hex+'.upload');digest=hashlib.sha256();size=0

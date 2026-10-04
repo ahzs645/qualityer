@@ -10,7 +10,15 @@ Actual upstream AQDA SQLite schema and Taguette ORM/highlight-extractor fixtures
 
 Language/embedding/transcription providers remain connection required. No private interview was sent to an external model during these checks. Whole-recording diarization has explicit duration/waveform gates; these are not total GPU/RAM guarantees. Infrastructure/offsite disaster recovery and formal accessibility/cross-browser certification are separate from tested project snapshots and Chromium interaction flows.
 
-## Final combined checks
+## Latest interview-analysis integration
+
+The current follow-up passed 312 Node checks via `npm run ci` and 34 transcription-service checks, production/Pages builds and the Pages privacy check. It adds the Framework Method workbench, passage consent/history, annotated Word/HTML, normalized coverage and coder heatmap, relationship evidence, reviewed subcode proposals and an optional real CPU speech backend. See [current audit summary](repository-audit-summary.md) for pinned source comparisons and remaining gaps.
+
+Private analysis verification covered both complete canonical drafts, 94 selected exact ranges, 12 working codes, 182 reviewer applications, six themes, 12 current agent-reviewed chart cells and evidence memos. Independent AI review is not real researcher validation. Browser downloads/re-import preserved framework, source, consent and server reference metadata; original-media SHA-256 and native-state equality passed for both ZIP options. A readable private analysis report and archive evidence remain outside Git. A separate synthetic browser test passed project deep links, pending-scope summary suppression, authorized restoration, crossed-edit consent suspension and explicit recharting against the current source revision.
+
+Both original recordings also passed live native CPU transcription HTTP jobs; those new ASR outputs were kept separate from the canonical analysis drafts to avoid silently moving evidence anchors. Neither model execution nor probability triage establishes transcription accuracy. WhisperX forced alignment and pyannote model execution remain unverified.
+
+## Earlier baseline combined checks
 
 - Owner-private production build passed; 209 Node checks passed with zero failures/skips. These include authenticated team/provider Worker routes and synthetic model-contract tests.
 - Transcription service: 30 Python checks passed, including real ffmpeg normalization/chunk boundaries, bounded adapters, durable queue recovery and synthetic global diarization outputs. These do not establish speech-model execution.
