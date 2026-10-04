@@ -9,3 +9,9 @@ The study interface connects source preparation, descriptive coding, interpretat
 5. **Reflect & review.** Memos and the journal preserve reasoning and follow-up. Structured journals display method, scope, negative cases and review limits in readable sections; original content stays in the native project. Researcher review shows open wording tasks, anonymous voice estimates, unresolved segments and chart cells awaiting recorded review. Agent checks and researcher decisions retain their own attribution.
 
 Browser validation uses both complete recordings in a separate local copy for reading, playback and cross-stage links. Writing, deferral, coding, passage memos and interpretation review are exercised on an entirely synthetic study. No browser exercise records review against the live interview project or certifies listening accuracy, identities or findings.
+
+## Download the saved study
+
+The owner can open **Export → Download all saved work** and choose a ZIP with recordings or a ZIP without recordings. Both include the current native project, exact transcript and timing companions, coding and review records, cases, memos, journals, Framework matrices, evidence-linked analysis, full retained recovery states, event history and retained processing-job results. The recording option includes every explicit current and historical media reference in the current project state.
+
+Downloads stream from project storage so large recordings do not have to fit in the browser’s memory. Retained files have SHA-256 checksums in `EXPORT-SCOPE.json`; recovery copies are checked against their saved checksums. Export is read-only and restricted to the owner. A missing retained file blocks a complete archive rather than silently omitting work. Service credentials, private account notes, embedding caches and files never retained in project storage are excluded. Machine estimates and unresolved researcher reviews retain their recorded status.

@@ -8,7 +8,7 @@ import {join} from 'node:path';
 
 test('large transcript operations survive D1 limits with exact history, atomic races and blind redaction',async()=>{
  const folder=await mkdtemp(join(tmpdir(),'qualityer-event-test-')),scriptPath=join(folder,'worker.mjs');
- await build({entryPoints:['server/worker.mjs'],bundle:true,format:'esm',platform:'neutral',target:'es2022',outfile:scriptPath});
+ await build({entryPoints:['server/worker.mjs'],bundle:true,format:'esm',platform:'neutral',target:'es2022',outfile:scriptPath,external:['node:*']});
  const mf=new Miniflare({modules:true,modulesRoot:folder,scriptPath,compatibilityDate:'2025-10-01',compatibilityFlags:['nodejs_compat'],bindings:{LOCAL_DEV:'true'},d1Databases:['DB'],r2Buckets:['BUCKET']});
  try{
   const db=await mf.getD1Database('DB');

@@ -2,6 +2,7 @@ import {zip,strToU8,strFromU8} from 'fflate';
 import {validateState} from './domain.mjs';
 import {transcriptExport} from './transcript-alignment.mjs';
 import {mediaFileType} from './media-file.mjs';
+import {safeCSV} from './report-export.mjs';
 
 const keyFields=new Set(['mediaKey','recordingKey']);
 const safeName=value=>String(value||'source').normalize('NFC').replace(/[\\/\u0000-\u001f<>:"|?*]/g,'_').replace(/^\.+/,'_').slice(0,120)||'source';
@@ -32,16 +33,25 @@ export function projectMediaReferences(state){
  return [...refs.values()];
 }
 
-/** Portable native ZIP. Media is stored without recompressing audio/video bytes. */
-export async function exportProjectArchive(state,{includeMedia=false,mediaFiles={},metadata={}}={}){
+/** Readable companions retain the native snapshot as the authoritative record. */
+export function projectArchiveFiles(state,{metadata={}}={}){
  validateState(state);
  const files={'research-weave.json':json({format:'research-weave',version:1,state}),'research-weave-project-metadata.json':json(metadata)};
- const references=projectMediaReferences(state),assets=[];
  for(const [index,d] of state.documents.entries()){
   const path='Transcripts/'+String(index+1).padStart(4,'0')+'-'+safeName(d.name);
   files[path+'.txt']=strToU8(d.text);
   files[path+'.transcript.json']=json(transcriptExport(d));
  }
+ for(const field of ['codes','codings','cases','memos','journals','reviewTasks','frameworkStudies','frameworkCells','analysisContinuations'])if(state[field])files['Analysis/'+field+'.json']=json(state[field]);
+ files['Analysis/coded-excerpts.csv']=strToU8(safeCSV([['Source','Code','Quotation','Coder','Status','Start','End','Source revision'],...(state.codings||[]).map(c=>[state.documents.find(d=>d.id===c.documentId)?.name||c.documentId,state.codes.find(code=>code.id===c.codeId)?.name||c.codeId,c.text,c.coder,c.status,c.start,c.end,c.sourceRevision])]));
+ files['README.txt']=strToU8('Research Weave study export\n\nresearch-weave.json is the complete native project snapshot. Transcripts/ contains exact text and timing companions. Analysis/ contains saved coding, cases, memos, journals, reviews, Framework matrices and evidence-linked analysis when present.\n\nMachine transcripts, anonymous speaker estimates and agent-reviewed interpretations retain their recorded uncertainty. They do not establish human listening review, speaker identity, prevalence or importance. Consent and off-record decisions remain in the native snapshot.\n');
+ return files;
+}
+
+/** Portable native ZIP. Media is stored without recompressing audio/video bytes. */
+export async function exportProjectArchive(state,{includeMedia=false,mediaFiles={},metadata={}}={}){
+ const files=projectArchiveFiles(state,{metadata});
+ const references=projectMediaReferences(state),assets=[];
  if(includeMedia)for(const [index,ref] of references.entries()){
   const supplied=mediaFiles instanceof Map?mediaFiles.get(ref.key):mediaFiles[ref.key];
   const bytes=supplied instanceof Uint8Array?supplied:supplied?.bytes;

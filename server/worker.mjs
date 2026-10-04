@@ -1,6 +1,7 @@
 import {privateImport} from './private-import.mjs';
 import {privateAnalysis} from './private-analysis.mjs';
 import {privateSpeakers} from './private-speakers.mjs';
+import {studyDownload} from './study-download.mjs';
 import {decisionDiff} from './decision-diff.mjs';
 import {storeEventDetail,readEventDetails} from './event-detail.mjs';
 import {suggestCodePassages} from './code-suggestions.mjs';
@@ -25,6 +26,7 @@ async function api(req,env){const url=new URL(req.url),path=url.pathname,db=env.
  if(path==='/api/projects'&&req.method==='POST'){const b=await body(req);if(b.calibration||b.demo||b.example){const pin=await db.prepare('SELECT value FROM site_settings WHERE key=?').bind('calibration_owner').first();if(!pin||pin.value!==u.id)fail('Only the original workspace owner can import the uploaded calibration. Ask the owner for project access.',403);}if(b.demo&&b.demo!=='margot')fail('Unknown example demo.');if(b.example&&!Object.hasOwn(nhhrExamples,b.example))fail('Unknown example stage.');const s=b.example?structuredClone(nhhrExamples[b.example]):b.demo?structuredClone(margotDemo):b.calibration?structuredClone(calibration):b.state||emptyState(b.name);validateState(s);const id=(b.demo||b.example)?'demo-'+(b.example||'margot')+'-'+(await sha256(new TextEncoder().encode(u.id))).slice(0,24):uid();if(b.demo||b.example){const existing=await db.prepare('SELECT id FROM projects WHERE id=? AND owner_id=?').bind(id,u.id).first();if(existing)return json({id});}const stored=await storeState(env,id,s);await db.batch([db.prepare('INSERT INTO projects (id,name,owner_id,state,revision,created_at,updated_at) VALUES (?,?,?,?,0,?,?)').bind(id,s.name,u.id,stored.pointer,now(),now()),snapshotStatement(db,id,0,stored,'Project created',u.email)]);return json({id},201);}
  const match=path.match(/^\/api\/projects\/([^/]+)(?:\/(.*))?$/);if(!match)fail('Unknown endpoint.',404);const pid=match[1],tail=match[2]||'',{p,role}=await member(env,pid,u);if(!tail.startsWith('backups'))p.state=await loadState(env,p.state);
  const policyState=JSON.parse(tail.startsWith('backups')?await loadState(env,p.state):p.state),access=teamAccess(policyState,role,u),viewState=state=>visibleProjectState(state,access);
+ if(tail==='archive'&&req.method==='GET'){p.state=null;return studyDownload(req,env,p,policyState,role,access);}
  if(tail==='events')requireCapability(access,'history');
  if(tail.startsWith('backups')){requireCapability(access,'recovery');if(access.blind)fail('Historical recovery points are available to reviewers and the owner during blind coding.',403);}
  if(['ai','ai-review','semantic'].includes(tail))requireCapability(access,'ai');
