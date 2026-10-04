@@ -119,3 +119,11 @@ The Gale article, Braun/Clarke author guidance and Surrey guidance were read in 
 ## Independent methods and extraction review
 
 Three additional agents independently reviewed methods, extraction and interface requirements. [Methods and useful interview extraction](qualitative-methods-and-extraction.md) records their synthesis, verified sources and access limits. This review informs source-preserving sentence/segment display, separate speaker/code color legends and practical reading prompts; it does not validate private findings or human researcher decisions.
+
+## Continuing the evidence-linked analysis
+
+The continuation view records six reading lenses: experiences, actions, values, context, constraints and consequences. These lenses organize selected meaning units; they do not automatically add coding applications. Every unit separates the descriptive account, provisional interpretation and qualifications. Contrasting passages retain their relationship type, including contextual differences and design tradeoffs that need not be logical contradictions.
+
+Cross-source propositions retain source-specific descriptions, alternative explanations, contextual differences and what the evidence cannot establish. A separate Framework study preserves the earlier chart rather than overwriting it. Source corrections or restricted consent scopes hide affected continuation cards until their evidence is revisited. Simulated independent agent review remains explicitly separate from human review, audio verification and speaker identification. Selected passage counts do not establish prevalence, importance, exhaustive coding or saturation.
+
+The native project ZIP and JSON preserve this structured continuation and its original quotation snapshots. Third-party QDA exchange retains it through the embedded native state; it does not imply that every other tool has a matching native analytical model.

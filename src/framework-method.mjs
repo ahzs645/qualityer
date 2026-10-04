@@ -3,7 +3,7 @@ export const FRAMEWORK_STAGES=['Familiarization','Initial coding','Working frame
 const boundedText=(value,max,label)=>{if(typeof value!=='string'||!value.trim()||value.length>max)throw Error('Write a bounded '+label+'.');return value.trim();};
 export function frameworkCellCurrent(state,cell){
  const document=state.documents.find(d=>d.id===cell.documentId);
- if(!document||document.sourceRole==='reference'||cell.sourceRevision!==(document.revision||1)||!['observed','not-observed','withheld'].includes(cell.finding)||!Array.isArray(cell.evidence))return false;
+ if(!document||document.sourceRole==='reference'||document.deletedAt||document.reviewStatus==='restricted'||cell.sourceRevision!==(document.revision||1)||!['observed','not-observed','withheld'].includes(cell.finding)||!Array.isArray(cell.evidence))return false;
  return (cell.finding!=='observed'||cell.evidence.length>0)&&cell.evidence.every(e=>e.documentId===document.id&&citationCurrent(state,e));
 }
 export function frameworkMatrix(state,studyId){
