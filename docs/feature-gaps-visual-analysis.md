@@ -1,5 +1,7 @@
 # QualCoder / Requal analytical and visualization comparison
 
+Follow-up (2026-10-04): the cross-project [visualization comparison](visualization-comparison.md) adds relation distance box plots, a co-occurrence heatmap with Jaccard, attribute distributions and chart legends/sorting. The "Relation summary statistics / boxplots" row below is now addressed there.
+
 Source inspection performed 2026-10-03 against immutable upstream checkpoints:
 
 - [QualCoder `1486cb697704ca7ac1dd354a7e84568e73bd315e`](https://github.com/ccbogel/QualCoder/tree/1486cb697704ca7ac1dd354a7e84568e73bd315e)
