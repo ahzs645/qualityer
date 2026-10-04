@@ -40,6 +40,33 @@ def save(path,obj):
 def progress(stage,**kw):
     print(json.dumps({'stage':stage,**kw}),flush=True)
 
+def decoded_recording(audio,root,recording_hash,maximum_seconds):
+    """Only completed, bounded decodes may become reusable acoustic evidence."""
+    wavepath=root/'mono-16khz.f32';metadata=root/'decode-integrity.json'
+    if wavepath.exists():
+        if not metadata.exists():raise ValueError('Decoded cache has no completeness evidence. Use a new output directory.')
+        info=json.loads(metadata.read_text());size=wavepath.stat().st_size
+        if (info.get('complete') is not True or info.get('recordingSha256')!=recording_hash
+            or info.get('sampleRate')!=RATE or size%4 or size!=info.get('bytes')
+            or size/(4*RATE)!=info.get('durationSeconds') or sha(wavepath)!=info.get('waveSha256')):
+            raise ValueError('Decoded cache completeness/integrity check failed. Use a new output directory.')
+        if info['durationSeconds']>maximum_seconds:raise ValueError('Recording exceeds the selected duration bound.')
+        return wavepath,info
+    if any((root/name).exists() for name in ['embeddings.npz','vad-runs.json','embedding-windows.json']):
+        raise ValueError('Acoustic cache has no complete decoded recording. Use a new output directory.')
+    temporary=root/'decode-pending.f32'
+    try:
+        subprocess.run(['ffmpeg','-y','-v','error','-i',str(audio),'-vn','-t',str(maximum_seconds+1),'-ac','1','-ar',str(RATE),'-f','f32le',str(temporary)],check=True)
+        size=temporary.stat().st_size;duration=size/(4*RATE)
+        if not size or size%4:raise ValueError('Decoded recording is empty or incomplete.')
+        if duration>maximum_seconds:raise ValueError('Recording exceeds the selected duration bound; partial decoded audio is discarded.')
+        info={'complete':True,'recordingSha256':recording_hash,'sampleRate':RATE,'bytes':size,
+              'durationSeconds':duration,'waveSha256':sha(temporary),'decodeLimitSeconds':maximum_seconds+1}
+        temporary.chmod(0o600);temporary.replace(wavepath);save(metadata,info)
+        return wavepath,info
+    finally:
+        temporary.unlink(missing_ok=True)
+
 def build_windows(runs):
     windows=[]
     for ri,run in enumerate(runs):
@@ -250,8 +277,25 @@ def self_test():
     assert selection['selectedK']==3 and selection['selectionReliableUnderHeuristic']
     assert all(w['speaker']=='Unassigned' for w in classified[-2:])
     assert all(w['speaker']!='Unassigned' for w in classified[:-2])
+    import tempfile
+    with tempfile.TemporaryDirectory() as directory:
+        root=Path(directory);audio=root/'synthetic.wav'
+        subprocess.run(['ffmpeg','-v','error','-f','lavfi','-i','sine=frequency=440:duration=3','-ar',str(RATE),str(audio)],check=True)
+        recording_hash=sha(audio)
+        try:decoded_recording(audio,root,recording_hash,1)
+        except ValueError:pass
+        else:raise AssertionError('Over-limit recording accepted.')
+        assert not (root/'mono-16khz.f32').exists() and not (root/'decode-pending.f32').exists()
+        wavepath,info=decoded_recording(audio,root,recording_hash,4)
+        assert info['complete'] and info['durationSeconds']==3 and wavepath.stat().st_size==3*RATE*4
+        assert decoded_recording(audio,root,recording_hash,4)[1]==info
+        with open(wavepath,'r+b') as f:f.truncate(RATE*4)
+        try:decoded_recording(audio,root,recording_hash,4)
+        except ValueError:pass
+        else:raise AssertionError('Partial cache accepted.')
     progress('self-test-passed',checks=['canonical-export and document normalization','Unicode codepoint anchoring',
-             'wrong hash/unmatched alignment/duplicate IDs/raw ASR rejection','automatic three-cluster hypothesis with tiny candidate withheld locally'],
+             'wrong hash/unmatched alignment/duplicate IDs/raw ASR rejection','automatic three-cluster hypothesis with tiny candidate withheld locally',
+             'over-limit decode discarded; larger-limit retry completes; partial cache rejected'],
              limit='Synthetic mechanics; not verified diarization accuracy.')
 
 def main():
@@ -259,7 +303,7 @@ def main():
     parser.add_argument('--audio',type=Path)
     parser.add_argument('--source-json',type=Path)
     parser.add_argument('--output-dir',type=Path)
-    parser.add_argument('--self-test',action='store_true',help='Run synthetic normalization and tiny-cluster regression checks without audio or downloads.')
+    parser.add_argument('--self-test',action='store_true',help='Run synthetic normalization, clustering and decode-cache checks without private audio or downloads.')
     parser.add_argument('--source-id',help='Actual document ID if a project snapshot contains multiple sources.')
     parser.add_argument('--recluster',action='store_true',help='Require cached embeddings and recompute cluster diagnostics.')
     parser.add_argument('--max-audio-seconds',type=float,default=14400,help='Reject recordings beyond this bound (default four hours).')
@@ -295,15 +339,12 @@ def main():
                 'sourceTextSha256':hashlib.sha256(doc['text'].encode()).hexdigest(),
                 'privateAudioTransmission':'None; only public model weights are downloaded.',
                 'validationLimit':'No reference diarization accuracy, listening verification, overlap detector, identity recognition or forced word alignment.'}
-    started=time.monotonic();wavepath=root/'mono-16khz.f32'
-    if not wavepath.exists():
-        progress('decode')
-        subprocess.run(['ffmpeg','-v','error','-i',str(args.audio),'-vn','-t',str(args.max_audio_seconds+1),'-ac','1','-ar',str(RATE),'-f','f32le',str(wavepath)],check=True)
-        wavepath.chmod(0o600)
+    started=time.monotonic();progress('decode-integrity')
+    wavepath,decode_info=decoded_recording(args.audio,root,source_hash,args.max_audio_seconds)
     wave=np.memmap(wavepath,dtype=np.float32,mode='r');duration=len(wave)/RATE
-    if duration>args.max_audio_seconds:raise ValueError('Recording exceeds the selected duration bound; no truncated result is emitted.')
     if max(t['timeEnd'] for t in doc['turns'])>duration+.25:raise ValueError('Source timing extends beyond the decoded recording.')
     provenance['recordingDurationSeconds']=duration
+    provenance['decodedRecordingIntegrity']=decode_info
     runs_path=root/'vad-runs.json';embpath=root/'embeddings.npz';windows_path=root/'embedding-windows.json'
     if args.recluster and not all(p.exists() for p in [runs_path,embpath,windows_path]):raise ValueError('--recluster requires complete cached acoustic evidence.')
     if not runs_path.exists():

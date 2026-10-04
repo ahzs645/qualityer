@@ -28,4 +28,6 @@ Outputs include `speaker-proposal.json`, `apply-operation.json`, `window-diagnos
 
 Real complete-recording inference and mechanical checks established that the pipeline runs and its reported overlap metrics match its intervals. They did not establish listening-verified diarization accuracy, participant identities or human review.
 
-Run `scripts/local-speaker-proposals.py --self-test` with the configured Python to check canonical export/document normalization, Unicode anchors, invalid-input rejection and automatic clustering with a tiny candidate withheld. This synthetic check performs no download or audio inference and does not measure diarization accuracy.
+Decoded audio becomes reusable only after a successful complete decode within the selected duration bound. A separate integrity record binds its byte length, duration, sample rate and SHA-256 to the original recording. Over-limit or failed decodes discard the temporary waveform; legacy caches without completeness evidence are rejected and require a new output directory.
+
+Run `scripts/local-speaker-proposals.py --self-test` with the configured Python and `ffmpeg` to check canonical export/document normalization, Unicode anchors, invalid-input rejection, automatic clustering with a tiny candidate withheld, and decode-cache recovery. It generates a three-second synthetic tone, rejects a short duration limit, retries at a larger limit and rejects a truncated cache. This synthetic check performs no download or private audio inference and does not measure diarization accuracy.
