@@ -115,3 +115,7 @@ The independent AI critic accepted 92 passage interpretations and requested two 
 ## Source-access limits
 
 The Gale article, Braun/Clarke author guidance and Surrey guidance were read in full through the links above. SRQR's author abstract and EQUATOR listing were inspected. COREQ's author abstract was inspected through Europe PMC, together with its EQUATOR listing. The SRQR and COREQ publisher full-text pages returned HTTP 403 in this environment; this document therefore limits claims about them to verified abstract/listing content rather than asserting an item-by-item full-text audit. Reporting guidelines should be applied with the chosen methodology and study context, not turned into compulsory software scoring rules.
+
+## Independent methods and extraction review
+
+Three additional agents independently reviewed methods, extraction and interface requirements. [Methods and useful interview extraction](qualitative-methods-and-extraction.md) records their synthesis, verified sources and access limits. This review informs source-preserving sentence/segment display, separate speaker/code color legends and practical reading prompts; it does not validate private findings or human researcher decisions.
