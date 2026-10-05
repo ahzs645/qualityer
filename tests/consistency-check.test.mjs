@@ -33,3 +33,9 @@ test('review tasks carry exact anchors and an explanation',()=>{
  const r=lexicalConsistency(rows,'c');let n=0;const tasks=consistencyTasks(r,{name:'Funding'},{uid:()=>'t'+(++n)});
  assert.equal(tasks.length,1);assert.equal(tasks[0].start,200);assert.equal(tasks[0].documentId,'b');assert.match(tasks[0].rationale,/not a coding error/);assert.equal(tasks[0].issue,'Read lexical outlier');
 });
+
+test('review tasks use the source revision and skip excerpts that no longer match',()=>{
+ const r=lexicalConsistency(rows,'c'),flagged=r.flagged[0],text='x'.repeat(200)+flagged.text;let n=0;
+ const ok=consistencyTasks(r,{name:'F'},{uid:()=>'t'+(++n),documents:[{id:'b',text,revision:7}]});assert.equal(ok.length,1);assert.equal(ok[0].sourceRevision,7);
+ assert.equal(consistencyTasks(r,{name:'F'},{uid:()=>'z',documents:[{id:'b',text:'changed',revision:8}]}).length,0);
+});

@@ -5,6 +5,7 @@
 // comparable, but this method only sees shared vocabulary, not meaning.
 import {wordTokens} from './analysis-domain.mjs';
 import {stopwordSet,normalizeWord} from './stopwords.mjs';
+import {pointSlice} from './text-points.mjs';
 
 export const MIN_EXCERPTS=4,SHORT_TOKENS=5;
 export const METHOD='TF-IDF word vectors over the code’s distinct excerpts; cosine similarity of each excerpt to the leave-one-out centroid of the others; flagged when below the mean by at least 1.5 population standard deviations and 0.05. Vocabulary only — no meaning, no model, no data leaves the browser.';
@@ -37,5 +38,5 @@ export function lexicalConsistency(rows,codeId,{language='en',corpus=rows}={}){
  return {codeId,excerpts:ranked,flagged:ranked.filter(x=>x.flagged),cutoff,n:excerpts.length,method:METHOD,language};
 }
 
-/** Review-task payloads for the processing desk; human review decides what, if anything, changes. */
-export function consistencyTasks(result,code,{uid,language}={}){return result.flagged.map(f=>({id:uid(),documentId:f.documentId,start:f.start,end:f.end,text:f.text,sourceRevision:f.sourceRevision,issue:'Read lexical outlier',rationale:'Vocabulary similarity '+f.score.toFixed(3)+' to other “'+code.name+'” excerpts is below the cutoff '+result.cutoff.toFixed(3)+'.'+(f.missingTerms.length?' Common words in this code that it lacks: '+f.missingTerms.join(', ')+'.':'')+(f.short?' Short excerpt; similarity is unreliable.':'')+' A reading prompt, not a coding error.',agent:'Local lexical consistency check'+(language?' · stop list '+language:''),suggestedCodeIds:[],relatedEvidence:[]}));}
+/** Review-task payloads for the processing desk, anchored to each source's current revision. Excerpts whose text no longer matches the source are skipped. Human review decides what, if anything, changes. */
+export function consistencyTasks(result,code,{uid,language,documents=[]}={}){const docs=new Map(documents.map(d=>[d.id,d]));return result.flagged.filter(f=>{const d=docs.get(f.documentId);return !documents.length||d&&pointSlice(d.text,f.start,f.end)===f.text;}).map(f=>({id:uid(),documentId:f.documentId,start:f.start,end:f.end,text:f.text,sourceRevision:docs.get(f.documentId)?.revision??f.sourceRevision??1,issue:'Read lexical outlier',rationale:'Vocabulary similarity '+f.score.toFixed(3)+' to other “'+code.name+'” excerpts is below the cutoff '+result.cutoff.toFixed(3)+'.'+(f.missingTerms.length?' Common words in this code that it lacks: '+f.missingTerms.join(', ')+'.':'')+(f.short?' Short excerpt; similarity is unreliable.':'')+' A reading prompt, not a coding error.',agent:'Local lexical consistency check'+(language?' · stop list '+language:''),suggestedCodeIds:[],relatedEvidence:[]}));}

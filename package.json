@@ -13,7 +13,7 @@
     "ci": "node scripts/check.mjs",
     "prebuild:pages": "node scripts/prepare-ocr-assets.mjs",
     "predev:vite": "node scripts/prepare-ocr-assets.mjs",
-    "test:browser": "node tests/browser-smoke.mjs && node tests/browser-case-attribute.mjs"
+    "test:browser": "node tests/browser-smoke.mjs && node tests/browser-case-attribute.mjs && node tests/browser-consistency.mjs"
   },
   "dependencies": {
     "@tanstack/react-router": "1.170.41",
