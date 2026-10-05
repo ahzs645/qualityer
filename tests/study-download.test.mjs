@@ -137,3 +137,16 @@ test('one missing recording does not drop the available ones from the study ZIP'
   assert.equal((await request(path+'/archive?media=1')).status,409,'embedding still requires every recording');
  }finally{await mf.dispose();}
 });
+
+test('study ZIP keeps the newest recovery snapshots within the budget and names the omitted ones',async()=>{
+ const {mf,bucket,request}=await harness({bindings:{LOCAL_DEV:'true',STUDY_RECOVERY_BYTES:'1'}});
+ try{
+  const {path}=await seed(request,bucket);
+  for(let i=0;i<2;i++){const p=await (await request(path)).json();await request(path+'/operate','POST',{revision:p.revision,operation:{type:'memo.save',data:{title:'m'+i,content:'x'}}});}
+  const r=await request(path+'/archive');assert.equal(r.status,200);
+  const zip=unzipSync((await readAll(r)).bytes),scope=JSON.parse(strFromU8(zip['EXPORT-SCOPE.json'])),recovery=Object.keys(zip).filter(p=>p.startsWith('Recovery/'));
+  assert.equal(recovery.length,1,'only the newest snapshot fits a 1-byte budget');assert.ok(scope.omittedRecovery.length>=2);
+  assert.ok(scope.omittedRecovery.every(o=>Number.isInteger(o.revision)));const newest=Math.max(...recovery.map(p=>Number(/revision-(\d+)/.exec(p)[1])));assert.ok(scope.omittedRecovery.every(o=>o.revision<newest));
+  assert.ok(await readProjectArchive(zip));
+ }finally{await mf.dispose();}
+});
