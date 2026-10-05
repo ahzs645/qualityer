@@ -12,7 +12,8 @@
     "build:pages": "vite build --config vite.pages.config.js --mode pages",
     "ci": "node scripts/check.mjs",
     "prebuild:pages": "node scripts/prepare-ocr-assets.mjs",
-    "predev:vite": "node scripts/prepare-ocr-assets.mjs"
+    "predev:vite": "node scripts/prepare-ocr-assets.mjs",
+    "test:browser": "node tests/browser-smoke.mjs"
   },
   "dependencies": {
     "@tanstack/react-router": "1.170.41",

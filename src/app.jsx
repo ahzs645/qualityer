@@ -1,3 +1,4 @@
+import {installTabKeys} from './tab-a11y.js';
 import {ReadableJournal} from './features/readable-journal.jsx';
 import {AnalysisJourney,CodingLenses,ResearcherReadiness} from './features/analysis-journey.jsx';
 import {WordingReviewQueue} from './features/wording-review-queue.jsx';
@@ -86,6 +87,7 @@ export default function App(){const [codeColorMode,setCodeColorMode]=useState('d
  function selectDocument(id){setDocumentId(id);setSelection(null);setChecked([]);}
  function navigate(view,id){if(id)selectDocument(id);setView(view);setMobileNav(false);}
  useEffect(()=>{if(!mobileNav)return;const key=e=>{if(e.key==='Escape')setMobileNav(false);};document.addEventListener('keydown',key);document.querySelector('.rail .nav-close')?.focus();return ()=>document.removeEventListener('keydown',key);},[mobileNav]);
+ useEffect(()=>installTabKeys(document),[]);
  useEffect(()=>{document.querySelector('.rail nav button.active')?.scrollIntoView?.({block:'nearest'});},[view]);
  useEffect(()=>{if(!project)return;const url=new URL(location.href);url.searchParams.set('project',project.id);url.searchParams.set('view',view);if(doc?.id)url.searchParams.set('source',doc.id);else url.searchParams.delete('source');url.searchParams.delete('demo');history.replaceState(null,'',url.pathname+url.search+url.hash);},[project?.id,view,doc?.id]);
  const NAV_GROUPS=[['Study',['overview','design']],['Prepare sources',['sources','source-review','speakers']],['Code & reflect',['workspace','memos','structure','cases']],['Interpret & review',['framework','continuation','processing','review']],['Explore & report',['visuals','analysis','insights']]];

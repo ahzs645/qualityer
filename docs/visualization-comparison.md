@@ -11,14 +11,14 @@ Pass date: 2026-10-04. The reference repositories were inspected at the same pin
 | Hierarchy sunburst/treemap | `view_charts.py:1317` | — | — | `CodeHierarchyChart.tsx` | — | — | Code hierarchy (weighted by measure) |
 | Code × source/case heatmap | `view_charts.py:1862` | — | — | `MatrixHeatmap.tsx` | — | — | Shaded matrix table plus CSV/XLSX export |
 | Co-occurrence matrix | `report_cooccurrence.py`: XLSX, GraphML, clustering | — | — | — | — | — | **New:** shaded heatmap, choice of distinct-overlap count or Jaccard, hide empty codes, CSV and GraphML export |
-| Co-occurrence / code network | `view_graph*.py`, network PNG, Louvain clusters | — | — | `ProjectMapChart.tsx` force graph | — | — | **New:** Explore → Co-occurrence network view with deterministic Louvain communities, modularity Q, threshold slider, cluster-ordered heatmap, SVG/GraphML/CSV export; code relationships graph, editable concept map (SVG/GraphML) |
+| Co-occurrence / code network | `view_graph*.py`, network PNG; Louvain clusters are in `report_cooccurrence.py:45`, not the graph viewers | — | — | `ProjectMapChart.tsx` force graph | — | — | **New:** Explore → Co-occurrence network view with deterministic Louvain communities, modularity Q, threshold slider, cluster-ordered heatmap, SVG/GraphML/CSV export; code relationships graph, editable concept map (SVG/GraphML) |
 | Relation distance box plots | `report_relations.py:1014` | — | — | — | — | — | **New:** per-pair box plots (median, quartiles, Tukey whiskers, outliers); codepoints and seconds kept separate; CSV and SVG export |
-| Attribute charts | `view_charts.py:1771` bar/histogram | user-attribute pies | — | — | — | — | **New:** Attributes tab. Text/boolean values become categories; all-numeric values become a histogram (Sturges bins). Cases or sources, CSV export |
+| Attribute charts | `view_charts.py:1804` categorical, `:1834` numeric histogram | user-attribute pies | — | — | — | — | **New:** Attributes tab. Text/boolean values become categories; all-numeric values become a histogram (Sturges bins). Cases or sources, CSV export |
 | Word cloud / frequency | `simple_wordcloud.py`, n-grams 1–4, PNG | — | `WordCloudView.vue` | `WordCloud.tsx`, KWIC | — | — | **New:** one shared word cloud (`src/word-cloud.mjs`) for Explore and Words & concordance: deterministic spiral layout, linear/sqrt/log sizing, horizontal/mixed/vertical rotation, five colour schemes held at 4.5:1 contrast on light or dark backgrounds, 25–500 words, n-grams 1–4, include-only and hide lists, Cloud/Bars/Table views, SVG/PNG export, dropped-word report. **Fixed:** quadratic quotation slicing (11.1 s → 40 ms on the real study) |
 | Coder agreement heatmap | coder comparison report | `create_overlap_heatmap`, by user attribute | — | — | consistency bars | — | Coverage & coder overlap heatmap. **New:** typed coder attributes (`attribute.coder`, owner/reviewer) and an "Agreement by coder attribute" heatmap of within- and between-group overlap in codepoints or segments, optional per-code split, explicit "Not recorded" group, pair drilldown and CSV |
 | Code portrait / margin stripes | coding margin | browser shading | `CodePortrait.vue` | `CodingStripes.tsx` | highlights | highlights | Coding portrait, inline stripes |
 | A/V waveform with code tracks | `view_av_waveform.py` | — | — | — | — | — | **New:** one lane per code under the waveform; click to seek, drag or arrow-key edges to retime (`coding.media.retime`, with history, consent and blind-coding checks), drag empty lane space to add a range, 1–16× zoom. Decoded peaks are saved per recording (`media-peaks` endpoints, etag-checked) so later visits skip decoding |
-| Image export | Plotly PNG/HTML, graph PNG/PDF | — | Plotly PNG | none | — | — | **New:** SVG and PNG from one source for coverage, hierarchy, concept map, distance box plots, conversation sequence, theme connections, theme treemap, relationship graph, co-occurrence network and word cloud; canvas size capped for mobile browsers |
+| Image export | Plotly PNG/HTML, graph PNG/PDF | — | Plotly PNG (modebar default; no explicit export code found) | none for charts; matrix Excel export (`MatrixControls.tsx`) | — | — | **New:** SVG and PNG from one source for coverage, hierarchy, concept map, distance box plots, conversation sequence, theme connections, theme treemap, relationship graph, co-occurrence network and word cloud; canvas size capped for mobile browsers |
 
 ## Measurement contracts for the new views
 
@@ -33,6 +33,19 @@ Pass date: 2026-10-04. The reference repositories were inspected at the same pin
 - Word cloud and the shared image export use separate SVG-to-PNG helpers; they could be unified.
 - Long-recording peaks are generated in the browser on first view; there is still no server-side decoder.
 - Coder attributes travel in the native snapshot, not in REFI-QDA XML.
+
+## Further gaps found in the 2026-10-05 review
+
+Items below were found by a reviewer reading the reference sources and grepping `src`; they are not implemented.
+
+- Case/source × code grid showing the coded text in each cell, with transpose and hide-empty (QualCoder `report_comparison_table.py`).
+- Attribute filters reused across every chart and report (QualCoder `report_attributes.py`).
+- Per-code and per-source summary statistics (QualCoder `report_code_summary.py`, `report_file_summary.py`).
+- Co-occurring codes beside each query result (QualCoder `report_codes.py`).
+- Shared accessible heatmap ramp with a readable-text helper (Sift `lib/ramp.ts`).
+- Per-code AI outlier ("consistency") check (AQDA `AiPanel.tsx`).
+- Interactive HTML export of charts (QualCoder Plotly).
+- Full stop-word lists per language (QualCoder `stopwords.py`); Qualityer ships English, French and Spanish.
 
 ## Verification
 
