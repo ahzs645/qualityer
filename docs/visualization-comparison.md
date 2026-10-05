@@ -14,11 +14,11 @@ Pass date: 2026-10-04. The reference repositories were inspected at the same pin
 | Co-occurrence / code network | `view_graph*.py`, network PNG, Louvain clusters | — | — | `ProjectMapChart.tsx` force graph | — | — | **New:** Explore → Co-occurrence network view with deterministic Louvain communities, modularity Q, threshold slider, cluster-ordered heatmap, SVG/GraphML/CSV export; code relationships graph, editable concept map (SVG/GraphML) |
 | Relation distance box plots | `report_relations.py:1014` | — | — | — | — | — | **New:** per-pair box plots (median, quartiles, Tukey whiskers, outliers); codepoints and seconds kept separate; CSV and SVG export |
 | Attribute charts | `view_charts.py:1771` bar/histogram | user-attribute pies | — | — | — | — | **New:** Attributes tab. Text/boolean values become categories; all-numeric values become a histogram (Sturges bins). Cases or sources, CSV export |
-| Word cloud / frequency | `simple_wordcloud.py`, n-grams 1–4, PNG | — | `WordCloudView.vue` | `WordCloud.tsx`, KWIC | — | — | Word frequency and Words & concordance with n-grams 1–3, stop lists and KWIC. **Fixed:** quadratic quotation slicing (11.1 s → 40 ms on the real study) |
-| Coder agreement heatmap | coder comparison report | `create_overlap_heatmap`, by user attribute | — | — | consistency bars | — | Coverage & coder overlap heatmap; grouping by coder attribute is still missing |
+| Word cloud / frequency | `simple_wordcloud.py`, n-grams 1–4, PNG | — | `WordCloudView.vue` | `WordCloud.tsx`, KWIC | — | — | **New:** one shared word cloud (`src/word-cloud.mjs`) for Explore and Words & concordance: deterministic spiral layout, linear/sqrt/log sizing, horizontal/mixed/vertical rotation, five colour schemes held at 4.5:1 contrast on light or dark backgrounds, 25–500 words, n-grams 1–4, include-only and hide lists, Cloud/Bars/Table views, SVG/PNG export, dropped-word report. **Fixed:** quadratic quotation slicing (11.1 s → 40 ms on the real study) |
+| Coder agreement heatmap | coder comparison report | `create_overlap_heatmap`, by user attribute | — | — | consistency bars | — | Coverage & coder overlap heatmap. **New:** typed coder attributes (`attribute.coder`, owner/reviewer) and an "Agreement by coder attribute" heatmap of within- and between-group overlap in codepoints or segments, optional per-code split, explicit "Not recorded" group, pair drilldown and CSV |
 | Code portrait / margin stripes | coding margin | browser shading | `CodePortrait.vue` | `CodingStripes.tsx` | highlights | highlights | Coding portrait, inline stripes |
-| A/V waveform with code tracks | `view_av_waveform.py` | — | — | — | — | — | Waveform from the decoded recording; per-code editable tracks still missing |
-| Image export | Plotly PNG/HTML, graph PNG/PDF | — | Plotly PNG | none | — | — | SVG for coverage, hierarchy, concept map, distances; no PNG |
+| A/V waveform with code tracks | `view_av_waveform.py` | — | — | — | — | — | **New:** one lane per code under the waveform; click to seek, drag or arrow-key edges to retime (`coding.media.retime`, with history, consent and blind-coding checks), drag empty lane space to add a range, 1–16× zoom. Decoded peaks are saved per recording (`media-peaks` endpoints, etag-checked) so later visits skip decoding |
+| Image export | Plotly PNG/HTML, graph PNG/PDF | — | Plotly PNG | none | — | — | **New:** SVG and PNG from one source for coverage, hierarchy, concept map, distance box plots, conversation sequence, theme connections, theme treemap, relationship graph, co-occurrence network and word cloud; canvas size capped for mobile browsers |
 
 ## Measurement contracts for the new views
 
@@ -28,11 +28,14 @@ Pass date: 2026-10-04. The reference repositories were inspected at the same pin
 
 ## Remaining visualization gaps
 
-- Coder agreement grouped by coder attribute (Requal).
-- PNG export of charts (QualCoder and OpenQDA via Plotly). SVG remains the export format here.
-- Editable per-code waveform tracks and server-generated peaks for long recordings (QualCoder).
-- Word cloud styling options: colour ranges, rotation, size (QualCoder and OpenQDA).
+- Pie charts (deliberately omitted, see above).
+- Plotly-style interactive zoom/pan on every chart; only the concept map, network and waveform zoom.
+- Word cloud and the shared image export use separate SVG-to-PNG helpers; they could be unified.
+- Long-recording peaks are generated in the browser on first view; there is still no server-side decoder.
+- Coder attributes travel in the native snapshot, not in REFI-QDA XML.
 
 ## Verification
 
 `tests/visual-statistics.test.mjs` covers interval arithmetic, symmetry, filters, stale-anchor exclusion, CSV formula preservation for `safeCSV`, quartiles and fences, unit separation, SVG escaping, attribute typing, and Unicode quotation offsets after the word-frequency fix. A Chromium run against the real study exercised every new control and export: no page errors, and no horizontal overflow at 390 px. The co-occurrence counts matched the earlier table.
+
+Follow-up tests: `tests/cooccurrence-network.test.mjs`, `tests/coder-attribute-agreement.test.mjs`, `tests/waveform-tracks.test.mjs`, `tests/media-peaks-api.test.mjs`, `tests/word-cloud.test.mjs` and `tests/image-export.test.mjs`. Each feature was exercised in Chromium at 1440 px and 390 px with no page errors or horizontal overflow; the waveform used a synthetic recording.
