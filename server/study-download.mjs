@@ -24,9 +24,10 @@ const recordingFile=(head,ref)=>{const type=head.httpMetadata?.contentType||ref.
 async function studyRecordings(env,pid,state,{required=true}={}){
  const list=[];
  for(const [i,ref] of projectMediaReferences(state).entries()){
-  if(!ownMedia(pid,ref.key))fail('A referenced recording belongs to another project. Restore it before downloading with recordings.');
-  const head=await env.BUCKET?.head(ref.key),n=i+1,base={n,key:ref.key,documentIds:ref.documentIds,historical:ref.historical,download:'/api/projects/'+pid+'/archive/media/'+n};
-  if(!head){if(required)fail('A referenced recording is missing. Choose the download without recordings or restore it.');list.push({...base,name:ref.name||'recording',type:ref.type,missing:true});continue;}
+  const n=i+1,foreign=!ownMedia(pid,ref.key);
+  if(foreign&&required)fail('A referenced recording belongs to another project. Restore it before downloading with recordings.');
+  const head=foreign?null:await env.BUCKET?.head(ref.key),base={n,key:ref.key,documentIds:ref.documentIds,historical:ref.historical,download:'/api/projects/'+pid+'/archive/media/'+n};
+  if(!head){if(required)fail('A referenced recording is missing. Choose the download without recordings or restore it.');list.push({...base,name:ref.name||'recording',type:ref.type,missing:true,...(foreign?{foreign:true}:{})});continue;}
   const file=recordingFile(head,ref);
   list.push({...base,...file,filename:pad(n)+'-'+file.filename,path:'Media/'+pad(n)+'-'+file.filename,size:head.size,etag:head.etag,checksums:head.checksums?.toJSON?.()||{}});
  }

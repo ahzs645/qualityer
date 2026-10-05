@@ -68,3 +68,12 @@
 .filterbar label.search input{flex:1;min-width:0}
 @media(max-width:800px){.app:not(.show-nav) .rail{visibility:hidden}}
 .tabs>[role=tab][aria-selected=true]{font-weight:700}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* Touch targets: at least 44px on phones and coarse pointers for chart and filter controls. */
+@media(max-width:800px),(pointer:coarse){
+ main button:not(.skip-link),main select,main input:not([type=checkbox]):not([type=radio]){min-height:44px}
+ main td>button,main th>button{min-width:44px}
+ main label:has(>input[type=checkbox]),main label:has(>input[type=radio]){display:inline-flex;align-items:center;gap:8px;min-height:44px}
+ main input[type=checkbox],main input[type=radio]{width:24px;height:24px}
+ .speaker-key>span,.speaker-key button{min-height:44px;display:inline-flex;align-items:center}
+}

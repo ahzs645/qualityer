@@ -9,7 +9,7 @@ try{({chromium}=await import(process.env.PLAYWRIGHT_MODULE?pathToFileURL(process
 catch{console.log('SKIP: playwright is not installed (set PLAYWRIGHT_MODULE).');process.exit(0);}
 const groups={
   'Visualizations':['Interview overview','Source & speakers','Coding sequence','Theme map','Theme reading','Theme connections','Evidence report'],
-  'Analysis workbench':['Charts & matrix','Coverage & coder overlap','Code hierarchy','Code relationships','Project map','Coding portrait','Words & concordance','Fragments & corpus search','Attributes','Report builder'],
+  'Analysis workbench':['Charts & matrix','Coverage & coder overlap','Code hierarchy','Code relationships','Project map','Coding portrait','Words & concordance','Fragments & corpus search','Attributes','Code summary','Code × case text','Report builder'],
   'Explore':['Coding matrix','Coding query','Co-occurrence','Word frequency','Themes']};
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox']});
 const failures=[];

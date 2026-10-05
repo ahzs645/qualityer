@@ -111,3 +111,15 @@ test('an R2 body that errors mid-stream cannot be mistaken for a complete study 
   const cut=await readAll(single);assert.ok(cut.error);assert.ok(cut.bytes.length<recording.length);
  }finally{await mf.dispose();}
 });
+
+test('a project that only references another project\'s recordings still lists them as unavailable',async()=>{
+ const {mf,request}=await harness();
+ try{
+  const state=emptyState('Transcript-only import');state.documents=[{id:'a',name:'Imported',text:'Text.\n',revision:1,turns:[],mediaKey:'someone-else/audio',mediaType:'audio/mp4'}];
+  const {id}=await (await request('/projects','POST',{state})).json(),path='/projects/'+id;
+  const list=await request(path+'/archive/media');assert.equal(list.status,200);
+  const body=await list.json();assert.equal(body.recordings.length,1);assert.equal(body.recordings[0].missing,true);assert.equal(body.recordings[0].foreign,true);
+  assert.equal((await request(path+'/archive')).status,200);
+  assert.equal((await request(path+'/archive?media=1')).status,409);
+ }finally{await mf.dispose();}
+});
