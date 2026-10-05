@@ -11,7 +11,7 @@ Pass date: 2026-10-04. The reference repositories were inspected at the same pin
 | Hierarchy sunburst/treemap | `view_charts.py:1317` | — | — | `CodeHierarchyChart.tsx` | — | — | Code hierarchy (weighted by measure) |
 | Code × source/case heatmap | `view_charts.py:1862` | — | — | `MatrixHeatmap.tsx` | — | — | Shaded matrix table plus CSV/XLSX export |
 | Co-occurrence matrix | `report_cooccurrence.py`: XLSX, GraphML, clustering | — | — | — | — | — | **New:** shaded heatmap, choice of distinct-overlap count or Jaccard, hide empty codes, CSV and GraphML export |
-| Co-occurrence / code network | `view_graph*.py`, network PNG, Louvain clusters | — | — | `ProjectMapChart.tsx` force graph | — | — | Code relationships graph, editable concept map (SVG/GraphML) |
+| Co-occurrence / code network | `view_graph*.py`, network PNG, Louvain clusters | — | — | `ProjectMapChart.tsx` force graph | — | — | **New:** Explore → Co-occurrence network view with deterministic Louvain communities, modularity Q, threshold slider, cluster-ordered heatmap, SVG/GraphML/CSV export; code relationships graph, editable concept map (SVG/GraphML) |
 | Relation distance box plots | `report_relations.py:1014` | — | — | — | — | — | **New:** per-pair box plots (median, quartiles, Tukey whiskers, outliers); codepoints and seconds kept separate; CSV and SVG export |
 | Attribute charts | `view_charts.py:1771` bar/histogram | user-attribute pies | — | — | — | — | **New:** Attributes tab. Text/boolean values become categories; all-numeric values become a histogram (Sturges bins). Cases or sources, CSV export |
 | Word cloud / frequency | `simple_wordcloud.py`, n-grams 1–4, PNG | — | `WordCloudView.vue` | `WordCloud.tsx`, KWIC | — | — | Word frequency and Words & concordance with n-grams 1–3, stop lists and KWIC. **Fixed:** quadratic quotation slicing (11.1 s → 40 ms on the real study) |
@@ -29,7 +29,6 @@ Pass date: 2026-10-04. The reference repositories were inspected at the same pin
 ## Remaining visualization gaps
 
 - Coder agreement grouped by coder attribute (Requal).
-- Community clustering of the co-occurrence network (QualCoder Louvain).
 - PNG export of charts (QualCoder and OpenQDA via Plotly). SVG remains the export format here.
 - Editable per-code waveform tracks and server-generated peaks for long recordings (QualCoder).
 - Word cloud styling options: colour ranges, rotation, size (QualCoder and OpenQDA).
