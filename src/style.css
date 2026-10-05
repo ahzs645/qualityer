@@ -42,3 +42,25 @@
 .aw-box-track .median{width:2px;height:16px;margin-top:-8px;background:#1f4d63}
 .aw-box-track .outlier{width:6px;height:6px;margin:-3px 0 0 -3px;border:1px solid #a15e71;border-radius:50%}
 @media (max-width:640px){.aw-box-row{grid-template-columns:1fr}}
+/* Interface audit fixes: navigation drawer, focus, touch targets and narrow layouts. */
+.skip-link{position:absolute;left:12px;top:-60px;z-index:60;background:#fff;color:var(--nav);padding:10px 14px;border-radius:6px;box-shadow:0 4px 16px #173c4b44}
+.skip-link:focus{top:12px}
+:focus-visible{outline:3px solid #2f7fa3;outline-offset:2px}
+.rail :focus-visible{outline-color:#9fd3ea;outline-offset:-3px}
+.nav-close{display:none}
+.rail nav{scrollbar-width:thin;scrollbar-color:#4f7a8c transparent}
+.rail nav button{text-align:left}
+.rail nav button svg,.rail-bottom>button svg{flex-shrink:0}
+@media(min-width:801px) and (max-height:1100px){.rail{padding-top:16px}.rail .brand{margin-bottom:12px}.rail nav button{padding:7px 12px}.rail-bottom{padding-top:10px}.rail-bottom>button{padding:6px 12px}}
+@media(max-width:800px){.nav-close{display:flex;margin-left:auto;min-width:44px;min-height:44px;color:#d1dee6;background:transparent;border:0}.rail .brand{align-items:center}.nav-shade{position:fixed;inset:0;background:rgba(10,25,33,.45);z-index:29}body:has(.show-nav){overflow:hidden}.topbar{position:sticky;top:0;z-index:20}.crumb .icon-button{min-width:44px;min-height:44px;justify-content:center}}
+.code-row .icon-button{display:flex;opacity:0}
+.code-row:hover .icon-button,.code-row:focus-within .icon-button{opacity:1}
+@media(hover:none){.code-row .icon-button{opacity:1}}
+.tabs{flex-wrap:wrap;row-gap:4px}
+.stripes-note{position:static;max-width:none;font-size:11px;margin:0 0 6px;text-align:right}
+#processing-task-detail .actions{flex-wrap:wrap}
+@media(max-width:900px){.processing-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:1100px){.framework-matrix caption{display:block;width:auto}}
+.modal>header{position:sticky;top:-25px;background:#fff;z-index:3;padding-top:4px}
+@media(max-width:650px){.modal>header{top:-18px}.modal .coding-table thead{display:none}.modal .coding-table tr{display:block;border-bottom:1px solid var(--line);padding:10px 0}.modal .coding-table td{display:block;border:0;padding:3px 0;min-width:0!important;max-width:none!important}}
+@media(pointer:coarse){:where(button,select,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color])){min-height:44px}:where(.icon-button){min-width:44px;justify-content:center}:where(input[type=checkbox],input[type=radio]){width:22px;height:22px}}
