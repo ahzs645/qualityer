@@ -12,6 +12,30 @@ Browser validation uses both complete recordings in a separate local copy for re
 
 ## Download the saved study
 
-The owner can open **Export → Download all saved work** and choose a ZIP with recordings or a ZIP without recordings. Both include the current native project, exact transcript and timing companions, coding and review records, cases, memos, journals, Framework matrices, evidence-linked analysis, full retained recovery states, event history and retained processing-job results. The recording option includes every explicit current and historical media reference in the current project state.
+The owner can open **Export → Download all saved work**. It offers one study ZIP plus one download per recording. The study ZIP includes the current native project, exact transcript and timing companions, coding and review records, cases, memos, journals, Framework matrices, evidence-linked analysis, full retained recovery states, event history and retained processing-job results. The recording list covers every explicit current and historical media reference in the current project state.
 
-Downloads stream from project storage so large recordings do not have to fit in the browser’s memory. Retained files have SHA-256 checksums in `EXPORT-SCOPE.json`; recovery copies are checked against their saved checksums. Export is read-only and restricted to the owner. A missing retained file blocks a complete archive rather than silently omitting work. Service credentials, private account notes, embedding caches and files never retained in project storage are excluded. Machine estimates and unresolved researcher reviews retain their recorded status.
+Export is read-only and restricted to the owner (other roles get 403). A missing retained file blocks the study ZIP rather than silently omitting work. Service credentials, private account notes, embedding caches and files never retained in project storage are excluded. Machine estimates and unresolved researcher reviews retain their recorded status.
+
+### Download layout
+
+| Request | Returns |
+| --- | --- |
+| `GET /api/projects/:id/archive` | Study ZIP. Recordings are not listed. |
+| `GET /api/projects/:id/archive?media=separate` | Study ZIP whose manifests list every recording for separate download (the Export dialog uses this). |
+| `GET /api/projects/:id/archive?media=1` | Older link, kept working. Recordings are embedded under `Media/` only when their total is at most 64 MB (`STUDY_EMBED_MEDIA_BYTES` changes the limit; `0` never embeds). Above that it returns the same ZIP as `media=separate`. |
+| `GET /api/projects/:id/archive/media` | JSON list of recordings: number, file name, size, storage ETag and checksums, download URL. Missing recordings are flagged. |
+| `GET` or `HEAD /api/projects/:id/archive/media/:n` | Recording `n` (1-based, the same numbering as `Media/NNNN-` paths), streamed byte-for-byte from storage with `Content-Length`, `ETag`, `Content-Disposition` and `Accept-Ranges`. A single `Range` gives 206 and honours `If-Range`, so browsers can resume a download. An unsatisfiable range gives 416. |
+
+The study ZIP is uncompressed (stored), with sizes and CRC-32 values in every local header and no data descriptors. Before the first byte is sent, the Worker measures every entry: it produces each generated JSON/text entry once to count its bytes and compute its CRC, and reads each retained file to compute its CRC and SHA-256 and check recovery copies against their saved checksums. A checksum or size mismatch therefore fails with an HTTP error before any download starts. The response then has an exact `Content-Length` (a `FixedLengthStream`), so a transfer cut off by the network, the browser or a Worker limit shows in the browser as a failed download, not as a shorter "complete" file. Failures are logged with the bytes sent, elapsed time and entry in progress.
+
+Entry order: `EXPORT-SCOPE.json` first, listing every following entry with its byte length, CRC-32 and (for retained files) SHA-256, plus each recording's path, size, ETag and storage checksums. Then `research-weave-archive.json` (import manifest: embedded `assets`, separately delivered `recordings`), `research-weave.json`, metadata, `Transcripts/`, `Analysis/`, `Recovery/`, `Processing/`, `Media/` when embedded, and `README.txt` last. A ZIP without `README.txt` and a central directory stopped early.
+
+Recordings stay out of the Worker's CPU path. Each one is passed straight from object storage to the browser, with no hashing or compression. Generated JSON is serialized twice (measure, then send), and retained files are read twice; this is I/O and native hashing, not compression. The study ZIP is limited to 4 GB and 65,535 entries (no ZIP64).
+
+### Importing downloads and recovering a cut-off ZIP
+
+To restore recordings, choose **Import project** and select the study ZIP together with its recording files. Recordings are matched to the manifest by file name (browser suffixes such as ` (1)` are ignored) and exact size, falling back to a unique size. A listed SHA-256, where storage has one, is verified. Recordings that are listed but not selected are treated as missing, the same as a transcript-only import, and the preview names them.
+
+If a ZIP has no end-of-central-directory record, import reports that it is truncated. It then walks the local file headers and recovers every complete entry: stored or deflated, with sizes in the header or in data descriptors, and each one checked against its CRC-32. When `research-weave.json` arrived complete, the preview opens that native snapshot and lists the bytes received, every incomplete entry, and every entry `EXPORT-SCOPE.json` promised that never arrived. It also lists which recordings will be restored and which are detached as missing. The import record keeps this list under `archiveImport.recovery`. Older downloads wrote their manifest last. For those, complete `Media/NNNN-` entries are matched to the snapshot's references by position, and the preview says the entry list is unknown. If the native snapshot itself is incomplete, import refuses with a message saying so.
+
+Workers CPU limits: `wrangler.jsonc` sets no `limits.cpu_ms`, so the account default applies. Per-byte Worker CPU now comes only from CRC-32 (native `zlib.crc32` where available) and SHA-256 of generated and retained entries. Embedded recordings are capped by the embed limit, and separately downloaded recordings use no per-byte JS. Very large recovery histories may still need a higher `cpu_ms` on a paid plan.

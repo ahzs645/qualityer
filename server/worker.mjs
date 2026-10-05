@@ -1,7 +1,7 @@
 import {privateImport} from './private-import.mjs';
 import {privateAnalysis} from './private-analysis.mjs';
 import {privateSpeakers} from './private-speakers.mjs';
-import {studyDownload} from './study-download.mjs';
+import {studyDownload,studyRecording,studyRecordingList} from './study-download.mjs';
 import {decisionDiff} from './decision-diff.mjs';
 import {storeEventDetail,readEventDetails} from './event-detail.mjs';
 import {suggestCodePassages} from './code-suggestions.mjs';
@@ -27,6 +27,8 @@ async function api(req,env){const url=new URL(req.url),path=url.pathname,db=env.
  const match=path.match(/^\/api\/projects\/([^/]+)(?:\/(.*))?$/);if(!match)fail('Unknown endpoint.',404);const pid=match[1],tail=match[2]||'',{p,role}=await member(env,pid,u);if(!tail.startsWith('backups'))p.state=await loadState(env,p.state);
  const policyState=JSON.parse(tail.startsWith('backups')?await loadState(env,p.state):p.state),access=teamAccess(policyState,role,u),viewState=state=>visibleProjectState(state,access);
  if(tail==='archive'&&req.method==='GET'){p.state=null;return studyDownload(req,env,p,policyState,role,access);}
+ if(tail==='archive/media'&&req.method==='GET')return json(await studyRecordingList(env,p,policyState,role));
+ if(tail.startsWith('archive/media/')&&['GET','HEAD'].includes(req.method))return studyRecording(req,env,p,policyState,role,tail.slice(14));
  if(tail==='events')requireCapability(access,'history');
  if(tail.startsWith('backups')){requireCapability(access,'recovery');if(access.blind)fail('Historical recovery points are available to reviewers and the owner during blind coding.',403);}
  if(['ai','ai-review','semantic'].includes(tail))requireCapability(access,'ai');
