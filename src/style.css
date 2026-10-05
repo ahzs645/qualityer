@@ -78,3 +78,4 @@
  .speaker-key>span,.speaker-key button{min-height:44px;display:inline-flex;align-items:center}
 }
 @media(max-width:800px),(pointer:coarse){main summary{padding-block:12px;min-height:44px;box-sizing:border-box}}
+.network-threshold{margin:8px 0}.network-threshold input[type=range]{display:block;width:100%;max-width:420px;min-height:44px}
