@@ -1,5 +1,6 @@
 // Deterministic matching stays in the browser; candidates are never research decisions.
-const points=text=>Array.from(text),excerpt=(text,a,b)=>points(text).slice(a,b).join('');
+import {pointSlice} from './text-points.mjs';
+const excerpt=(text,a,b)=>pointSlice(text,a,b);
 const overlap=(a,b)=>a.start<b.end&&b.start<a.end;
 const current=(d,x)=>d&&x.sourceRevision===(d.revision||1)&&Number.isInteger(x.start)&&Number.isInteger(x.end)&&x.start>=0&&x.end>x.start&&excerpt(d.text,x.start,x.end)===x.text;
 export function compileAutocodeRule(rule){

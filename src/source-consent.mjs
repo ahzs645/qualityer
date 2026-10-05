@@ -1,11 +1,12 @@
+import {pointLength,pointSlice} from './text-points.mjs';
 const points=value=>Array.from(value||'');
-const slice=(value,start,end)=>points(value).slice(start,end).join('');
+const slice=(value,start,end)=>pointSlice(value||'',start,end);
 const overlaps=(a,b)=>Math.max(a.start,b.start)<Math.min(a.end,b.end);
 const statuses=new Set(['pending','included','withheld']);
-const current=(doc,anchor)=>anchor.anchorStatus!=='needs_review'&&anchor.sourceRevision===(doc.revision||1)&&Number.isInteger(anchor.start)&&Number.isInteger(anchor.end)&&anchor.start>=0&&anchor.end>anchor.start&&anchor.end<=points(doc.text).length&&slice(doc.text,anchor.start,anchor.end)===anchor.text;
+const current=(doc,anchor)=>anchor.anchorStatus!=='needs_review'&&anchor.sourceRevision===(doc.revision||1)&&Number.isInteger(anchor.start)&&Number.isInteger(anchor.end)&&anchor.start>=0&&anchor.end>anchor.start&&anchor.end<=pointLength(doc.text)&&slice(doc.text,anchor.start,anchor.end)===anchor.text;
 
 export function restrictedSourceRanges(doc){
- const length=points(doc?.text).length,ranges=[];
+ const length=pointLength(doc?.text),ranges=[];
  for(const flag of doc?.reviewFlags||[]){
   if(flag.status==='included'&&flag.anchorStatus!=='needs_review')continue;
   if(!Number.isInteger(flag.start)||!Number.isInteger(flag.end)||flag.start<0||flag.end<=flag.start||flag.end>length)return [{start:0,end:length,reason:'A restriction anchor needs review.'}];
@@ -73,7 +74,7 @@ export function rebaseConsentScopes(doc,{prefix,oldEnd,delta,actor}){
   record.history??=[];
   record.history.push({...structuredClone(record),history:undefined,changedBy:actor||'Source revision',changedAt:new Date().toISOString(),decisionNote:'Source text changed across this consent scope; prior authorization suspended pending re-anchoring.',event:'source-edit'});
   record.originalAnchor??={start:record.start,end:record.end,text:record.text,sourceRevision:record.sourceRevision};
-  record.start=Math.min(record.start,prefix);record.end=Math.min(points(doc.text).length,Math.max(record.start,record.end+delta));record.anchorStatus='needs_review';record.status='pending';
+  record.start=Math.min(record.start,prefix);record.end=Math.min(pointLength(doc.text),Math.max(record.start,record.end+delta));record.anchorStatus='needs_review';record.status='pending';
   doc.reviewFlags=(doc.reviewFlags||[]).filter(f=>f.id!==record.id);
   doc.reviewFlags.push({...record,status:'pending'});
  }
