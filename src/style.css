@@ -85,3 +85,4 @@
 td.heat-cell button,.matrix-cell.heat-cell{background:transparent;color:inherit}
 .consistency-list{list-style:none;padding:0;display:grid;gap:10px}.consistency-list li{background:#fff;border:1px solid #dce5eb;border-left:4px solid #9bb8c3;border-radius:6px;padding:10px 12px;display:grid;gap:4px}.consistency-list li.flagged{border-left-color:#b86b2a}.consistency-list small{color:#54656f}
 .consistency-score{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.consistency-bar{display:inline-block;width:120px;height:8px;background:#e6edf1;border-radius:4px;overflow:hidden}.consistency-bar i{display:block;height:100%;background:#35788f}
+.media-player-error{margin:6px 0 0;color:#8a3b1e;font-size:14px}.media-missing{margin:10px 0}

@@ -26,6 +26,14 @@ This checkpoint passed the sanitized app build and 235 automated checks, the own
 
 The app includes exact quotation coding, timestamp history, HTML/ODT/EPUB/RTF and encoding previews, browser-local image/PDF OCR, native AQDA/Taguette/RQDA imports, interval queries and corpus search, reviewed autocoding with undo, portable codebook collections, concept maps and code portraits, weighted hierarchy, matrices, cases and memos, structured decision history, blind team permissions and recording-bound speaker correction. Language/embedding/speech models require a configured connection. Read [architecture and deployment](docs/architecture-and-deployment.md) and the in-app Feature audit for supported scope and remaining gaps.
 
+Waveforms for long recordings are decoded in the browser in pieces (WebCodecs). If a browser cannot decode a recording's codec, generate the waveform with ffmpeg and import it from the waveform panel:
+
+```sh
+node scripts/media-peaks.mjs interview.m4a   # writes interview.peaks.json
+```
+
+Browser checks (need `npm run dev`, Playwright and ffmpeg): `npm run test:browser`.
+
 GitHub Actions checks the app on pushes and pull requests. The **Publish synthetic Pages demo** workflow is manual: enable **Settings → Pages → Source: GitHub Actions**, then run it. Pages provides browser-local storage, not collaborative server storage. The full private app requires the authenticated Worker backend.
 
 This checkpoint corresponds to private source revision `2df14ab5fa41339d991637bf47596a68e412e410`. It saves the application code without copying private source history or research data.

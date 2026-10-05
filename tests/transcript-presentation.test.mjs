@@ -29,3 +29,8 @@ test('Speaker colors remain stable across views, unknown is neutral, and stale d
  d.diarization={recordingKey:'other',regular:[{timeStart:0,timeEnd:4,speaker:'Speaker 1'}]};assert.equal(speakerTimeline(d).kind,'stale');assert.equal(speakerTimeline(d).rows.length,0);
  d.diarization.recordingKey=d.mediaKey;assert.equal(speakerTimeline(d).kind,'diarization');assert.equal(speakerTimeline(d).rows.length,1);assert.equal(speakerTimeline(d,'exclusive').rows.length,0);
 });
+
+test('a detached recording says so instead of blaming another recording',()=>{
+ const d={id:'x',text:'Hi.\n',turns:[],mediaKey:null,mediaType:'audio/mp4',diarization:{recordingKey:'old/key',regular:[{timeStart:0,timeEnd:1,speaker:'Speaker 1'}]}};
+ const t=speakerTimeline(d);assert.equal(t.kind,'unavailable');assert.match(t.message,/No recording is attached/);
+});

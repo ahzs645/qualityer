@@ -50,7 +50,7 @@ test('complete study download preserves exact interviews, recovery states, estim
   assert.deepEqual(full.state,before.state);assert.deepEqual(full.mediaFiles[0].bytes,recording);assert.equal(full.mediaFiles[0].name,'original.m4a');
   const fullScope=JSON.parse(strFromU8(files['EXPORT-SCOPE.json']));assert.equal(fullScope.revision,1);assert.equal(fullScope.mediaDelivery,'embedded');assert.equal(fullScope.retained.filter(x=>x.kind==='media').length,1);assert.equal(fullScope.recordings[0].size,recording.length);
   assert.deepEqual(await (await request(path)).json(),before);
-  await bucket.delete(id+'/audio');assert.equal((await request(path+'/archive?media=1')).status,409);assert.equal((await request(path+'/archive?media=separate')).status,409);assert.equal((await request(path+'/archive')).status,200);
+  await bucket.delete(id+'/audio');assert.equal((await request(path+'/archive?media=1')).status,409);{const r=await request(path+'/archive?media=separate');assert.equal(r.status,200);const zip=unzipSync((await readAll(r)).bytes),manifest=JSON.parse(strFromU8(zip['research-weave-archive.json']));assert.equal(manifest.mediaDelivery,'none');assert.deepEqual(manifest.recordings.map(x=>x.delivery),['missing']);const opened=await readProjectArchive(zip);assert.equal(opened.mediaFiles.length,0);}assert.equal((await request(path+'/archive')).status,200);
   assert.equal((await (await request(path+'/archive/media')).json()).recordings[0].missing,true);assert.equal((await request(path+'/archive/media/1')).status,404);
  }finally{await mf.dispose();}
 });
@@ -121,5 +121,19 @@ test('a project that only references another project\'s recordings still lists t
   const body=await list.json();assert.equal(body.recordings.length,1);assert.equal(body.recordings[0].missing,true);assert.equal(body.recordings[0].foreign,true);
   assert.equal((await request(path+'/archive')).status,200);
   assert.equal((await request(path+'/archive?media=1')).status,409);
+ }finally{await mf.dispose();}
+});
+
+test('one missing recording does not drop the available ones from the study ZIP',async()=>{
+ const {mf,bucket,request}=await harness();
+ try{
+  const {id,path}=await seed(request,bucket);
+  await request(path+'/operate','POST',{revision:1,operation:{type:'source.media.attach',data:{id:'b',mediaKey:id+'/audio-lost',mediaType:'audio/mp4'}}});
+  const list=await (await request(path+'/archive/media')).json();assert.deepEqual(list.recordings.map(r=>!!r.missing),[false,true]);
+  const r=await request(path+'/archive?media=separate');assert.equal(r.status,200);assert.match(r.headers.get('content-disposition'),/recordings-separate/);
+  const zip=unzipSync((await readAll(r)).bytes),manifest=JSON.parse(strFromU8(zip['research-weave-archive.json']));
+  assert.deepEqual(manifest.recordings.map(x=>x.delivery),['separate','missing']);assert.equal(manifest.recordings[0].size,2*1024*1024+19);
+  const opened=await readProjectArchive(zip);assert.equal(opened.missingMedia.length,1);assert.match(opened.warnings.join(' '),/not selected/);
+  assert.equal((await request(path+'/archive?media=1')).status,409,'embedding still requires every recording');
  }finally{await mf.dispose();}
 });
