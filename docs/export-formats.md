@@ -23,6 +23,8 @@ External REFI consumers receive a reduced standard representation. Turn/word syn
 
 Native ZIP generation is asynchronous and stores media without recompressing already-compressed recordings. It still assembles the ZIP in memory, and import currently decompresses the archive in memory. Large recordings require substantial browser memory; this is not a streaming archive implementation. Transcript-only ZIPs avoid that binary-memory cost.
 
+The owner's server-side complete-study download is a different path. It streams a stored ZIP with an exact `Content-Length` and lists its entries first in `EXPORT-SCOPE.json`. Large recordings are delivered as separate, resumable per-recording downloads, which the manifests list by path, size, ETag and storage checksums. See [Download the saved study](study-analysis-workflow.md#download-the-saved-study). Import accepts the native ZIP with or without embedded `Media/`, the study ZIP selected together with separately downloaded recordings, and cut-off ZIPs. For a cut-off ZIP, complete entries are recovered from local headers, the native snapshot opens if it arrived complete, and missing recordings are detached and named.
+
 Large audit operations are retained in verified object storage, with a bounded pointer and change summary in SQL. Authorized history reading and ZIP metadata export restore the complete operation payload. SQL history text filters search the stored summary for these events, so they do not find every word in a large transcript payload. Blind coding history remains redacted before any object-storage lookup.
 
 Repository regression tests use synthetic sources only. Interview recordings, machine drafts and simulated-review artifacts used for session verification are kept outside the repository.
