@@ -1,3 +1,4 @@
+import {codepoints} from './text-points.mjs';
 import {scopedSources,scopedCodings,codeRows} from './analysis-domain.mjs';
 import {mergeIntervals} from './coder-comparison.mjs';
 import {esc} from './report-export.mjs';
@@ -16,7 +17,7 @@ function subtractIntervals(spans,removed){
 }
 const validRange=(r,size)=>Number.isInteger(r.start)&&Number.isInteger(r.end)&&r.start>=0&&r.end>r.start&&r.end<=size;
 export function eligibleSourceIntervals(state,doc,filters={}){
-  const points=Array.from(doc.text||''),size=points.length,flags=restrictedSourceRanges(doc);
+  const points=codepoints(doc.text||''),size=points.length,flags=restrictedSourceRanges(doc);
   // Uncertain restriction anchors cannot establish a safe denominator.
   if(doc.sourceRole==='reference'||flags.some(f=>f.anchorStatus==='needs_review'||!validRange(f,size)))return [];
   let spans=size?[[0,size]]:[];
@@ -29,7 +30,7 @@ export function eligibleSourceIntervals(state,doc,filters={}){
 }
 
 export function coverageScope(state,filters={}){
-  const documents=scopedSources(state,filters),points=new Map(documents.map(d=>[d.id,Array.from(d.text||'')])),intervals=new Map(documents.map(d=>[d.id,eligibleSourceIntervals(state,d,filters)])),docs=new Map(documents.map(d=>[d.id,d]));
+  const documents=scopedSources(state,filters),points=new Map(documents.map(d=>[d.id,codepoints(d.text||'')])),intervals=new Map(documents.map(d=>[d.id,eligibleSourceIntervals(state,d,filters)])),docs=new Map(documents.map(d=>[d.id,d]));
   const rows=scopedCodings(state,filters).filter(c=>{
     const doc=docs.get(c.documentId),p=points.get(c.documentId);
     return doc&&!c.kind&&c.anchorStatus!=='needs_review'&&validRange(c,p.length)&&(c.sourceRevision==null||c.sourceRevision===(doc.revision||1))&&typeof c.text==='string'&&p.slice(c.start,c.end).join('')===c.text&&intersectIntervals([[c.start,c.end]],intervals.get(doc.id)).length>0;

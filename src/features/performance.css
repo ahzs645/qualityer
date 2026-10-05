@@ -1,0 +1,2 @@
+/* Long transcripts render thousands of reading rows. Off-screen rows skip layout and paint; their text stays in the DOM, so exact selection, find-in-page and quotation jumps keep working. `auto` remembers each row's measured height once it has been shown. */
+.transcript-reader:not(.continuous) .transcript-reading-row{content-visibility:auto;contain-intrinsic-size:auto 96px;overflow-clip-margin:6px}

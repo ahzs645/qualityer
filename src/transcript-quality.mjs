@@ -1,8 +1,9 @@
 /** Native ASR probability triage. Never convert alignment scores into ASR confidence. */
+import {codepoints} from './text-points.mjs';
 export function transcriptionQuality(document, threshold = .5) {
  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) throw Error('Review threshold must be between zero and one.');
  const engine = document.transcriptMetadata?.provider?.engine;
- const points=Array.from(document.text||'');
+ const points=codepoints(document.text||'');
  const bins = Array.from({length:10}, (_,i)=>({start:i/10,end:(i+1)/10,count:0}));
  const rows=[]; let scoredWords=0, unscoredWords=0, flaggedWords=0;
  for(const turn of document.turns||[]) {

@@ -1,9 +1,10 @@
 // Fragment query algebra. Text positions are Unicode codepoints; media positions are seconds.
+import {pointLength,pointSlice} from './text-points.mjs';
 const points=t=>Array.from(t||'');
 const overlaps=(a,b)=>Math.max(a[0],b[0])<Math.min(a[1],b[1]);
 const range=c=>c.kind==='media'?[c.timeStart,c.timeEnd]:[c.start,c.end];
 const revision=d=>d.revision??1;
-const textAt=(d,a,b)=>points(d.text).slice(a,b).join('');
+const textAt=(d,a,b)=>pointSlice(d.text,a,b);
 export function resultQuerySpec(spec={}){
  const mode=spec.mode==='literal'?'literal':'intervals';
  const kind=['all','text','media'].includes(spec.kind)?spec.kind:'all';
@@ -11,7 +12,7 @@ export function resultQuerySpec(spec={}){
 }
 function subtree(s,id,descend){if(!id)return null;const ids=new Set([id]);if(descend){let size;do{size=ids.size;for(const c of s.codes||[])if(ids.has(c.parentId))ids.add(c.id);}while(size!==ids.size);}return ids;}
 function sourceAllowed(d,f){return d.sourceRole!=='reference'&&!d.deletedAt&&(!f.source||d.id===f.source);}
-function currentText(d,a){return a.anchorStatus!=='needs_review'&&(a.sourceRevision==null||a.sourceRevision===revision(d))&&Number.isInteger(a.start)&&Number.isInteger(a.end)&&a.start>=0&&a.end>a.start&&a.end<=points(d.text).length&&textAt(d,a.start,a.end)===a.text;}
+function currentText(d,a){return a.anchorStatus!=='needs_review'&&(a.sourceRevision==null||a.sourceRevision===revision(d))&&Number.isInteger(a.start)&&Number.isInteger(a.end)&&a.start>=0&&a.end>a.start&&a.end<=pointLength(d.text)&&textAt(d,a.start,a.end)===a.text;}
 function consentBlocked(d,c){if(!d.reviewFlags?.length)return false;if(c.kind!=='media')return d.reviewFlags.some(f=>overlaps([f.start,f.end],range(c)));const flags=d.reviewFlags;const relevant=(d.turns||[]).filter(t=>flags.some(f=>overlaps([f.start,f.end],[t.start,t.end])));if(d.alignment?.status!=='matched'||d.alignment?.recordingKey!==d.mediaKey||!relevant.length||relevant.some(t=>t.anchorStatus==='needs_review'||t.timingStatus==='needs_review'||!Number.isFinite(t.timeStart)||!Number.isFinite(t.timeEnd)))return true;return relevant.some(t=>overlaps([t.timeStart,t.timeEnd],range(c)));}
 function caseRanges(s,d,f){if(!f.caseId)return null;const k=(s.cases||[]).find(k=>k.id===f.caseId);if(!k)return [];if(k.documentIds?.includes(d.id))return null;return (k.passages||[]).filter(a=>a.documentId===d.id&&currentText(d,a)).map(a=>[a.start,a.end]);}
 function provenance(c){return {codingId:c.id,codeId:c.codeId,coder:c.coder,status:c.status,sourceRevision:c.sourceRevision??null,kind:c.kind||'text',...(c.kind==='media'?{recordingKey:c.recordingKey,timeStart:c.timeStart,timeEnd:c.timeEnd}:{start:c.start,end:c.end})};}

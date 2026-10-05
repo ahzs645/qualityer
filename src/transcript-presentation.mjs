@@ -1,4 +1,5 @@
 import {cp,slice} from './domain.mjs';
+import {pointLength} from './text-points.mjs';
 import {canSeekTurn} from './transcript-alignment.mjs';
 
 export const codePalette=['#007a87','#a94614','#6353a4','#237840','#a23768','#745c14','#2864a6','#a43232','#516c22','#714885','#126966','#855337','#3955a4','#9a3d80','#306c57','#755b81'];
@@ -26,7 +27,7 @@ export function readableInk(color){
 }
 
 export function transcriptReadingRows(doc,mode='sentences'){
- const length=cp(doc.text||'').length;if(!length)return [];
+ const length=pointLength(doc.text||'');if(!length)return [];
  const turns=(doc.turns||[]).map((turn,index)=>({...turn,number:index+1})).filter(t=>Number.isInteger(t.start)&&Number.isInteger(t.end)&&t.start>=0&&t.end>t.start&&t.end<=length&&t.anchorStatus!=='needs_review'&&(t.text==null||t.text===slice(doc.text,t.start,t.end)));
  const bounds=[...new Set([0,length,...turns.flatMap(t=>[t.start,t.end])])].sort((a,b)=>a-b),segments=[];
  for(let i=0;i<bounds.length-1;i++){
@@ -41,7 +42,10 @@ export function transcriptReadingRows(doc,mode='sentences'){
  }
  return rows.map((row,index)=>({...row,id:'reading-'+mode+'-'+row.start,number:index+1,unitKind:/[.!?؟。！？]["'”’\)\]]*\s*$/u.test(row.text)?'sentence':'fragment'}));
 }
-export function chunksForRow(row,chunks){return chunks.filter(c=>c.start<row.end&&c.end>row.start).map(c=>{const start=Math.max(row.start,c.start),end=Math.min(row.end,c.end);return {...c,start,end,text:slice(c.text,start-c.start,end-c.start)};});}
+// Rendered chunks are sorted and disjoint, so each reading row finds its chunks by binary search instead of scanning all of them.
+const disjoint=new WeakMap(),isDisjoint=chunks=>{let hit=disjoint.get(chunks);if(hit?.length!==chunks.length){hit={length:chunks.length,ok:chunks.every((c,i)=>c.end>=c.start&&(!i||chunks[i-1].end<=c.start))};disjoint.set(chunks,hit);}return hit.ok;};
+function overlapping(row,chunks){if(!isDisjoint(chunks))return chunks.filter(c=>c.start<row.end&&c.end>row.start);let lo=0,hi=chunks.length;while(lo<hi){const mid=lo+hi>>1;if(chunks[mid].end<=row.start)lo=mid+1;else hi=mid;}const out=[];for(let i=lo;i<chunks.length&&chunks[i].start<row.end;i++)if(chunks[i].end>row.start)out.push(chunks[i]);return out;}
+export function chunksForRow(row,chunks){return overlapping(row,chunks).map(c=>{const start=Math.max(row.start,c.start),end=Math.min(row.end,c.end);return {...c,start,end,text:slice(c.text,start-c.start,end-c.start)};});}
 export function speakerTimeline(doc,track='regular'){
  const run=doc.diarization;
  if(run&&run.recordingKey!==doc.mediaKey)return {rows:[],kind:'stale',message:'Speaker track belongs to another recording. Review it before playback.'};

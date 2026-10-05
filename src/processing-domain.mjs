@@ -1,13 +1,13 @@
-const chars=s=>Array.from(s||'');
-const part=(s,a,b)=>chars(s).slice(a,b).join('');
+import {pointLength,pointSlice} from './text-points.mjs';
+const part=(s,a,b)=>pointSlice(s||'',a,b);
 export const intersects=(a,b)=>Math.max(a.start,b.start)<Math.min(a.end,b.end);
 export function evidenceAttribution(state,selection){const d=state.documents.find(d=>d.id===selection.documentId),turns=(d?.turns||[]).filter(t=>t.anchorStatus!=='needs_review'&&intersects(t,selection));return {firstTurn:turns[0]?((turns[0].sourceIndex??d.turns.indexOf(turns[0]))+1):null,speakers:[...new Set(turns.map(t=>t.speaker))]};}
-export function taskAnchor(state,task){const doc=state.documents.find(d=>d.id===task.documentId);return !!doc&&Number.isInteger(task.start)&&Number.isInteger(task.end)&&task.start>=0&&task.end>task.start&&task.end<=chars(doc.text).length&&task.anchorStatus!=='needs_review'&&doc.revision===task.sourceRevision&&part(doc.text,task.start,task.end)===task.text;}
+export function taskAnchor(state,task){const doc=state.documents.find(d=>d.id===task.documentId);return !!doc&&Number.isInteger(task.start)&&Number.isInteger(task.end)&&task.start>=0&&task.end>task.start&&task.end<=pointLength(doc.text)&&task.anchorStatus!=='needs_review'&&doc.revision===task.sourceRevision&&part(doc.text,task.start,task.end)===task.text;}
 export function quoteContext(doc,selection,radius=1){
  if(!doc||!selection)return [];
  const valid=(doc.turns||[]).filter(t=>t.anchorStatus!=='needs_review'),hits=valid.map((t,i)=>intersects(t,selection)?i:-1).filter(i=>i>=0);
  if(hits.length){return valid.slice(Math.max(0,hits[0]-radius),Math.min(valid.length,hits.at(-1)+radius+1)).map(t=>({...t,number:(t.sourceIndex??doc.turns.indexOf(t))+1,text:part(doc.text,t.start,t.end),selected:intersects(t,selection),restricted:(doc.reviewFlags||[]).some(f=>intersects(f,t))}));}
- const length=chars(doc.text).length,start=Math.max(0,selection.start-250),end=Math.min(length,selection.end+250);return [{start,end,text:part(doc.text,start,end),selected:true,restricted:(doc.reviewFlags||[]).some(f=>intersects(f,{start,end})),number:null}];
+ const length=pointLength(doc.text),start=Math.max(0,selection.start-250),end=Math.min(length,selection.end+250);return [{start,end,text:part(doc.text,start,end),selected:true,restricted:(doc.reviewFlags||[]).some(f=>intersects(f,{start,end})),number:null}];
 }
 export function addReviewTasks(state,data,actor){
  state.reviewTasks??=[];state.assistantRuns??=[];
@@ -50,11 +50,11 @@ export function decideReviewTask(state,data,actor,role,newId,checkProtocol){
 export function reanchorReviewTask(state,data,actor,role){
  if(!['owner','reviewer'].includes(role))throw Error('Reviewer access required.');const task=state.reviewTasks?.find(t=>t.id===data.id),d=state.documents.find(d=>d.id===task?.documentId);if(!task||!d)throw Error('Review task missing.');
  if(!['pending','deferred'].includes(task.status))throw Error('A completed task cannot be re-anchored.');
- if(!Number.isInteger(data.start)||!Number.isInteger(data.end)||data.start<0||data.end<=data.start||data.end>chars(d.text).length||(d.reviewFlags||[]).some(f=>intersects(f,data)))throw Error('Choose a valid quotation outside the consent-review range.');
+ if(!Number.isInteger(data.start)||!Number.isInteger(data.end)||data.start<0||data.end<=data.start||data.end>pointLength(d.text)||(d.reviewFlags||[]).some(f=>intersects(f,data)))throw Error('Choose a valid quotation outside the consent-review range.');
  if(!String(data.note||'').trim())throw Error('Record the reason for changing this quotation.');task.history??=[];task.history.push({action:'reanchor',prior:{start:task.start,end:task.end,text:task.text,sourceRevision:task.sourceRevision},note:data.note,reviewer:actor,date:new Date().toISOString()});const text=part(d.text,data.start,data.end),turn=(d.turns||[]).find(t=>t.anchorStatus!=='needs_review'&&t.start<=data.start&&t.end>data.start),index=turn?(turn.sourceIndex??d.turns.indexOf(turn)):null;Object.assign(task,{start:data.start,end:data.end,text,quote:text,sourceRevision:d.revision,anchorStatus:'current',turnIndex:index,turnNumber:index==null?null:index+1,speaker:turn?.speaker||'Unassigned'});
 }
 export function codingSequence(state,documentId,{status='all',coder='',bins=12}={}){
- const d=state.documents.find(d=>d.id===documentId);if(!d)return {bins:[],rows:[]};const length=chars(d.text).length,windows=Array.from({length:bins},(_,i)=>({index:i,start:Math.floor(i*length/bins),end:Math.floor((i+1)*length/bins)}));
+ const d=state.documents.find(d=>d.id===documentId);if(!d)return {bins:[],rows:[]};const length=pointLength(d.text),windows=Array.from({length:bins},(_,i)=>({index:i,start:Math.floor(i*length/bins),end:Math.floor((i+1)*length/bins)}));
  const active=state.codings.filter(c=>c.documentId===d.id&&!c.deletedAt&&c.status!=='needs_review'&&!c.kind&&(!coder||c.coder===coder)&&(status==='all'||c.status===status));
  return {bins:windows,rows:state.codes.map(code=>({code,cells:windows.map(w=>{const applications=active.filter(c=>c.codeId===code.id&&intersects(c,w)),unique=[...new Map(applications.map(c=>[[c.start,c.end].join(':'),c])).values()];return {...w,count:unique.length,applications};})})).filter(row=>row.cells.some(c=>c.count))};
 }
