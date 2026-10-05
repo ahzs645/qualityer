@@ -1,3 +1,4 @@
+import {pointLength,pointSlice} from './text-points.mjs';
 // Proposed Research Weave comparison module, independently implemented from
 // interval mathematics. Requal source inspection motivates the Jaccard view;
 // its R implementation is not copied, and its segment metric is not claimed.
@@ -32,13 +33,13 @@ function eligibleIntervals(size,flags){
 export function comparisonScope(state,filters={}){
   const sourceId=filters.sourceId||filters.documentId||'',status=filters.status||'all';
   const documents=(state.documents||[]).filter(d=>d.sourceRole!=='reference'&&(!sourceId||d.id===sourceId));
-  const points=new Map(documents.map(d=>[d.id,Array.from(d.text||'')]));
-  const eligible=new Map(documents.map(d=>[d.id,eligibleIntervals(points.get(d.id).length,d.reviewFlags||[])]));
+  const points=new Map(documents.map(d=>[d.id,pointLength(d.text||'')]));
+  const eligible=new Map(documents.map(d=>[d.id,eligibleIntervals(points.get(d.id),d.reviewFlags||[])]));
   const docs=new Map(documents.map(d=>[d.id,d]));
   const codings=(state.codings||[]).filter(c=>{
     const d=docs.get(c.documentId),p=points.get(c.documentId);
     if(!d||c.deletedAt||c.status==='needs_review'||c.anchorStatus==='needs_review'||(c.kind&&c.kind!=='text')||(!['all',''].includes(status)&&c.status!==status)||(filters.codeId&&c.codeId!==filters.codeId))return false;
-    if(!Number.isInteger(c.start)||!Number.isInteger(c.end)||c.start<0||c.end<=c.start||c.end>p.length||typeof c.text!=='string'||p.slice(c.start,c.end).join('')!==c.text)return false;
+    if(!Number.isInteger(c.start)||!Number.isInteger(c.end)||c.start<0||c.end<=c.start||c.end>p||typeof c.text!=='string'||pointSlice(d.text||'',c.start,c.end)!==c.text)return false;
     if(c.sourceRevision!=null&&c.sourceRevision!==(d.revision||1))return false;
     // Withhold the complete coding when any of it intersects consent review;
     // do not quietly rewrite a researcher's decision by clipping its quote.

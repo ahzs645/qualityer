@@ -17,7 +17,7 @@ export function teamAccess(state,role,user){const policy=normalizeTeamPolicy(sta
 const forbidden=message=>{throw Object.assign(Error(message),{status:403});};
 export function requireCapability(access,key){if(!access.capabilities[key])forbidden('Your project role does not permit '+key+'.');}
 const own=(row,access,key)=>row?.[key]===access.actor;
-const ownOperations=new Set(['coding.create','coding.delete','coding.restore','memo.save','journal.save','reading.mark','query.save','query.delete','passage.pin','passage.link','suggestions.add','suggestion.dismiss','suggestion.accept','reviewTasks.add','extraction.save','autocoding.apply','autocoding.undo','codeSet.save','codeSet.delete','query.results.save']);
+const ownOperations=new Set(['coding.create','coding.delete','coding.media.retime','coding.restore','memo.save','journal.save','reading.mark','query.save','query.delete','passage.pin','passage.link','suggestions.add','suggestion.dismiss','suggestion.accept','reviewTasks.add','extraction.save','autocoding.apply','autocoding.undo','codeSet.save','codeSet.delete','query.results.save']);
 export function authorizeOperation(state,op,access){
  if(!op||typeof op.type!=='string')throw Error('Choose a project operation.');
  const type=op.type,data=op.data||{};
@@ -29,7 +29,7 @@ export function authorizeOperation(state,op,access){
  if(!access.blind)return;
  if(!ownOperations.has(type))forbidden('Blind coders can change their own decisions and notes. Ask a reviewer to change shared study structure.');
  const checks={
-  'coding.delete':['codings','coder'],'coding.restore':['codings','coder'],
+  'coding.delete':['codings','coder'],'coding.restore':['codings','coder'],'coding.media.retime':['codings','coder'],
   'memo.save':['memos','author'],'journal.save':['journals','coder'],
   'autocoding.undo':['autocodingRuns','actor'],'codeSet.save':['codeSets','author'],'codeSet.delete':['codeSets','author'],'query.delete':['savedQueries','author'],'extraction.save':['extractions','author'],
   'suggestion.dismiss':['suggestions','createdBy'],'suggestion.accept':['suggestions','createdBy']
@@ -51,7 +51,7 @@ export function visibleProjectState(state,access){
  s.cases=(state.cases||[]).map(c=>({...pick(c,['id','name','documentIds','attributes']),passages:(c.passages||[]).filter(p=>own(p,access,'actor'))}));
  for(const d of s.documents){delete d.codingHistory;delete d.analysis;d.versions=(d.versions||[]).map(v=>Object.fromEntries(Object.entries(v).filter(([key])=>['revision','text','turns','alignment','transcriptMetadata','transcription','speakerMappings','speakerReviewStatus','diarization','ingestionMetadata','textDirection','direction','importProvenance','ocr','date','mediaKey','mediaType','pages','reviewFlags'].includes(key))));}
  const lists={codings:'coder',memos:'author',journals:'coder',extractions:'author',coverage:'actor',suggestions:'createdBy',reviewTasks:'addedBy',assistantRuns:'createdBy',readingProgress:'actor',savedQueries:'author',passagePins:'actor',passageLinks:'actor',autocodingRuns:'actor',codeSets:'author'};
- for(const [list,key] of Object.entries(lists))s[list]=(state[list]||[]).filter(row=>own(row,access,key)&&(list!=='extractions'||state.codings.some(c=>c.id===row.codingId&&own(c,access,'coder')))).map(row=>omit(row,['reviews','reviewer','reviewNote','reviewedBy','history','versions','querySources','modifiedBy','relatedEvidence','queryResult','autocodingUndoSnapshot',...(list==='autocodingRuns'?[]:['codingIds'])]));
+ for(const [list,key] of Object.entries(lists))s[list]=(state[list]||[]).filter(row=>own(row,access,key)&&(list!=='extractions'||state.codings.some(c=>c.id===row.codingId&&own(c,access,'coder')))).map(row=>omit(row,['reviews','reviewer','reviewNote','reviewedBy','history','versions','querySources','modifiedBy','relatedEvidence','queryResult','retimeHistory','autocodingUndoSnapshot',...(list==='autocodingRuns'?[]:['codingIds'])]));
  s.memos=s.memos.map(m=>({...m,references:memoReferenceMetadata(s,m.content,access.actor,access.role)}));
  s.consensus=[];s.codeMerges=[];
  return s;

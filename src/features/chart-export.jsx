@@ -1,0 +1,6 @@
+import React,{useState} from 'react';
+import {serializeInlineSvg,svgToPng} from '../image-export.mjs';
+import {download} from '../exchange.js';
+import './chart-export.css';
+// One SVG source feeds both formats so the SVG and PNG carry identical content and provenance captions.
+export function ChartExportButtons({name,svg,target,caption,svgLabel='Export SVG',pngLabel='Export PNG',children}){const [error,setError]=useState(''),[busy,setBusy]=useState(false),source=()=>{if(svg)return svg();const el=typeof target==='string'?document.getElementById(target):target?.current;return serializeInlineSvg(el,{caption:typeof caption==='function'?caption():caption});};function saveSvg(){try{download(name+'.svg',source(),'image/svg+xml');setError('');}catch(e){setError('SVG export failed: '+e.message);}}async function savePng(){setBusy(true);try{download(name+'.png',await svgToPng(source()),'image/png');setError('');}catch(e){setError('PNG export failed: '+e.message);}finally{setBusy(false);}}return <span className="chart-export">{children}<button type="button" onClick={saveSvg}>{svgLabel}</button><button type="button" disabled={busy} onClick={savePng}>{busy?'Rendering PNG…':pngLabel}</button>{error&&<span role="alert">{error}</span>}</span>;}

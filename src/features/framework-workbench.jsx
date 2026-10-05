@@ -1,3 +1,4 @@
+import {pointLength} from '../text-points.mjs';
 import React,{useState,useMemo,useRef,useEffect} from 'react';
 import {FRAMEWORK_STAGES,frameworkMatrix,frameworkCellCurrent} from '../framework-method.mjs';
 import {safeCSV,htmlReport} from '../report-export.mjs';
@@ -43,7 +44,7 @@ export function FrameworkWorkbench({state,project,operate,jump}){
  // eligibility state invalidates the old draft before it can render in the editor.
  const draft=drafts[cellKey]?.signature===signature?drafts[cellKey]:initialDraft;
  const evidence=draft.evidence.filter(e=>citationCurrent(state,e)),hasUnsavedChanges=!savedCell||draft.summary!==savedCell.summary||draft.limitations!==(savedCell.limitations||'')||draft.finding!==savedCell.finding||evidenceSnapshot(evidence)!==evidenceSnapshot(savedCell.evidence||[]),support=evidence.filter(e=>e.relation==='support').length,contrast=evidence.filter(e=>e.relation==='contrast').length;
- const focusedEvidence=evidence.find(e=>evidenceKey(e)===contextKey)||evidence[0],sourceLength=Array.from(document?.text||'').length;
+ const focusedEvidence=evidence.find(e=>evidenceKey(e)===contextKey)||evidence[0],sourceLength=pointLength(document?.text||'');
  const contextDocument=document?{...document,turns:(document.turns||[]).filter(t=>t.anchorStatus!=='needs_review'&&(t.sourceRevision===undefined||t.sourceRevision===(document.revision||1))&&Number.isInteger(t.start)&&Number.isInteger(t.end)&&t.start>=0&&t.end>t.start&&t.end<=sourceLength)}:null;
  const context=focusedEvidence?quoteContext(contextDocument,focusedEvidence).map(t=>({...t,restricted:passageConsentRestricted(document,t)})):[];
  const sourceChoices=useMemo(()=>{

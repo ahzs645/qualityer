@@ -1,3 +1,4 @@
+import {codepoints} from './text-points.mjs';
 import {coverageScope} from './coverage-profile.mjs';
 import {passageConsentRestricted,restrictedSourceRanges} from './source-consent.mjs';
 export function relationPairEvidence(state,pairs){
@@ -14,7 +15,7 @@ export function relationPairEvidence(state,pairs){
     const overlapStart=Math.max(a0,b0),overlapEnd=Math.min(a1,b1),overlap=Math.max(0,overlapEnd-overlapStart),distance=Math.max(0,Math.max(a0,b0)-Math.min(a1,b1)),outerStart=Math.min(a0,b0),outerEnd=Math.max(a1,b1);
     // For disjoint selections, never export the intervening uncoded passage.
     // For overlapping selections, the union consists entirely of coded text.
-    const text=Array.from(doc.text||''),contextAllowed=!media&&overlap>0&&!passageConsentRestricted(doc,{start:outerStart,end:outerEnd}),part=(start,end)=>contextAllowed?text.slice(start,end).join(''):'';
+    const text=codepoints(doc.text||''),contextAllowed=!media&&overlap>0&&!passageConsentRestricted(doc,{start:outerStart,end:outerEnd}),part=(start,end)=>contextAllowed?text.slice(start,end).join(''):'';
     out.push({documentId:doc.id,source:doc.name,sourceRevision:doc.revision||1,leftId:a.id,rightId:b.id,leftCode:state.codes.find(c=>c.id===a.codeId)?.name||a.codeId,rightCode:state.codes.find(c=>c.id===b.codeId)?.name||b.codeId,leftCoder:a.coder,rightCoder:b.coder,unit:media?'seconds':'codepoints',leftStart:a0,leftEnd:a1,rightStart:b0,rightEnd:b1,distance,overlap,union:(a1-a0)+(b1-b0)-overlap,relation:a0===b0&&a1===b1?'exact':overlap>0?(a0<=b0&&a1>=b1||b0<=a0&&b1>=a1?'containment':'overlap'):distance===0?'touch':'disjoint',before:part(outerStart,overlapStart),shared:part(overlapStart,overlapEnd),after:part(overlapEnd,outerEnd),contextBasis:media?'Direct current recording ranges; no text interpolation':contextAllowed?'Exact current source decomposition of overlapping coded ranges':'No decomposition for disjoint/touching ranges; uncoded gap text omitted'});
   }
   return out;

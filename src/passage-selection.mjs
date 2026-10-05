@@ -1,7 +1,8 @@
 import {cp,slice} from './domain.mjs';
+import {pointLength} from './text-points.mjs';
 import {transcriptReadingRows} from './transcript-presentation.mjs';
 export function passageDraft(document,start,end){
- if(!document||!Number.isInteger(start)||!Number.isInteger(end)||start<0||end<=start||end>cp(document.text).length)return null;
+ if(!document||!Number.isInteger(start)||!Number.isInteger(end)||start<0||end<=start||end>pointLength(document.text))return null;
  return {documentId:document.id,sourceRevision:document.revision||1,start,end,text:slice(document.text,start,end)};
 }
 export function passageIsCurrent(document,draft){return !!draft&&!draft.stale&&draft.documentId===document?.id&&draft.sourceRevision===(document.revision||1)&&passageDraft(document,draft.start,draft.end)?.text===draft.text;}

@@ -67,15 +67,18 @@ export async function exportProjectArchive(state,{includeMedia=false,mediaFiles=
  return new Promise((resolve,reject)=>zip(files,{level:6},(error,data)=>error?reject(error):resolve(data)));
 }
 
-/** Parse already-unzipped native ZIP entries; validate every declared asset. */
-export async function readProjectArchive(files){
+const megabytes=n=>(n/1048576).toLocaleString('en',{maximumFractionDigits:1})+' MB';
+const baseName=value=>String(value||'').split('/').at(-1).normalize('NFC').replace(/ \(\d+\)(?=\.[^.]*$|$)/,'');
+
+/** Parse already-unzipped native ZIP entries; validate every declared asset. `partial` treats absent media entries as missing (cut-off download); `recordings` are separately downloaded files ({name,bytes}) matched to the manifest by file name, then unique exact size. */
+export async function readProjectArchive(files,{partial=false,recordings=[]}={}){
  if(!files['research-weave-archive.json'])return null;
  const manifest=JSON.parse(strFromU8(files['research-weave-archive.json']));
  if(manifest.format!=='research-weave-project-archive'||manifest.version!==1)throw Error('Unsupported project ZIP version.');
  if(!files['research-weave.json'])throw Error('Project ZIP is missing its native project snapshot.');
  const state=JSON.parse(strFromU8(files['research-weave.json'])).state;
  validateState(state);
- const mediaFiles=[];
+ const mediaFiles=[],missingMedia=[],warnings=[];
  const assetKeys=new Set(),assetPaths=new Set(),referenceKeys=new Set(projectMediaReferences(state).map(ref=>ref.key));
  if(typeof manifest.includeMedia!=='boolean'||!Array.isArray(manifest.assets))throw Error('Project ZIP contains an invalid media manifest.');
  if(!manifest.includeMedia&&manifest.assets.length)throw Error('Transcript-only project ZIP cannot contain declared media assets.');
@@ -86,13 +89,50 @@ export async function readProjectArchive(files){
   assetKeys.add(asset.key);
   assetPaths.add(asset.path);
   const bytes=files[asset.path];
-  if(!bytes)throw Error('Project ZIP is missing media: '+asset.path);
+  if(!bytes){if(partial){missingMedia.push({key:asset.key,path:asset.path,name:asset.name,byteLength:asset.byteLength});continue;}throw Error('Project ZIP is missing media: '+asset.path);}
   if(bytes.byteLength!==asset.byteLength||await digest(bytes)!==asset.sha256)throw Error('Project ZIP media integrity check failed: '+asset.path);
   mediaFiles.push({originalKey:asset.key,bytes,name:asset.name,type:asset.type,documentIds:asset.documentIds||[]});
  }
- if(manifest.includeMedia)for(const ref of projectMediaReferences(state))if(!assetKeys.has(ref.key))throw Error('Project ZIP is missing requested media: '+ref.key);
+ if(manifest.includeMedia&&!partial)for(const ref of projectMediaReferences(state))if(!assetKeys.has(ref.key))throw Error('Project ZIP is missing requested media: '+ref.key);
+ // Study downloads list large recordings for separate download; match supplied files by name, then by unique exact size.
+ const listed=(Array.isArray(manifest.recordings)?manifest.recordings:[]).filter(r=>r?.delivery==='separate'),used=new Set();
+ for(const item of listed){
+  if(typeof item.key!=='string'||!referenceKeys.has(item.key)||assetKeys.has(item.key)||typeof item.path!=='string'||!item.path.startsWith('Media/')||item.path.split('/').some(part=>part==='..')||!Number.isSafeInteger(item.size))throw Error('Project ZIP lists an invalid separately downloaded recording.');
+  assetKeys.add(item.key);
+  const sized=recordings.filter(f=>!used.has(f)&&f.bytes?.byteLength===item.size),file=sized.find(f=>baseName(f.name)===baseName(item.path))||(sized.length===1&&listed.filter(r=>r.size===item.size).length===1?sized[0]:null);
+  if(!file){missingMedia.push({key:item.key,path:item.path,name:item.name,byteLength:item.size,separate:true});continue;}
+  if(item.checksums?.sha256&&await digest(file.bytes)!==item.checksums.sha256)throw Error('Recording '+file.name+' does not match the checksum listed in the study ZIP.');
+  used.add(file);mediaFiles.push({originalKey:item.key,bytes:file.bytes,name:item.name||file.name,type:item.type,documentIds:item.documentIds||[]});
+ }
+ const unmatched=recordings.filter(f=>!used.has(f)).map(f=>f.name),notSelected=missingMedia.filter(m=>m.separate);
+ if(notSelected.length)warnings.push('Recordings listed in this study ZIP but not selected with it: '+notSelected.map(m=>baseName(m.path)+' ('+megabytes(m.byteLength)+')').join(', ')+'. They are treated as missing, as in a transcript-only import. Select the ZIP together with its recording files to restore them.');
+ if(unmatched.length)warnings.push('These selected files do not match any recording listed in the ZIP (by name and exact size) and were not imported: '+unmatched.join(', ')+'.');
  const metadata=files['research-weave-project-metadata.json']?JSON.parse(strFromU8(files['research-weave-project-metadata.json'])):{};
- return {state,mediaFiles,metadata,manifest};
+ return {state,mediaFiles,metadata,manifest,missingMedia,warnings};
+}
+
+/** Salvage a study ZIP that stopped before its central directory (see recoverZipEntries). Opens the native snapshot when it arrived complete; every incomplete or never-received entry is named and its media treated as missing. */
+export async function readRecoveredProjectArchive(recovery,{recordings=[]}={}){
+ const files=recovery.files,cut=recovery.incomplete[0],lead='This ZIP is truncated: it has no end-of-central-directory record, so the download stopped after '+recovery.totalBytes.toLocaleString('en')+' bytes'+(cut?.path?' inside '+cut.path:'')+'.';
+ if(!files['research-weave.json'])throw Error(lead+' Its native project snapshot (research-weave.json) did not arrive complete, so nothing can be imported. Download the study again.');
+ let scope=null;try{scope=files['EXPORT-SCOPE.json']?JSON.parse(strFromU8(files['EXPORT-SCOPE.json'])):null;}catch{}
+ let native=await readProjectArchive(files,{partial:true,recordings});
+ if(!native){
+  // Older downloads wrote their manifest last. Their Media/NNNN- paths follow the snapshot's reference order.
+  const state=JSON.parse(strFromU8(files['research-weave.json'])).state;validateState(state);
+  const refs=projectMediaReferences(state),mediaFiles=[];
+  for(const [path,bytes] of Object.entries(files)){const n=/^Media\/(\d{4})-(.+)$/.exec(path),ref=n&&refs[Number(n[1])-1];if(ref)mediaFiles.push({originalKey:ref.key,bytes,name:n[2],type:ref.type,documentIds:ref.documentIds||[]});}
+  let metadata={};try{metadata=files['research-weave-project-metadata.json']?JSON.parse(strFromU8(files['research-weave-project-metadata.json'])):{};}catch{}
+  native={state,mediaFiles,metadata,manifest:{format:'research-weave-project-archive'},missingMedia:refs.filter(ref=>!mediaFiles.some(m=>m.originalKey===ref.key)).map(ref=>({key:ref.key,name:ref.name})),warnings:[]};
+ }
+ const expected=Array.isArray(scope?.entries)?scope.entries:[],incomplete=recovery.incomplete.map(e=>({path:e.path,receivedBytes:e.receivedBytes,expectedBytes:e.expectedBytes??expected.find(x=>x.path===e.path)?.byteLength,reason:e.reason})),never=expected.filter(e=>!files[e.path]&&!incomplete.some(i=>i.path===e.path)).map(e=>e.path);
+ const warnings=[lead,'Recovered '+recovery.complete.length+' complete entr'+(recovery.complete.length===1?'y':'ies')+', including the native project snapshot shown here.',...incomplete.map(e=>'Incomplete: '+(e.path||'an unnamed entry')+' ('+e.receivedBytes.toLocaleString('en')+(e.expectedBytes!=null?' of '+e.expectedBytes.toLocaleString('en'):'')+' bytes received). '+e.reason)];
+ if(never.length)warnings.push('Never received: '+never.join(', ')+'.');
+ else if(!scope)warnings.push('This older download did not list its entries in advance; anything written after the incomplete entry (usually research-weave-archive.json, EXPORT-SCOPE.json and README.txt) is missing.');
+ const lost=native.missingMedia.filter(m=>!m.separate);
+ if(lost.length)warnings.push('Recordings not restored: '+lost.map(m=>m.path?baseName(m.path):m.name||m.key).join(', ')+'. They are treated as missing, as in a transcript-only import; reattach them later.');
+ if(native.mediaFiles.length)warnings.push(native.mediaFiles.length+' recording'+(native.mediaFiles.length===1?'':'s')+' arrived complete and checked, and will be restored.');
+ return {...native,warnings:[...warnings,...native.warnings],recovery:{truncated:true,receivedBytes:recovery.totalBytes,recovered:recovery.complete.map(e=>e.path),incomplete,neverReceived:never}};
 }
 
 /** Rebind verified uploaded bytes without treating them as a replacement recording. */
