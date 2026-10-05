@@ -45,3 +45,10 @@ export function codeSummaryTable(rows){return [['Code','Applications','Distinct 
 export function sourceSummaryTable(rows){return [['Source','Applications','Distinct excerpts','Codes used','Coders','Covered codepoints','Eligible codepoints','Coverage %'],...rows.map(r=>[r.source.name,r.applications,r.excerpts,r.codes,r.coders.join('; '),r.codepoints,r.total,Number(r.percent.toFixed(1))])];}
 /** Grid as rows of text: each cell lists its quotations separated by a blank line. */
 export function codeTextGridTable(grid){const first=grid.transposed?'Case / source':'Code';return [[first,...grid.columns.map(c=>c.name)],...grid.rows.map(r=>[r.code?.name??r.column.name,...r.cells.map(c=>c.quotations.map(q=>q.text).join('\n\n'))])];}
+
+/** For each coding, the other codes applied to overlapping text in the same source (by code id, sorted by name). */
+export function coCodesIndex(s,all){
+ const by=new Map();for(const c of all){if(c.deletedAt||c.status==='needs_review'||(c.kind&&c.kind!=='text'))continue;if(!by.has(c.documentId))by.set(c.documentId,[]);by.get(c.documentId).push(c);}
+ const names=new Map(s.codes.map(c=>[c.id,c.name]));
+ return coding=>{if(coding.kind&&coding.kind!=='text')return [];const ids=new Set();for(const o of by.get(coding.documentId)||[])if(o.codeId!==coding.codeId&&Math.max(o.start,coding.start)<Math.min(o.end,coding.end))ids.add(o.codeId);return [...ids].map(id=>({id,name:names.get(id)||id})).sort((a,b)=>a.name.localeCompare(b.name));};
+}

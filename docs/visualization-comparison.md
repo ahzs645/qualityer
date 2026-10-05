@@ -36,12 +36,8 @@ Pass date: 2026-10-04. The reference repositories were inspected at the same pin
 
 ## Further gaps found in the 2026-10-05 review
 
-Items below were found by a reviewer reading the reference sources and grepping `src`; they are not implemented.
+Found by a reviewer reading the reference sources and grepping `src`. Since implemented: the code × case text grid (Analysis workbench → Code × case text), per-code and per-source statistics (Code summary), case-attribute filters (workbench, Visualizations and Explore) and an "Also coded with" column in coding result tables. Still open:
 
-- Case/source × code grid showing the coded text in each cell, with transpose and hide-empty (QualCoder `report_comparison_table.py`).
-- Attribute filters reused across every chart and report (QualCoder `report_attributes.py`).
-- Per-code and per-source summary statistics (QualCoder `report_code_summary.py`, `report_file_summary.py`).
-- Co-occurring codes beside each query result (QualCoder `report_codes.py`).
 - Shared accessible heatmap ramp with a readable-text helper (Sift `lib/ramp.ts`).
 - Per-code AI outlier ("consistency") check (AQDA `AiPanel.tsx`).
 - Interactive HTML export of charts (QualCoder Plotly).

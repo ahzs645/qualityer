@@ -79,3 +79,5 @@
 }
 @media(max-width:800px),(pointer:coarse){main summary{padding-block:12px;min-height:44px;box-sizing:border-box}}
 .network-threshold{margin:8px 0}.network-threshold input[type=range]{display:block;width:100%;max-width:420px;min-height:44px}
+.aw-evidence,.page,main{min-width:0}.aw-evidence{max-width:100%;overflow-x:auto}.coding-table td:nth-child(5){min-width:140px;max-width:260px}
+.table-wrap,.aw-evidence{position:relative}

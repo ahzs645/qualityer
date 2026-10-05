@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {emptyState} from '../src/domain.mjs';
 import {scopedCodings} from '../src/analysis-domain.mjs';
-import {codeSummary,sourceSummary,codeTextGrid,transposeGrid,codeTextGridTable,codeSummaryTable} from '../src/code-summary.mjs';
+import {coCodesIndex,codeSummary,sourceSummary,codeTextGrid,transposeGrid,codeTextGridTable,codeSummaryTable} from '../src/code-summary.mjs';
 
 function study(){
  const s=emptyState('Synthetic');
@@ -41,4 +41,11 @@ test('code by case grid holds distinct quotations, hides empty rows and transpos
 test('codings outside every case are counted rather than silently dropped',()=>{
  const s=study();s.cases=[s.cases[0]];const rows=scopedCodings(s,{status:'all'});
  assert.equal(codeTextGrid(s,rows,{group:'case'}).uncased,1);
+});
+
+test('co-occurring codes list other codes on overlapping text only',()=>{
+ const s=study(),co=coCodesIndex(s,s.codings);
+ assert.deepEqual(co(s.codings[0]).map(c=>c.id),['c2']);
+ assert.deepEqual(co(s.codings[2]).map(c=>c.id),['c1']);
+ assert.deepEqual(co(s.codings[3]),[]);
 });
