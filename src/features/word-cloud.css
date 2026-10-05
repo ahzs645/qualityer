@@ -1,0 +1,51 @@
+.wc{display:grid;gap:12px;margin:16px 0;min-width:0;max-width:100%}
+.wc-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;font-size:.875rem;min-width:0}
+.wc-controls>label{display:grid;gap:5px;flex:1 1 130px;min-width:0;max-width:220px;color:#4a5f6b}
+.wc-controls>label.checkbox{display:flex;align-items:center;gap:7px;flex:0 1 auto}
+.wc-controls>.wc-include{max-width:300px;flex-basis:180px}
+.wc-controls input[type=number]{max-width:none}
+.wc-controls input[type=color]{width:100%;min-width:60px}
+.wc-controls>p{flex:1 1 100%}
+.wc-views{display:inline-flex;flex:0 0 auto}
+.wc-views button{border-radius:0;margin-left:-1px}.wc-views button:first-child{border-radius:6px 0 0 6px;margin-left:0}.wc-views button:last-child{border-radius:0 6px 6px 0}
+.wc-views button[aria-pressed=true]{background:#e2eff1;border-color:#7fa9b3;color:#163b4e;font-weight:600}
+.wc-more{border:1px solid var(--line,#dfe6eb);border-radius:7px;padding:8px 12px;background:#fff}
+.wc-more summary{cursor:pointer;font-size:.875rem;color:#304c5b}
+.wc-more[open] summary{margin-bottom:10px}
+.wc-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.8125rem}
+.wc-chips button{padding:3px 9px;border-radius:999px;font-size:.8125rem}
+.wc-chips b{font-weight:400}
+.wc-stage{min-width:0;width:100%}
+.wc-canvas{position:relative;border:1px solid #d5dfe5;border-radius:8px;overflow:hidden;width:100%}
+.wc-canvas svg{display:block;width:100%;height:auto;user-select:none}
+.wc-canvas text{cursor:pointer;outline:none;transition:opacity .12s}
+.wc-canvas text:hover{opacity:.72}
+.wc-canvas text:focus-visible{text-decoration:underline;opacity:.85;stroke:currentColor;stroke-width:.4px}
+.wc-light .wc-canvas text:focus-visible{paint-order:stroke;stroke:#ffd54d;stroke-width:3px}
+.wc-dark .wc-canvas text:focus-visible{paint-order:stroke;stroke:#5a4a00;stroke-width:3px}
+.wc-tip{position:absolute;transform:translate(-50%,calc(-100% - 6px));pointer-events:none;background:#14232c;color:#fff;border-radius:6px;padding:6px 9px;font-size:.8125rem;display:grid;gap:2px;max-width:min(260px,90%);box-shadow:0 3px 10px rgba(0,0,0,.25);z-index:2;white-space:nowrap}
+.wc-tip small{color:#c9d6dd;white-space:normal}
+.wc-dark .wc-tip{background:#f3f6f8;color:#14232c}.wc-dark .wc-tip small{color:#3d5260}
+.wc-empty{padding:40px 16px;text-align:center;color:#6e7f8b}
+.wc-dark .wc-empty{color:#c3ccd5}
+.wc-bars{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.wc-bars li{display:flex;gap:6px;align-items:center;min-width:0}
+.wc-bar{flex:1;min-width:0;display:grid;grid-template-columns:minmax(80px,1.2fr) minmax(60px,3fr) 52px;gap:10px;align-items:center;text-align:left;border-color:transparent;background:transparent;padding:5px 8px}
+.wc-bar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wc-bar i{display:block;height:14px;background:#edf2f5;border-radius:3px;overflow:hidden}
+.wc-bar b{display:block;height:100%;background:#1f747c}
+.wc-bar strong{text-align:right;font-variant-numeric:tabular-nums}
+.wc-bars li>button.subtle{padding:4px 8px;font-size:.75rem}
+.wc-table{width:100%;border-collapse:collapse;font-size:.875rem}
+.wc-table caption{text-align:left;padding:8px 10px}
+.wc-table th,.wc-table td{padding:6px 10px;border-top:1px solid #e6edf1;text-align:left}
+.wc-table td:nth-child(3),.wc-table td:nth-child(4){font-variant-numeric:tabular-nums}
+.wc-table .quote-link{font-family:inherit;font-size:.9375rem;margin:0;line-height:1.4}
+.wc-table button.subtle{padding:3px 8px;font-size:.75rem}
+.wc .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.wc-legend{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.8125rem}
+.wc-legend li{display:flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere}
+.wc-legend i{width:12px;height:12px;border-radius:3px;flex:0 0 auto}
+.wc-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.wc-caption,.wc-dropped{overflow-wrap:anywhere}
+@media(max-width:600px){.wc-controls>label,.wc-controls>.wc-include{flex:1 1 140px;max-width:none}.wc-views{flex:1 1 100%}.wc-views button{flex:1}.wc-bar{grid-template-columns:minmax(70px,1fr) minmax(40px,1.4fr) 40px;gap:6px}}
