@@ -64,3 +64,5 @@
 .modal>header{position:sticky;top:-25px;background:#fff;z-index:3;padding-top:4px}
 @media(max-width:650px){.modal>header{top:-18px}.modal .coding-table thead{display:none}.modal .coding-table tr{display:block;border-bottom:1px solid var(--line);padding:10px 0}.modal .coding-table td{display:block;border:0;padding:3px 0;min-width:0!important;max-width:none!important}}
 @media(pointer:coarse){:where(button,select,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color])){min-height:44px}:where(.icon-button){min-width:44px;justify-content:center}:where(input[type=checkbox],input[type=radio]){width:22px;height:22px}}
+.filterbar label.search{flex-direction:row;align-items:center;gap:7px}
+.filterbar label.search input{flex:1;min-width:0}
