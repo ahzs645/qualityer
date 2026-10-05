@@ -29,19 +29,20 @@ Pass date: 2026-10-04. The reference repositories were inspected at the same pin
 ## Remaining visualization gaps
 
 - Pie charts (deliberately omitted, see above).
-- Plotly-style interactive zoom/pan on every chart; only the concept map, network and waveform zoom.
-- Word cloud and the shared image export use separate SVG-to-PNG helpers; they could be unified.
+- Zoom/pan covers the charts that use the shared export buttons (conversation sequence, theme treemap, theme connections, code hierarchy, code relationships), plus the concept map, co-occurrence network and waveform, which have their own. The word cloud, coverage profile and distance box plots zoom only in their interactive HTML export.
+- No dark theme: the app ignores `prefers-color-scheme`.
 - Long-recording peaks are generated in the browser on first view; there is still no server-side decoder.
 - Coder attributes travel in the native snapshot, not in REFI-QDA XML.
 
 ## Further gaps found in the 2026-10-05 review
 
-Found by a reviewer reading the reference sources and grepping `src`. Since implemented: the code × case text grid (Analysis workbench → Code × case text), per-code and per-source statistics (Code summary), case-attribute filters (workbench, Visualizations and Explore) and an "Also coded with" column in coding result tables. Still open:
+Found by a reviewer reading the reference sources and grepping `src`. Since implemented: the code × case text grid (Analysis workbench → Code × case text), per-code and per-source statistics (Code summary), case-attribute filters (workbench, Visualizations and Explore) and an "Also coded with" column in coding result tables. Also implemented in the 2026-10-05 follow-up:
 
-- Shared accessible heatmap ramp with a readable-text helper (Sift `lib/ramp.ts`).
-- Per-code AI outlier ("consistency") check (AQDA `AiPanel.tsx`).
-- Interactive HTML export of charts (QualCoder Plotly).
-- Full stop-word lists per language (QualCoder `stopwords.py`); Qualityer ships English, French and Spanish.
+- **Shared heatmap ramp** (`src/heatmap-ramp.mjs`): eight luminance-ordered bands, text colour chosen by measured contrast (every band ≥ 4.5:1, tested), zero cells unshaded, and a banded legend under the workbench matrix, Explore coding matrix, co-occurrence heatmap and coder-overlap heatmap. The coder-attribute viridis heatmap now picks its text colour by contrast too.
+- **Per-code consistency check**: the server already had embedding-centroid outliers and model consistency review (`server/research-ai.mjs`, AI review panel), so the reviewer's "not found" was wrong. Added a provider-free workbench tab, *Code consistency* (`src/consistency-check.mjs`): TF-IDF vectors, leave-one-out centroid cosine and the same cutoff rule as the embedding review. It works offline and in the Pages demo, explains each flag with missing/distinctive words, and can send flagged excerpts to the processing desk as review tasks. It compares vocabulary only, not meaning.
+- **Interactive HTML export** (`src/chart-zoom.mjs`): a self-contained page with zoom, pan, keyboard control, hover details from each mark's title and a data table. It makes no network requests, and scripts, event handlers, `javascript:` links and `foreignObject` are stripped from the embedded SVG. Available on every shared-export chart, the word clouds and the co-occurrence network.
+- **Stop lists** (`src/stopwords.mjs`): English, French, Spanish, German, Italian, Portuguese, Dutch, Swedish, Danish, Norwegian, Finnish, Polish, Russian, Turkish and Indonesian, with apostrophes normalised. They are conservative function-word lists, not the full stopwords-iso sets. Explore word frequency now has a language selector.
+- **Hierarchy treemap** uses balanced binary splits, so a flat codebook no longer renders as thin slices.
 
 ## Verification
 

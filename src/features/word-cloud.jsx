@@ -1,5 +1,6 @@
 import {svgToPng} from '../image-export.mjs';
 import {interactiveChartHtml} from '../chart-zoom.mjs';
+import {ChartZoomControls} from './chart-export.jsx';
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {layoutCloud,cloudSVG,cloudCaption,clampWords,sourceLegend,dominantSource,backgroundColor,SCALES,ROTATIONS,SCHEMES,MIN_WORDS,MAX_WORDS} from '../word-cloud.mjs';
 import {download} from '../exchange.js';
@@ -10,7 +11,7 @@ function clean(x={}){return {view:pick(x.view,['cloud','bars','table'],'cloud'),
 function load(key){try{return clean({...DEFAULTS,...JSON.parse(localStorage.getItem(key)||'{}')});}catch{return clean(DEFAULTS);}}
 let ruler;function measure(text,size,weight){try{ruler??=document.createElement('canvas').getContext('2d');ruler.font=weight+' '+size+'px '+FONT;return ruler.measureText(text).width;}catch{return Array.from(text).length*size*.6;}}
 /** Reusable word cloud with Cloud / Bars / Table views. rows: [{term,count,hits:[{documentId}]}] sorted or not; onWord(term,row) opens concordance. */
-export function WordCloud({rows=[],sources=[],onWord,scope='',stopList='',ngram,onNgram,storageKey='research-weave.word-cloud',filename='word-cloud',title='Word cloud'}){const [o,setO]=useState(()=>load(storageKey)),[hidden,setHidden]=useState([]),[include,setInclude]=useState(''),[tip,setTip]=useState(null),[width,setWidth]=useState(0),[note,setNote]=useState(''),box=useRef(null);const set=(k,v)=>setO(x=>clean({...x,[k]:v}));
+export function WordCloud({rows=[],sources=[],onWord,scope='',stopList='',ngram,onNgram,storageKey='research-weave.word-cloud',filename='word-cloud',title='Word cloud'}){const cloudSvg=useRef(null);const [o,setO]=useState(()=>load(storageKey)),[hidden,setHidden]=useState([]),[include,setInclude]=useState(''),[tip,setTip]=useState(null),[width,setWidth]=useState(0),[note,setNote]=useState(''),box=useRef(null);const set=(k,v)=>setO(x=>clean({...x,[k]:v}));
  useEffect(()=>{try{localStorage.setItem(storageKey,JSON.stringify(o));}catch{}},[o,storageKey]);
  useEffect(()=>{const el=box.current;if(!el)return;const update=()=>setWidth(Math.max(280,Math.round(el.clientWidth/20)*20));update();if(typeof ResizeObserver==='undefined')return;const ob=new ResizeObserver(update);ob.observe(el);return ()=>ob.disconnect();},[]);
  const includeList=useMemo(()=>[...new Set(include.toLocaleLowerCase().split(/[\s,;]+/).filter(Boolean))],[include]),names=useMemo(()=>new Map(sources.map(d=>[d.id,d.name])),[sources]);
@@ -43,7 +44,7 @@ export function WordCloud({rows=[],sources=[],onWord,scope='',stopList='',ngram,
   {hidden.length>0&&<div className="wc-chips" aria-label="Hidden words"><span>Hidden:</span>{hidden.map(t=><button type="button" key={t} onClick={()=>setHidden(h=>h.filter(x=>x!==t))} aria-label={'Restore '+t}>{t} <b aria-hidden="true">×</b></button>)}<button type="button" className="subtle" onClick={()=>setHidden([])}>Restore all</button></div>}
   <div ref={box} className="wc-stage">
    {o.view==='cloud'&&layout&&<div className="wc-canvas" style={{background:backgroundColor(o.background)}} onMouseLeave={()=>setTip(null)}>
-    <svg viewBox={'0 0 '+layout.width+' '+layout.height} role="group" aria-label={title+'. Larger words appear more often. Press Enter to read the concordance, Delete to hide a word. The Table view lists exact counts.'} style={{fontFamily:FONT}}>
+    <svg ref={cloudSvg} viewBox={'0 0 '+layout.width+' '+layout.height} role="group" aria-label={title+'. Larger words appear more often. Press Enter to read the concordance, Delete to hide a word. The Table view lists exact counts.'} style={{fontFamily:FONT}}>
      {layout.words.map(w=><text key={w.term} x={w.x} y={w.y} fontSize={w.size} fontWeight={w.weight} fill={w.color} textAnchor="middle" dominantBaseline="central" transform={w.rotate?'rotate('+w.rotate+' '+w.x+' '+w.y+')':undefined} tabIndex={0} role="button" aria-label={w.term+', '+w.count+' occurrences in '+w.sources+' source'+(w.sources===1?'':'s')} onClick={e=>e.shiftKey||e.altKey||e.metaKey||e.ctrlKey?hide(w.term):open(w)} onKeyDown={e=>key(e,w)} onMouseEnter={()=>setTip(w)} onFocus={()=>setTip(w)} onBlur={()=>setTip(null)}>{w.term}</text>)}
     </svg>
     {tip&&<div className="wc-tip" aria-hidden="true" style={{left:(tip.x/layout.width*100)+'%',top:(Math.max(0,tip.y-tip.height/2)/layout.height*100)+'%'}}><strong>{tip.term}</strong><span>{tip.count} occurrence{tip.count===1?'':'s'} · {tip.sources} source{tip.sources===1?'':'s'}</span><small>Enter opens concordance · Shift-click or Delete hides</small></div>}
@@ -55,6 +56,6 @@ export function WordCloud({rows=[],sources=[],onWord,scope='',stopList='',ngram,
   {o.view==='cloud'&&layout?.dropped.length>0&&<p className="muted wc-dropped">{layout.dropped.length} less frequent term{layout.dropped.length===1?'':'s'} did not fit: {layout.dropped.slice(0,12).map(d=>d.term).join(', ')}{layout.dropped.length>12?'…':''}. Lower the largest size or max words, or use the Bars or Table view to see them all.</p>}
   {legend.length>0&&<ul className="wc-legend" aria-label="Main source colours">{legend.map(l=><li key={l.id}><i style={{background:l.color}}/>{l.name}</li>)}</ul>}
   {o.scheme==='sequential'&&<p className="muted">{o.reverse?'Lower':'Higher'}-contrast colours mark more frequent terms.</p>}
-  <div className="wc-actions"><button type="button" onClick={exportSVG} disabled={!layout?.words.length}>Export SVG</button><button type="button" onClick={exportPNG} disabled={!layout?.words.length}>Export PNG</button><button type="button" onClick={exportHTML} disabled={!layout?.words.length}>Export interactive HTML</button>{note&&<span className="error">{note}</span>}</div>
+  <div className="wc-actions">{o.view!=='bars'&&o.view!=='table'&&layout?.words.length>0&&<ChartZoomControls target={cloudSvg}/>}<button type="button" onClick={exportSVG} disabled={!layout?.words.length}>Export SVG</button><button type="button" onClick={exportPNG} disabled={!layout?.words.length}>Export PNG</button><button type="button" onClick={exportHTML} disabled={!layout?.words.length}>Export interactive HTML</button>{note&&<span className="error">{note}</span>}</div>
   <p className="muted wc-caption">{caption}</p>
  </section>;}
