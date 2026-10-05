@@ -87,3 +87,4 @@ td.heat-cell button,.matrix-cell.heat-cell{background:transparent;color:inherit}
 .consistency-score{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.consistency-bar{display:inline-block;width:120px;height:8px;background:#e6edf1;border-radius:4px;overflow:hidden}.consistency-bar i{display:block;height:100%;background:#35788f}
 .media-player-error{margin:6px 0 0;color:#8a3b1e;font-size:14px}.media-missing{margin:10px 0}
 .media-missing{padding:6px 12px;margin:6px 0}.media-missing summary{cursor:pointer;min-height:32px;display:list-item}
+.stripes-note{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
