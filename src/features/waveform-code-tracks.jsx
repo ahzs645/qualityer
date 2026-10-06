@@ -42,7 +42,7 @@ export function WaveformCodeTracks({document:doc,state,mediaRef,duration,peaks,p
    </div></div>
   </div>
   {!layout.lanes.length&&<p className="wave-tracks-note">No recording codings on this recording yet.{canWrite&&onRange?' Add a code track, then drag across it to propose a range.':''}</p>}
-  <p className="wave-tracks-note">{canWrite?'Click a segment to play from its start. Drag its edges, or focus it and use arrow keys (Shift for the end), to retime. Drag empty track space to propose a new range for that code.':'Read only: your project role cannot change recording codings. Click a segment to play from its start.'}{layout.approximate?' Transcript lane positions are approximate from transcript turn timing and cannot be edited here.':''}{layout.otherRecording?' '+layout.otherRecording+' recording coding(s) belong to an earlier recording and are not shown.':''}</p>
+  <p className="wave-tracks-note">{canWrite?'Click a segment to move the playhead to its start. Drag its edges, or focus it and use arrow keys (Shift for the end), to retime. Drag empty track space to propose a new range for that code.':'Read only: your project role cannot change recording codings. Click a segment to move the playhead to its start.'}{layout.approximate?' Transcript lane positions are approximate from transcript turn timing and cannot be edited here.':''}{layout.otherRecording?' '+layout.otherRecording+' recording coding(s) belong to an earlier recording and are not shown.':''}</p>
   {status&&<p className="wave-tracks-note" role="status">{status}</p>}
  </section>;
 }

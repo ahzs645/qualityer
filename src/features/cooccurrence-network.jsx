@@ -1,3 +1,4 @@
+import {interactiveChartHtml} from '../chart-zoom.mjs';
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {cooccurrenceNetwork,networkSVG,networkGraphML,communityRows,networkCaption,edgeWidth,nodeRadius,NETWORK_NOTE,ISOLATED_COLOR} from '../cooccurrence-network.mjs';
 import {safeCSV} from '../report-export.mjs';
@@ -18,7 +19,7 @@ export function CooccurrenceNetwork({matrix,codes,measure,minWeight,scope,onEdge
  const toggle=id=>setFocus(f=>f===id?null:id);
  if(!network.nodes.length)return <p className="muted">No co-occurring codes in this scope.</p>;
  return <div className="con-network">
-  <div className="con-actions"><button onClick={()=>download('code-cooccurrence-network.svg',networkSVG(exportNetwork(),{scope}),'image/svg+xml')}>Export network SVG</button><button onClick={()=>download('code-cooccurrence-communities.graphml',networkGraphML(network),'application/xml')}>Export GraphML with communities</button><button onClick={()=>download('code-communities.csv',safeCSV(communityRows(network,{scope})),'text/csv')}>Export community CSV</button></div>
+  <div className="con-actions"><button onClick={()=>download('code-cooccurrence-network.svg',networkSVG(exportNetwork(),{scope}),'image/svg+xml')}>Export network SVG</button><button onClick={()=>{const n=exportNetwork();download('code-cooccurrence-network.html',interactiveChartHtml({title:'Code co-occurrence network',caption:scope,svg:networkSVG(n,{scope}),rows:[['Code A','Code B','Weight'],...(n.edges||n.links||[]).map(e=>[n.nodes.find(x=>x.id===(e.source??e.a))?.name??e.source??e.a,n.nodes.find(x=>x.id===(e.target??e.b))?.name??e.target??e.b,e.weight??e.count??''])]}),'text/html');}}>Export network HTML</button><button onClick={()=>download('code-cooccurrence-communities.graphml',networkGraphML(network),'application/xml')}>Export GraphML with communities</button><button onClick={()=>download('code-communities.csv',safeCSV(communityRows(network,{scope})),'text/csv')}>Export community CSV</button></div>
   <p className="muted con-caption">{networkCaption(network,{scope})}. {NETWORK_NOTE} Edge width follows the measure; node size follows weighted degree. Select a code to highlight its neighbours, or a line to open its passages.</p>
   <div className="con-canvas" ref={ref}><svg viewBox={`0 0 ${width} ${height}`} role="group" aria-label={'Co-occurrence network of '+network.nodes.length+' codes in '+network.communities.filter(c=>!c.isolated).length+' clusters'}>
    <rect width={width} height={height} fill="transparent" onClick={()=>setFocus(null)}/>
