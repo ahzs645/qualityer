@@ -5,7 +5,8 @@ import type { Snapshot } from '../lib/types'
 import { closeProject, restoreSnapshot, snapshot, useProject } from '../lib/store'
 import { deleteProject, deleteSnapshot, listSnapshots } from '../lib/storage'
 import { coders, download, slug } from '../lib/model'
-import { setProject } from '../lib/actions'
+import { mergeCoderFile, setProject } from '../lib/actions'
+import { migrate } from '../lib/migrate'
 import { Button, Field, IconButton, Input, PageHeader, Panel, Textarea } from '../components/ui'
 
 export const Route = createFileRoute('/p/$projectId/settings')({ component: Settings })
@@ -15,6 +16,7 @@ function Settings() {
   const navigate = useNavigate()
   const [snaps, setSnaps] = useState<Omit<Snapshot, 'data'>[]>([])
   const [label, setLabel] = useState('')
+  const [mergeMsg, setMergeMsg] = useState<string | null>(null)
   const refresh = () => listSnapshots(project.id).then(setSnaps)
   useEffect(() => { void refresh() }, [project.id, project.updatedAt])
 
@@ -42,6 +44,26 @@ function Settings() {
             {(id) => <Input id={id} defaultValue={project.coder} onBlur={blur('coder')} className="max-w-xs" list="coder-names" />}
           </Field>
           <datalist id="coder-names">{coders(project).map((c) => <option key={c} value={c} />)}</datalist>
+        </Panel>
+
+        <Panel title="Team">
+          <p className="text-sm text-muted">
+            Coding as a team without a server: each person codes their own copy under their own coder name, exports “Whole study (JSON)”, and one person merges the copies here. Use <span className="font-medium text-ink">Only my coding</span> in the Code view to code blind, then compare under Review → Agreement and settle differences together.
+          </p>
+          <label className="mt-3 inline-flex">
+            <span className="inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-md border border-line-strong bg-surface px-3 text-sm font-medium hover:bg-sunken">Merge a colleague's copy…</span>
+            <input type="file" accept=".json" hidden onChange={async (e) => {
+              const f = e.target.files?.[0]
+              e.target.value = ''
+              if (!f) return
+              try {
+                const other = migrate(JSON.parse(await f.text()))
+                const r = await mergeCoderFile(other)
+                setMergeMsg(`Merged ${r.codings} codings${r.coders.length ? ` by ${r.coders.join(', ')}` : ''}, ${r.memos} memos, ${r.candidates} candidate codes${r.codes ? `, ${r.codes} new codes` : ''}.${r.skippedSources.length ? ` Skipped sources whose text differs: ${r.skippedSources.join(', ')}.` : ''}`)
+              } catch (err) { setMergeMsg(err instanceof Error ? err.message : String(err)) }
+            }} />
+          </label>
+          {mergeMsg && <p className="mt-2 rounded-md bg-accent-soft px-3 py-2 text-sm text-accent">{mergeMsg}</p>}
         </Panel>
 
         <Panel title="Snapshots" bodyClass="p-0">

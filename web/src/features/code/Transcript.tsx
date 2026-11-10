@@ -1,8 +1,9 @@
-import { memo, useEffect, useImperativeHandle, useMemo, useRef, type Ref } from 'react'
+import { memo, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { BookmarkCheck } from 'lucide-react'
 import type { Code, Coding, Segment, Source } from '../../lib/types'
-import { formatTime, segmentsOf, speakerOf } from '../../lib/model'
+import { formatTime, rawSpeakers, segmentsOf, speakerOf } from '../../lib/model'
+import { setTurnSpeaker } from '../../lib/actions'
 import { cx } from '../../components/ui'
 
 export interface TranscriptHandle {
@@ -113,6 +114,7 @@ export function Transcript(props: Props) {
                 {...props}
                 seg={seg}
                 turnCodings={turnCodings}
+                index={v.index}
                 isRead={source.readTo >= seg.end}
                 flashHere={!!flash && flash.start < seg.end && flash.end > seg.start}
                 speaking={props.nowOffset != null && props.nowOffset >= seg.start && props.nowOffset < seg.end}
@@ -127,13 +129,14 @@ export function Transcript(props: Props) {
 
 interface TurnProps extends Props {
   seg: Segment
+  index: number
   turnCodings: Coding[]
   isRead: boolean
   flashHere: boolean
   speaking: boolean
 }
 
-const Turn = memo(function Turn({ source, seg, turnCodings, codes, focusCodeId, active, dimInterviewer, find, isRead, flashHere, speaking, onClickCoding, onMarkRead, onSeekTime }: TurnProps) {
+const Turn = memo(function Turn({ source, seg, index, turnCodings, codes, focusCodeId, active, dimInterviewer, find, isRead, flashHere, speaking, onClickCoding, onMarkRead, onSeekTime }: TurnProps) {
   const speaker = seg.speaker ? speakerOf(source, seg.speaker) : undefined
   const role = speaker?.role ?? (seg.speaker ? 'unknown' : null)
   const dim = dimInterviewer && role === 'interviewer'
@@ -161,9 +164,7 @@ const Turn = memo(function Turn({ source, seg, turnCodings, codes, focusCodeId, 
       <div className="min-w-0">
         {(label || seg.time != null) && (
           <div className="mb-0.5 flex items-center gap-2 text-xs select-none">
-            {label && (
-              <span className={cx('font-semibold', role === 'interviewer' ? 'text-muted' : 'text-ink')}>{label}</span>
-            )}
+            {(label || (source.segments && seg.time != null)) && <SpeakerMenu source={source} index={index} raw={seg.speaker} label={label || 'Unlabelled'} muted={role === 'interviewer' || !label} />}
             {role && role !== 'unknown' && role !== 'respondent' && role !== label?.toLowerCase() && <span className="text-faint">{role}</span>}
             {seg.time != null && (onSeekTime ? (
               <button type="button" onClick={() => onSeekTime(seg.time!)} className="rounded px-1 font-mono text-faint hover:bg-accent-soft hover:text-accent" title="Play from here" aria-label={`Play from ${formatTime(seg.time)}`}>
@@ -299,4 +300,36 @@ function buildFragments(text: string, seg: Segment, codings: Coding[], active: {
     })
   }
   return out
+}
+
+/** Speaker label that doubles as a menu to reassign the turn. */
+function SpeakerMenu({ source, index, raw, label, muted }: { source: Source; index: number; raw: string; label: string; muted: boolean }) {
+  const [open, setOpen] = useState(false)
+  const [custom, setCustom] = useState('')
+  const options = rawSpeakers(source)
+  return (
+    <span className="relative">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} title="Change who is speaking"
+        className={cx('rounded px-0.5 font-semibold hover:bg-sunken', muted ? 'text-muted' : 'text-ink')}>
+        {label}
+      </button>
+      {open && (
+        <span className="absolute top-full left-0 z-30 mt-1 block w-56 rounded-md border border-line bg-surface p-1 font-sans shadow-xl" role="menu" onMouseLeave={() => setOpen(false)}>
+          <span className="block px-2 py-1 text-[11px] text-faint">This turn is spoken by…</span>
+          {options.map((o) => {
+            const sp = speakerOf(source, o)
+            return (
+              <button key={o} type="button" role="menuitem" onClick={() => { if (o !== raw) setTurnSpeaker(source.id, index, o); setOpen(false) }}
+                className={cx('flex w-full items-center justify-between rounded px-2 py-1 text-left text-[13px] hover:bg-sunken', o === raw && 'font-semibold')}>
+                <span>{sp?.name || o}</span>{sp?.name && <span className="text-[11px] text-faint">{o}</span>}
+              </button>
+            )
+          })}
+          <form className="mt-1 flex gap-1 border-t border-line p-1" onSubmit={(e) => { e.preventDefault(); if (custom.trim()) { setTurnSpeaker(source.id, index, custom.trim()); setOpen(false); setCustom('') } }}>
+            <input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="New speaker" className="h-7 min-w-0 flex-1 rounded border border-line-strong bg-surface px-1.5 text-xs" />
+          </form>
+        </span>
+      )}
+    </span>
+  )
 }

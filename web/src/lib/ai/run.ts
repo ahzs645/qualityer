@@ -79,7 +79,7 @@ export interface RunScope {
 function prepare(project: Project, scope: RunScope, provider: Provider, model: string, effort: string) {
   const codes = selectCodes(project, scope.groupIds)
   const { toKey, toId } = codeKeys(codes)
-  const system = systemPrompt(project, codes, toKey, examplesFrom(project, codes))
+  const system = systemPrompt(project, codes, toKey, examplesFrom(project, codes, scope.sourceIds))
   const sources = project.sources.filter((s) => scope.sourceIds.includes(s.id))
   const windows = sources.flatMap((s) => windowsFor(s, scope.options))
   const run: AiRun = {

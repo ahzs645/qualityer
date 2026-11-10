@@ -276,12 +276,16 @@ export function verifyWindow(project: Project, source: Source, w: Window, raw: R
   return { codings, rejected, repaired }
 }
 
-/** One coded example per code from accepted human codings, to anchor the prompt (one-shot). */
-export function examplesFrom(project: Project, codes: Code[]) {
+/**
+ * One coded example per code from accepted human codings, to anchor the prompt
+ * (one-shot). Examples never come from the sources being coded, so a pass on an
+ * already-coded interview stays a fair calibration test.
+ */
+export function examplesFrom(project: Project, codes: Code[], excludeSourceIds: string[] = []) {
   const sources = indexBy(project.sources)
   const out = new Map<string, string>()
   for (const c of codes) {
-    const hit = project.codings.find((k) => k.codeId === c.id && k.status === 'accepted' && !k.origin && k.end - k.start < 400)
+    const hit = project.codings.find((k) => k.codeId === c.id && k.status === 'accepted' && !k.origin && k.end - k.start < 400 && !excludeSourceIds.includes(k.sourceId))
     const s = hit && sources.get(hit.sourceId)
     if (s && hit) out.set(c.id, s.text.slice(hit.start, hit.end).replace(/\s+/g, ' ').trim())
   }

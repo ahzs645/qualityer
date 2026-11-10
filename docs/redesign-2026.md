@@ -69,19 +69,53 @@ These were checked locally. The files are private and not committed.
 - **Markdown interview guide**: all core and module questions imported, with prompts, probes and timings.
 - **Research Weave v1 complete-study export** (about 300 MB zip): the archive has no central directory, because it ends partway through the second recording. The importer reads entries from their local headers and recovered the study in about 2 seconds, including Framework themes, cell summaries and word-level confidence.
 
-## Not yet ported
+## Added in the second pass
 
-These features exist in the original app but are not in `web/` yet:
+- **Audio.** Attach a recording to a source; it is stored in the browser alongside the project.
+  - A player bar shows the waveform, decoded at 3 kHz, with coded passages as coloured tracks under it.
+  - Clicking a turn's timestamp seeks to it. The turn being spoken is highlighted, and "Follow audio" scrolls the transcript along.
+  - Ctrl+Space plays and pauses; Ctrl+←/→ skip five seconds; resuming steps back 1.5 s.
+  - A passage can be played on its own and marked "wording checked against audio".
+  - Word timings from Whisper JSON and v1 exports give word-level seeking.
+- **Speakers.** Every turn's speaker label is a menu for reassigning the turn, including unlabelled machine-transcript turns. For "[mm:ss]  Speaker" transcripts the header text is rewritten and every anchor moves with it.
+- **AI assist** (`web/src/lib/ai/`). See the next section.
+- **Review queue.** Suggestions come in priority order: repaired quotes first, then conflicts with human coding, then the least confident.
+  - *One by one* takes keys A / X / Space / ← / Backspace (undo), and a suggestion can be accepted as a different code.
+  - *In bulk* groups by code with a confidence filter.
+  - An accepted AI coding keeps the AI as coder and records the reviewer, so calibration and provenance stay honest.
+- **Imports and exports.**
+  - New source formats: Word, ODT, PDF (text layer only), HTML and RTF.
+  - REFI-QDA `.qdpx` projects can be imported and exported.
+  - Requal, RQDA, AQDA and Taguette databases go through the original app's importers, loaded on demand.
+- **Explore.** Four views:
+  - a co-occurrence heatmap, where clicking a cell retrieves the passages with both codes;
+  - a code network;
+  - code lanes per group across each interview;
+  - frequent words in coded passages.
+- **Team without a server.** Each coder codes their own copy and exports it. Settings → *Merge a colleague's copy* takes a set union of codings, memos and candidate codes, merging only sources whose text is identical and taking a snapshot first. *Only my coding* hides other coders' work for blind coding.
+- **Source inspector redesign.** Collapsible sections, speaker cards with role pills and share of talk, and attributes that wrap and can be edited in place.
 
-- **Audio:** playback synchronised with the transcript, waveform display, and the transcription and diarisation service (`services/transcription`).
-- **AI:** generating code suggestions. The review queue for suggested codings exists; nothing produces suggestions yet.
-- **Team server:** sync, permissions and blind coding (Cloudflare Worker + D1/R2). The rebuild stores projects in the browser only.
-- **Other imports and exports:** PDF/OCR, DOCX/ODT/EPUB/RTF and REFI-QDA project (`.qdpx`) imports, and the Requal, RQDA, AQDA and Taguette importers.
-- **Visualisations:** co-occurrence network, word cloud, coverage profiles.
+## AI-assisted coding pipeline
 
-Recommended next steps, in order:
+Design decisions are drawn from published LLM-coding studies (Xiao et al. 2023; LACA; QualiGPT; MindCoder; ChatQDA) and labelling tools (Prodigy, Argilla, INCEpTION):
 
-1. Audio playback with click-to-seek and an "audio verified" mark on quotes.
-2. Few-shot AI suggestions grounded in the codebook definitions, the guide and the research question, with mandatory verbatim-quote checks.
-3. Server sync, reusing the existing Worker.
-4. The remaining importers, through a shared adapter from the old state format.
+1. **Windows of speaker turns.** Turns get stable IDs (`T0042`). Each request holds 8–40 *target* turns, which may be coded, plus a few read-only *context* turns. Interviewer turns are skipped when roles are set.
+2. **The codebook is the prompt.** It carries each code's definition, include/exclude criteria and an anchor example, plus the research question, method, interview guide and codebook rules. The one-shot example comes from a human coding in another source, never from the source being coded, so a pass over an already-coded interview is a fair calibration. Codes are shown as `C001…`, never internal IDs. On the Claude API the system prompt is cached.
+3. **Structured output.** Each suggestion is `{code_id, turn_id, quote, rationale, criterion, confidence: high|medium|low}`.
+4. **Local quote verification.** The browser normalises case, whitespace and quote marks and looks for the quote inside the named turn:
+   - an exact match becomes a suggestion;
+   - a near match (≥ 88% similarity) becomes a suggestion flagged *repaired*;
+   - an ellipsis, an unknown code, a non-target turn or a missing quote is rejected and logged.
+5. **Run manifest.** Each pass records the model, prompt hash, codebook hash, options, windows, failures, repairs and rejected quotes.
+6. **Three ways to run it:**
+   - the Claude API from the browser (structured outputs, refusal fallback where the model supports it);
+   - a local OpenAI-compatible model such as Ollama, so transcripts stay on the machine;
+   - an **agent hand-off**: download a prompt pack, have an agent or other tool answer it, import the answers. The same checks run on import.
+7. **Calibration before trust.** AI assist compares a pass with a human coder per code group (character-level overlap and κ), including unreviewed suggestions. Lean on suggestions only for groups that reach your human-to-human agreement.
+
+## Still not ported
+
+- **Speech-to-text and diarisation inside the app.** Transcribe with Whisper / WhisperX / noScribe and import the JSON. `services/transcription` is unchanged.
+- **OCR for scanned PDFs and images.**
+- **Server sync and permissions.** The Cloudflare Worker + D1/R2 backend has not been reconnected.
+- **Older Framework-continuation and consent-scope records from v1.** These are not imported.

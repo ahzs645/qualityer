@@ -25,6 +25,10 @@ src/
   lib/store.ts       open project, undo/redo, autosave, snapshots
   lib/storage.ts     IndexedDB
   lib/importers.ts   QualCoder, Research Weave v1, SRT/VTT, Whisper JSON, Markdown guides
+  lib/player.ts      shared audio player and recording storage
+  lib/ai/            AI coding pipeline (windows, prompt, quote checks, providers)
+  lib/refi.ts        REFI-QDA .qdpx import/export
+  lib/documents.ts   Word/ODT/PDF/HTML/RTF text extraction
   lib/demo.ts        synthetic demo study
 ```
 

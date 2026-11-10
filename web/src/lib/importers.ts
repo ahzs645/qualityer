@@ -49,19 +49,25 @@ export function parseSubtitles(raw: string) {
 }
 
 interface WhisperWord { word?: string; text?: string; start?: number; probability?: number; score?: number }
-interface WhisperSegment { text?: string; start?: number; speaker?: string; words?: WhisperWord[] }
+interface WhisperSegment { text?: string; start?: number; end?: number; speaker?: string; words?: WhisperWord[] }
 
 /** Whisper / WhisperX / noScribe-style JSON with `segments`. */
 export function parseWhisperJSON(json: { segments?: WhisperSegment[] }) {
   const segments: Segment[] = []
   let text = ''
+  let lastEnd: number | null = null
   for (const s of json.segments ?? []) {
     const body = (s.text ?? '').trim()
     if (!body) continue
     const speaker = s.speaker ?? ''
     const prev = segments[segments.length - 1]
     let start: number
-    if (prev && prev.speaker === speaker) { text += ' '; start = text.length; prev.end = start + body.length }
+    // Same speaker continues the turn; unlabelled speech is grouped into paragraphs,
+    // breaking at sentence ends or long pauses.
+    const pause = s.start != null && lastEnd != null ? s.start - lastEnd : 0
+    lastEnd = s.end ?? lastEnd
+    const joinUnlabelled = !speaker && prev && !prev.speaker && text.length - prev.start + body.length <= 700 && !(pause > 2)
+    if (prev && prev.speaker === speaker && (speaker || joinUnlabelled)) { text += ' '; start = text.length; prev.end = start + body.length }
     else {
       if (text) text += '\n\n'
       start = text.length

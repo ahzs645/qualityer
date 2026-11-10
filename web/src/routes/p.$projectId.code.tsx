@@ -1,6 +1,6 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { BookOpen, ChevronDown, ChevronRight, FileText, Search, Users, Waves, X } from 'lucide-react'
+import { BookOpen, ChevronDown, ChevronRight, EyeOff, FileText, Search, Users, Waves, X } from 'lucide-react'
 import { useProject } from '../lib/store'
 import { GROUP_KIND_LABEL, groupOf, indexBy, offsetAt, orderedCodes, snapToWords } from '../lib/model'
 import { seek, skip, toggle, usePlayer } from '../lib/player'
@@ -38,6 +38,7 @@ function CodeView() {
   const [find, setFind] = useState('')
   const [showTree, setShowTree] = useState(false)
   const [follow, setFollow] = useState(true)
+  const [onlyMine, setOnlyMine] = useState(false)
   const transcript = useRef<TranscriptHandle>(null)
   const { time, playing } = usePlayer((s) => ({ time: s.time, playing: s.playing }))
   const nowOffset = useMemo(() => (source?.media && (playing || time > 0) ? offsetAt(source, time) : null), [source, time, playing])
@@ -52,8 +53,8 @@ function CodeView() {
   const codes = useMemo(() => indexBy(project.codes), [project.codes])
 
   const codings = useMemo(
-    () => (source ? project.codings.filter((c) => c.sourceId === source.id && (c.status === 'accepted' || c.status === 'suggested')) : []),
-    [project.codings, source],
+    () => (source ? project.codings.filter((c) => c.sourceId === source.id && (c.status === 'accepted' || c.status === 'suggested') && (!onlyMine || c.coder === project.coder)) : []),
+    [project.codings, source, onlyMine, project.coder],
   )
 
   const jump = useCallback((span: Span) => {
@@ -156,6 +157,15 @@ function CodeView() {
               <X size={13} />
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setOnlyMine((v) => !v)}
+            className={cx('inline-flex h-8.5 items-center gap-1.5 rounded-md border px-2.5 text-sm', onlyMine ? 'border-accent/40 bg-accent-soft text-accent' : 'border-line-strong text-muted')}
+            aria-pressed={onlyMine}
+            title={`Hide other coders' work (blind coding). You are coding as ${project.coder}.`}
+          >
+            <EyeOff size={14} /> <span className="hidden sm:inline">Only my coding</span>
+          </button>
           {source.media && (
             <button
               type="button"

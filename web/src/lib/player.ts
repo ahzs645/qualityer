@@ -76,23 +76,27 @@ function readDuration(url: string) {
   })
 }
 
-/** Min/max peaks for a waveform. Skipped for very large files, which would exhaust memory to decode. */
-async function computePeaks(blob: Blob): Promise<number[] | null> {
-  if (blob.size > MAX_DECODE_BYTES || typeof AudioContext === 'undefined') return null
+/**
+ * Peaks for a waveform. Decodes at 3 kHz, which is plenty for a picture and keeps
+ * a two-hour interview to roughly 100–200 MB while decoding. Very long or
+ * undecodable recordings simply get a plain timeline.
+ */
+async function computePeaks(blob: Blob, duration: number | null): Promise<number[] | null> {
+  if (typeof OfflineAudioContext === 'undefined' || blob.size > MAX_DECODE_BYTES * 4 || (duration ?? 0) > 3 * 3600) return null
   try {
-    const ctx = new AudioContext()
+    const ctx = new OfflineAudioContext(1, 1, 3000)
     const buf = await ctx.decodeAudioData(await blob.arrayBuffer())
-    void ctx.close()
     const data = buf.getChannelData(0)
     const step = Math.max(1, Math.floor(data.length / PEAK_COUNT))
     const peaks: number[] = []
     for (let i = 0; i < data.length; i += step) {
       let max = 0
       const end = Math.min(data.length, i + step)
-      for (let j = i; j < end; j += 8) { const v = Math.abs(data[j]); if (v > max) max = v }
+      for (let j = i; j < end; j++) { const v = Math.abs(data[j]); if (v > max) max = v }
       peaks.push(Math.round(max * 1000) / 1000)
     }
-    return peaks
+    const top = Math.max(0.01, ...peaks)
+    return peaks.map((p) => Math.round((p / top) * 1000) / 1000)
   } catch {
     return null
   }
@@ -102,7 +106,7 @@ export async function storeRecording(projectId: string, sourceId: string, file: 
   const url = URL.createObjectURL(file)
   const duration = await readDuration(url)
   URL.revokeObjectURL(url)
-  const peaks = await computePeaks(file)
+  const peaks = await computePeaks(file, duration)
   await putMedia(projectId, sourceId, { blob: file, peaks })
   return { name: file.name, type: file.type || 'audio/mp4', size: file.size, duration }
 }

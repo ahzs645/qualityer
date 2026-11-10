@@ -1,5 +1,5 @@
 import type { Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, Project, Source } from './types'
-import { PALETTE, editSource, findCorrections, now, uid } from './model'
+import { PALETTE, editSource, findCorrections, now, segmentsOf, uid } from './model'
 import { snapshot, store, update } from './store'
 
 const patch = <T extends { id: string }>(items: T[], id: string, change: Partial<T>) =>
@@ -267,4 +267,79 @@ export function setExtraction(codingId: string, values: Record<string, string>) 
 
 export function setProject(label: string, change: Partial<Project>) {
   update(label, (p) => ({ ...p, ...change }))
+}
+
+/**
+ * Reassigns one turn to another speaker. Sources with supplied segments are
+ * updated directly; parsed transcripts have their "[mm:ss]  Speaker" header
+ * rewritten, with every anchor moved to match.
+ */
+export function setTurnSpeaker(sourceId: string, turnIndex: number, speaker: string) {
+  update('reassign speaker', (p) => {
+    const s = p.sources.find((x) => x.id === sourceId)
+    if (!s) return p
+    if (s.segments?.length) {
+      return { ...p, sources: p.sources.map((x) => (x.id !== sourceId ? x : { ...x, segments: x.segments!.map((g, i) => (i === turnIndex ? { ...g, speaker } : g)) })) }
+    }
+    const seg = segmentsOf(s)[turnIndex]
+    if (!seg) return p
+    const nl = s.text.indexOf('\n', seg.start)
+    const header = s.text.slice(seg.start, nl < 0 ? seg.end : nl)
+    const m = /^(\[[\d:.]+\]\s+)(.+)$/.exec(header)
+    if (!m) return p
+    return editSource(p, sourceId, [{ start: seg.start + m[1].length, end: seg.start + header.length, text: speaker }])
+  })
+}
+
+// Team merge -----------------------------------------------------------------
+
+export interface MergeReport { codings: number; memos: number; candidates: number; codes: number; skippedSources: string[]; coders: string[] }
+
+/**
+ * Merges a colleague's exported copy of the same study: a set union of their
+ * codings, memos, candidate codes, extraction rows and any new codes. Only
+ * sources whose text is identical are merged, so anchors stay valid; others are
+ * reported. A snapshot is taken first.
+ */
+export async function mergeCoderFile(other: Project): Promise<MergeReport> {
+  const p = store.state.project
+  if (!p) throw new Error('No project open')
+  const mine = new Map(p.sources.map((s) => [s.id, s]))
+  const byText = new Map(p.sources.map((s) => [s.text, s]))
+  const sourceMap = new Map<string, string>()
+  const skipped: string[] = []
+  for (const s of other.sources ?? []) {
+    const match = mine.get(s.id)?.text === s.text ? mine.get(s.id) : byText.get(s.text)
+    if (match) sourceMap.set(s.id, match.id)
+    else skipped.push(s.name)
+  }
+  const codeIds = new Set(p.codes.map((c) => c.id))
+  const newCodes = (other.codes ?? []).filter((c) => !codeIds.has(c.id))
+  const have = new Set(p.codings.map((c) => c.id))
+  const sig = new Set(p.codings.map((c) => `${c.sourceId}|${c.codeId}|${c.start}|${c.end}|${c.coder}`))
+  const codings = (other.codings ?? []).flatMap((c) => {
+    const sid = sourceMap.get(c.sourceId)
+    if (!sid || have.has(c.id)) return []
+    const k = `${sid}|${c.codeId}|${c.start}|${c.end}|${c.coder}`
+    if (sig.has(k)) return []
+    sig.add(k)
+    return [{ ...c, sourceId: sid }]
+  })
+  const memoIds = new Set(p.memos.map((m) => m.id))
+  const memos = (other.memos ?? []).filter((m) => !memoIds.has(m.id) && (!m.sourceId || sourceMap.has(m.sourceId))).map((m) => ({ ...m, sourceId: m.sourceId ? sourceMap.get(m.sourceId)! : null }))
+  const candIds = new Set(p.candidates.map((c) => c.id))
+  const candidates = (other.candidates ?? []).filter((c) => !candIds.has(c.id)).map((c) => ({ ...c, sourceId: c.sourceId ? sourceMap.get(c.sourceId) ?? null : null }))
+  const codingIds = new Set(codings.map((c) => c.id))
+  const extractions = (other.extractions ?? []).filter((e) => codingIds.has(e.codingId))
+  await snapshot(`Before merging ${other.coder || 'a colleague'}'s copy`)
+  update(`merge ${codings.length} codings from a colleague`, (proj) => ({
+    ...proj,
+    codes: [...proj.codes, ...newCodes],
+    codings: [...proj.codings, ...codings],
+    memos: [...proj.memos, ...memos],
+    candidates: [...proj.candidates, ...candidates],
+    extractions: [...proj.extractions, ...extractions],
+    aiRuns: [...proj.aiRuns, ...(other.aiRuns ?? []).filter((r) => !proj.aiRuns.some((x) => x.id === r.id))],
+  }))
+  return { codings: codings.length, memos: memos.length, candidates: candidates.length, codes: newCodes.length, skippedSources: skipped, coders: [...new Set(codings.map((c) => c.coder))] }
 }
