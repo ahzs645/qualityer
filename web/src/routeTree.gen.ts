@@ -19,6 +19,7 @@ import { Route as PProjectIdExploreRouteImport } from './routes/p.$projectId.exp
 import { Route as PProjectIdFrameworkRouteImport } from './routes/p.$projectId.framework'
 import { Route as PProjectIdGuideRouteImport } from './routes/p.$projectId.guide'
 import { Route as PProjectIdMemosRouteImport } from './routes/p.$projectId.memos'
+import { Route as PProjectIdReportRouteImport } from './routes/p.$projectId.report'
 import { Route as PProjectIdRetrieveRouteImport } from './routes/p.$projectId.retrieve'
 import { Route as PProjectIdReviewRouteImport } from './routes/p.$projectId.review'
 import { Route as PProjectIdSettingsRouteImport } from './routes/p.$projectId.settings'
@@ -74,6 +75,11 @@ const PProjectIdMemosRoute = PProjectIdMemosRouteImport.update({
   path: '/memos',
   getParentRoute: () => PProjectIdRoute,
 } as any)
+const PProjectIdReportRoute = PProjectIdReportRouteImport.update({
+  id: '/report',
+  path: '/report',
+  getParentRoute: () => PProjectIdRoute,
+} as any)
 const PProjectIdRetrieveRoute = PProjectIdRetrieveRouteImport.update({
   id: '/retrieve',
   path: '/retrieve',
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/framework': typeof PProjectIdFrameworkRoute
   '/p/$projectId/guide': typeof PProjectIdGuideRoute
   '/p/$projectId/memos': typeof PProjectIdMemosRoute
+  '/p/$projectId/report': typeof PProjectIdReportRoute
   '/p/$projectId/retrieve': typeof PProjectIdRetrieveRoute
   '/p/$projectId/review': typeof PProjectIdReviewRoute
   '/p/$projectId/settings': typeof PProjectIdSettingsRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByTo {
   '/p/$projectId/framework': typeof PProjectIdFrameworkRoute
   '/p/$projectId/guide': typeof PProjectIdGuideRoute
   '/p/$projectId/memos': typeof PProjectIdMemosRoute
+  '/p/$projectId/report': typeof PProjectIdReportRoute
   '/p/$projectId/retrieve': typeof PProjectIdRetrieveRoute
   '/p/$projectId/review': typeof PProjectIdReviewRoute
   '/p/$projectId/settings': typeof PProjectIdSettingsRoute
@@ -137,6 +145,7 @@ export interface FileRoutesById {
   '/p/$projectId/framework': typeof PProjectIdFrameworkRoute
   '/p/$projectId/guide': typeof PProjectIdGuideRoute
   '/p/$projectId/memos': typeof PProjectIdMemosRoute
+  '/p/$projectId/report': typeof PProjectIdReportRoute
   '/p/$projectId/retrieve': typeof PProjectIdRetrieveRoute
   '/p/$projectId/review': typeof PProjectIdReviewRoute
   '/p/$projectId/settings': typeof PProjectIdSettingsRoute
@@ -155,6 +164,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/framework'
     | '/p/$projectId/guide'
     | '/p/$projectId/memos'
+    | '/p/$projectId/report'
     | '/p/$projectId/retrieve'
     | '/p/$projectId/review'
     | '/p/$projectId/settings'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/framework'
     | '/p/$projectId/guide'
     | '/p/$projectId/memos'
+    | '/p/$projectId/report'
     | '/p/$projectId/retrieve'
     | '/p/$projectId/review'
     | '/p/$projectId/settings'
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/framework'
     | '/p/$projectId/guide'
     | '/p/$projectId/memos'
+    | '/p/$projectId/report'
     | '/p/$projectId/retrieve'
     | '/p/$projectId/review'
     | '/p/$projectId/settings'
@@ -270,6 +282,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PProjectIdMemosRouteImport
       parentRoute: typeof PProjectIdRoute
     }
+    '/p/$projectId/report': {
+      id: '/p/$projectId/report'
+      path: '/report'
+      fullPath: '/p/$projectId/report'
+      preLoaderRoute: typeof PProjectIdReportRouteImport
+      parentRoute: typeof PProjectIdRoute
+    }
     '/p/$projectId/retrieve': {
       id: '/p/$projectId/retrieve'
       path: '/retrieve'
@@ -309,6 +328,7 @@ interface PProjectIdRouteChildren {
   PProjectIdFrameworkRoute: typeof PProjectIdFrameworkRoute
   PProjectIdGuideRoute: typeof PProjectIdGuideRoute
   PProjectIdMemosRoute: typeof PProjectIdMemosRoute
+  PProjectIdReportRoute: typeof PProjectIdReportRoute
   PProjectIdRetrieveRoute: typeof PProjectIdRetrieveRoute
   PProjectIdReviewRoute: typeof PProjectIdReviewRoute
   PProjectIdSettingsRoute: typeof PProjectIdSettingsRoute
@@ -324,6 +344,7 @@ const PProjectIdRouteChildren: PProjectIdRouteChildren = {
   PProjectIdFrameworkRoute: PProjectIdFrameworkRoute,
   PProjectIdGuideRoute: PProjectIdGuideRoute,
   PProjectIdMemosRoute: PProjectIdMemosRoute,
+  PProjectIdReportRoute: PProjectIdReportRoute,
   PProjectIdRetrieveRoute: PProjectIdRetrieveRoute,
   PProjectIdReviewRoute: PProjectIdReviewRoute,
   PProjectIdSettingsRoute: PProjectIdSettingsRoute,

@@ -1,11 +1,11 @@
 import { Link, Outlet, createFileRoute, redirect, useRouterState } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
-  BookOpen, Bot, CheckCircle2, ClipboardList, FileText, Grid3x3, Highlighter, LayoutDashboard, Menu, Moon,
+  BookOpen, Bot, CheckCircle2, ClipboardList, FileOutput, FileText, Grid3x3, Highlighter, LayoutDashboard, Menu, Moon,
   Network, NotebookPen, Redo2, Search, Settings, Sun, SunMoon, Undo2, X,
 } from 'lucide-react'
 import { openProject, redo, undo, useProject, useStore } from '../lib/store'
-import { checkRules } from '../lib/model'
+import { checkRules, pendingSuggestions } from '../lib/model'
 import { applyTheme, getTheme, type Theme } from '../lib/theme'
 import { Logo } from '../components/Logo'
 import { IconButton, cx } from '../components/ui'
@@ -31,6 +31,7 @@ const NAV = [
   { to: '/p/$projectId/explore', label: 'Explore', icon: Network },
   { to: '/p/$projectId/retrieve', label: 'Retrieve', icon: Search },
   { to: '/p/$projectId/memos', label: 'Memos', icon: NotebookPen },
+  { to: '/p/$projectId/report', label: 'Report', icon: FileOutput },
 ] as const
 
 function ProjectLayout() {
@@ -40,7 +41,7 @@ function ProjectLayout() {
   }))
   const [navOpen, setNavOpen] = useState(false)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const issues = useMemo(() => checkRules(project).length + project.codings.filter((c) => c.status === 'suggested').length, [project])
+  const issues = useMemo(() => checkRules(project).length + pendingSuggestions(project).length, [project])
 
   useEffect(() => setNavOpen(false), [pathname])
   useEffect(() => {

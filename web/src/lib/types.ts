@@ -94,6 +94,50 @@ export interface AiRun {
   /** Prompt code key (C001…) → code id, so responses can be matched later. */
   codeKeys: Record<string, string>
   options: { windowSize: number; contextTurns: number; respondentOnly: boolean; effort: string }
+  /**
+   * A pass kept only to compare the model with a human coder (calibration).
+   * Its unreviewed suggestions stay out of the review queue and the counts.
+   */
+  comparisonOnly?: boolean
+}
+
+/**
+ * One reviewer decision on a coding, kept so the study can show what the AI
+ * proposed, what a person changed and why. Rejecting a suggestion deletes the
+ * coding, so this log is the only record of it afterwards.
+ */
+export type ReviewAction = 'accept' | 'confirm' | 'recode' | 'reject' | 'add' | 'remove' | 'respan' | 'restrict' | 'unrestrict'
+
+export interface ReviewEvent {
+  id: ID
+  at: string
+  by: string
+  action: ReviewAction
+  sourceId: ID
+  start: number
+  end: number
+  codingId: ID | null
+  /** The code the decision was about (for `recode`, the code before the change). */
+  codeId: ID | null
+  toCodeId?: ID | null
+  /** True when the coding came from an AI pass. */
+  ai: boolean
+  runId?: string | null
+  confidence?: number | null
+  /** Who had accepted it before this decision, e.g. an assistant's bulk review. */
+  priorReviewer?: string | null
+  note?: string
+}
+
+/** A passage the respondent asked to keep off the record. Quotes that touch it are withheld from reports and exports. */
+export interface Restriction {
+  id: ID
+  sourceId: ID
+  start: number
+  end: number
+  reason: string
+  by: string
+  at: string
 }
 
 export interface Speaker {
@@ -256,6 +300,8 @@ export interface Project {
   extractions: Extraction[]
   candidates: Candidate[]
   aiRuns: AiRun[]
+  reviewLog: ReviewEvent[]
+  restricted: Restriction[]
   importNotes: string[]
 }
 

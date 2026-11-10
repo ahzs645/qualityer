@@ -141,7 +141,7 @@ export function Kbd({ children }: { children: ReactNode }) {
 
 export function Tabs<T extends string>({ value, onChange, items }: { value: T; onChange: (v: T) => void; items: { value: T; label: ReactNode }[] }) {
   return (
-    <div role="tablist" className="flex gap-1 border-b border-line">
+    <div role="tablist" className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line [scrollbar-width:none]">
       {items.map((i) => (
         <button
           key={i.value}
@@ -150,7 +150,7 @@ export function Tabs<T extends string>({ value, onChange, items }: { value: T; o
           aria-selected={value === i.value}
           onClick={() => onChange(i.value)}
           className={cx(
-            '-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium',
+            'inline-flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap',
             value === i.value ? 'border-accent text-ink' : 'border-transparent text-muted hover:text-ink',
           )}
         >

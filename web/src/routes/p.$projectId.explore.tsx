@@ -2,39 +2,45 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 import type { Project } from '../lib/types'
 import { useProject } from '../lib/store'
-import { excerpt, indexBy, orderedCodes } from '../lib/model'
+import { indexBy, orderedCodes } from '../lib/model'
 import { cooccurrence, topTerms } from '../lib/explore'
-import { Empty, PageHeader, Panel, Select, Swatch, Tabs, cx } from '../components/ui'
+import { Empty, PageHeader, Panel, Select, Tabs, cx } from '../components/ui'
+import { InterviewMap } from '../features/explore/InterviewMap'
+import { Compare } from '../features/explore/Compare'
+import { Profile } from '../features/explore/Profile'
 
-type Tab = 'cooccurrence' | 'network' | 'density' | 'terms'
+type Tab = 'map' | 'profile' | 'ai' | 'cooccurrence' | 'network' | 'terms'
 
 export const Route = createFileRoute('/p/$projectId/explore')({
   validateSearch: (s: Record<string, unknown>): { tab?: Tab } => ({
-    tab: ['cooccurrence', 'network', 'density', 'terms'].includes(s.tab as string) ? (s.tab as Tab) : undefined,
+    tab: s.tab === 'density' ? 'map' : ['map', 'profile', 'ai', 'cooccurrence', 'network', 'terms'].includes(s.tab as string) ? (s.tab as Tab) : undefined,
   }),
   component: Explore,
 })
 
 function Explore() {
   const project = useProject()
-  const { tab = 'cooccurrence' } = Route.useSearch()
+  const { tab = 'map' } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const accepted = project.codings.filter((c) => c.status === 'accepted')
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-      <PageHeader title="Explore" description="Patterns across the coding: which codes travel together, where they sit in each interview, and the words people use for them. Starting points for memos — not findings on their own." />
+      <PageHeader title="Explore" description="Ways to see the coding whole: each interview laid out from start to end, how each case covers each domain, how the AI's coding compares with a person's, and which codes travel together. Starting points for memos, not findings on their own." />
       <Tabs value={tab} onChange={(t) => navigate({ search: { tab: t } })} items={[
+        { value: 'map', label: 'Interview map' },
+        { value: 'profile', label: 'Cases by domain' },
+        { value: 'ai', label: 'AI and you' },
         { value: 'cooccurrence', label: 'Co-occurrence' },
         { value: 'network', label: 'Network' },
-        { value: 'density', label: 'Across interviews' },
         { value: 'terms', label: 'Words' },
       ]} />
       <div className="mt-4">
-        {accepted.length === 0 ? <Panel><Empty title="Nothing coded yet">Charts appear once passages are coded.</Empty></Panel> : (
+        {tab === 'ai' ? <Compare project={project} /> : accepted.length === 0 ? <Panel><Empty title="Nothing coded yet">Charts appear once passages are coded.</Empty></Panel> : (
           <>
+            {tab === 'map' && <InterviewMap project={project} />}
+            {tab === 'profile' && <Profile project={project} />}
             {tab === 'cooccurrence' && <Heatmap project={project} />}
             {tab === 'network' && <Network project={project} />}
-            {tab === 'density' && <Density project={project} />}
             {tab === 'terms' && <Terms project={project} />}
           </>
         )}
@@ -181,67 +187,6 @@ function Network({ project }: { project: Project }) {
           })}
         </svg>
       </div>
-    </div>
-  )
-}
-
-function Density({ project }: { project: Project }) {
-  const [group, setGroup] = useState('')
-  const [focus, setFocus] = useState('')
-  const codes = useUsedCodes(project, group)
-  const byId = indexBy(project.codes)
-  const shown = new Set((focus ? [focus] : codes.map((c) => c.id)))
-  const [hover, setHover] = useState<{ x: number; text: string } | null>(null)
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        <GroupFilter value={group} onChange={(g) => { setGroup(g); setFocus('') }} />
-        <Select value={focus} onChange={(e) => setFocus(e.target.value)} className="h-8" aria-label="Code">
-          <option value="">All codes in view</option>
-          {codes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </Select>
-        <span className="text-muted">Each bar is one interview, start to end. Click a mark to open it in context.</span>
-      </div>
-      <Panel bodyClass="p-4 space-y-4">
-        {project.sources.map((s) => {
-          const marks = project.codings.filter((c) => c.sourceId === s.id && c.status === 'accepted' && shown.has(c.codeId))
-          const len = Math.max(1, s.text.length)
-          // One lane per code group so overlapping codes stay visible.
-          const lanes = project.groups.map((g) => ({ g, marks: marks.filter((c) => byId.get(c.codeId)?.groupId === g.id) })).filter((l) => l.marks.length)
-          const loose = marks.filter((c) => !project.groups.some((g) => g.id === byId.get(c.codeId)?.groupId))
-          if (loose.length) lanes.push({ g: { id: '_', name: 'Ungrouped', kind: 'other', color: '#888' }, marks: loose })
-          return (
-            <div key={s.id}>
-              <div className="mb-1 flex justify-between text-xs"><span className="font-medium">{s.name}</span><span className="text-muted tabular-nums">{marks.length} codings</span></div>
-              <div className="space-y-0.5" onMouseLeave={() => setHover(null)}>
-                {lanes.map(({ g, marks: lm }) => (
-                  <div key={g.id} className="grid grid-cols-[7rem_1fr] items-center gap-2">
-                    <span className="truncate text-right text-[11px] text-faint" title={g.name}>{g.name}</span>
-                    <div className="relative h-3.5 rounded-sm bg-sunken">
-                      {lm.map((c) => (
-                        <Link
-                          key={c.id}
-                          to="/p/$projectId/code"
-                          params={{ projectId: project.id }}
-                          search={{ source: s.id, at: c.start, end: c.end }}
-                          onMouseEnter={() => setHover({ x: 0, text: `${byId.get(c.codeId)?.name}: “${excerpt(s.text, c.start, c.end).slice(0, 140)}”` })}
-                          className="absolute inset-y-0 rounded-[2px] ring-1 ring-surface hover:z-10 hover:ring-ink"
-                          style={{ left: `${(c.start / len) * 100}%`, width: `max(3px, ${((c.end - c.start) / len) * 100}%)`, background: byId.get(c.codeId)?.color }}
-                          aria-label={byId.get(c.codeId)?.name}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )
-        })}
-        {hover && <p className="rounded-md bg-sunken px-3 py-2 text-xs text-muted" role="status">{hover.text}</p>}
-        <div className="flex flex-wrap gap-x-3 gap-y-1 border-t border-line pt-3 text-xs text-muted">
-          {codes.filter((c) => shown.has(c.id)).slice(0, 30).map((c) => <span key={c.id} className="inline-flex items-center gap-1"><Swatch color={c.color} />{c.name}</span>)}
-        </div>
-      </Panel>
     </div>
   )
 }

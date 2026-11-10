@@ -11,6 +11,8 @@ export interface TranscriptHandle {
 }
 
 interface Props {
+  /** Off-the-record passages in this source, drawn with a dotted underline. */
+  restricted?: { start: number; end: number; reason: string }[]
   source: Source
   codings: Coding[]
   codes: Map<string, Code>
@@ -136,7 +138,8 @@ interface TurnProps extends Props {
   speaking: boolean
 }
 
-const Turn = memo(function Turn({ source, seg, index, turnCodings, codes, focusCodeId, active, dimInterviewer, find, isRead, flashHere, speaking, onClickCoding, onMarkRead, onSeekTime }: TurnProps) {
+const Turn = memo(function Turn({ source, seg, index, turnCodings, codes, focusCodeId, active, dimInterviewer, find, isRead, flashHere, speaking, restricted, onClickCoding, onMarkRead, onSeekTime }: TurnProps) {
+  const offRecord = restricted?.filter((r) => r.start < seg.end && r.end > seg.start) ?? []
   const speaker = seg.speaker ? speakerOf(source, seg.speaker) : undefined
   const role = speaker?.role ?? (seg.speaker ? 'unknown' : null)
   const dim = dimInterviewer && role === 'interviewer'
@@ -205,8 +208,8 @@ const Turn = memo(function Turn({ source, seg, index, turnCodings, codes, focusC
                 key={f.start}
                 data-o={f.start}
                 style={style}
-                className={cx(visible.length > 0 && 'coded', f.uncertain && 'uncertain')}
-                title={f.uncertain ? 'Low ASR confidence — check the audio' : undefined}
+                className={cx(visible.length > 0 && 'coded', f.uncertain && 'uncertain', offRecord.some((r) => r.start < f.end && r.end > f.start) && 'off-record')}
+                title={offRecord.some((r) => r.start < f.end && r.end > f.start) ? 'Off the record: wording is withheld from reports and exports' : f.uncertain ? 'Low ASR confidence — check the audio' : undefined}
                 onClick={visible.length ? (e) => {
                   if (!window.getSelection()?.isCollapsed) return
                   const c = turnCodings.find((x) => visible.includes(x.codeId) && x.start <= f.start && x.end >= f.end)

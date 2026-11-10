@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { Download, Star, X } from 'lucide-react'
 import type { Coding } from '../lib/types'
 import { useProject } from '../lib/store'
-import { coders, download, formatTime, indexBy, orderedCodes, segmentsOf, slug, speakerOf, timeAt, toCSV } from '../lib/model'
+import { coders, download, formatTime, indexBy, orderedCodes, quotable, segmentsOf, slug, speakerOf, timeAt, toCSV } from '../lib/model'
 import { Badge, Button, Empty, Input, PageHeader, Select, Swatch, cx } from '../components/ui'
 
 interface Search { codes?: string; sources?: string; mode?: 'any' | 'all'; attr?: string; coder?: string; key?: boolean; q?: string }
@@ -80,7 +80,7 @@ function Retrieve() {
       rows.push([
         src.name, seg ? speakerOf(src, seg.speaker)?.name || seg.speaker : '', formatTime(timeAt(src, h.start)),
         h.codings.map((c) => codes.get(c.codeId)?.name).join('; '), [...new Set(h.codings.map((c) => c.coder))].join('; '),
-        h.codings.some((c) => c.important) ? 'yes' : '', src.text.slice(h.start, h.end).replace(/\s+/g, ' ').trim(), String(h.start), String(h.end),
+        h.codings.some((c) => c.important) ? 'yes' : '', quotable(project, src, h.start, h.end), String(h.start), String(h.end),
       ])
     }
     download(`${slug(project.name)}-excerpts.csv`, '﻿' + toCSV(rows), 'text/csv')

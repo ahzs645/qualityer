@@ -1,6 +1,7 @@
 import type { Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, Project, Source } from './types'
 import { PALETTE, editSource, findCorrections, now, segmentsOf, uid } from './model'
 import { snapshot, store, update } from './store'
+import { recodeCoding, reviewEvent } from './review'
 
 const patch = <T extends { id: string }>(items: T[], id: string, change: Partial<T>) =>
   items.map((i) => (i.id === id ? { ...i, ...change } : i))
@@ -62,26 +63,39 @@ const accepted = (c: Coding, reviewer: string): Coding =>
   c.origin ? { ...c, status: 'accepted', reviewedBy: reviewer } : { ...c, status: 'accepted', coder: reviewer, reviewedBy: reviewer }
 
 export function acceptSuggestion(id: string) {
-  update('accept suggestion', (p) => ({ ...p, codings: p.codings.map((c) => (c.id === id ? accepted(c, p.coder) : c)) }))
+  acceptSuggestions([id], 'accept suggestion')
 }
 
-export function acceptSuggestions(ids: string[]) {
+export function acceptSuggestions(ids: string[], label = `accept ${ids.length} suggestions`) {
   const set = new Set(ids)
-  update(`accept ${ids.length} suggestions`, (p) => ({
-    ...p, codings: p.codings.map((c) => (set.has(c.id) ? accepted(c, p.coder) : c)),
-  }))
+  update(label, (p) => {
+    const hit = p.codings.filter((c) => set.has(c.id) && c.status === 'suggested')
+    if (!hit.length) return p
+    return {
+      ...p,
+      codings: p.codings.map((c) => (set.has(c.id) ? accepted(c, p.coder) : c)),
+      reviewLog: [...p.reviewLog, ...hit.map((c) => reviewEvent(p, 'accept', c))],
+    }
+  })
 }
 
 /** Accepts a suggestion under a different code (the reviewer's correction). */
 export function acceptAsCode(id: string, codeId: string) {
-  update('accept with a different code', (p) => ({
-    ...p, codings: p.codings.map((c) => (c.id === id ? { ...accepted(c, p.coder), codeId, memo: [c.memo, `Code changed in review from the suggested one.`].filter(Boolean).join('\n') } : c)),
-  }))
+  recodeCoding(id, codeId)
 }
 
 export function rejectSuggestions(ids: string[]) {
   const set = new Set(ids)
-  update(`reject ${ids.length} suggestions`, (p) => ({ ...p, codings: p.codings.filter((c) => !set.has(c.id)) }))
+  update(`reject ${ids.length} suggestions`, (p) => {
+    const gone = p.codings.filter((c) => set.has(c.id))
+    if (!gone.length) return p
+    return {
+      ...p,
+      codings: p.codings.filter((c) => !set.has(c.id)),
+      extractions: p.extractions.filter((e) => !set.has(e.codingId)),
+      reviewLog: [...p.reviewLog, ...gone.map((c) => reviewEvent(p, 'reject', c))],
+    }
+  })
 }
 
 // Sources --------------------------------------------------------------------
@@ -107,6 +121,7 @@ export function removeSource(id: string) {
       codings: p.codings.filter((c) => c.sourceId !== id),
       extractions: p.extractions.filter((e) => !gone.has(e.codingId)),
       coverage: p.coverage.filter((c) => c.sourceId !== id),
+      restricted: p.restricted.filter((r) => r.sourceId !== id),
       memos: p.memos.map((m) => (m.sourceId === id ? { ...m, sourceId: null, start: null, end: null } : m)),
       cases: p.cases.map((c) => ({ ...c, sourceIds: c.sourceIds.filter((s) => s !== id) })),
     }
@@ -340,6 +355,8 @@ export async function mergeCoderFile(other: Project): Promise<MergeReport> {
     candidates: [...proj.candidates, ...candidates],
     extractions: [...proj.extractions, ...extractions],
     aiRuns: [...proj.aiRuns, ...(other.aiRuns ?? []).filter((r) => !proj.aiRuns.some((x) => x.id === r.id))],
+    reviewLog: [...proj.reviewLog, ...(other.reviewLog ?? []).filter((e) => sourceMap.has(e.sourceId) && !proj.reviewLog.some((x) => x.id === e.id)).map((e) => ({ ...e, sourceId: sourceMap.get(e.sourceId)! }))],
+    restricted: [...proj.restricted, ...(other.restricted ?? []).filter((r) => sourceMap.has(r.sourceId) && !proj.restricted.some((x) => x.id === r.id)).map((r) => ({ ...r, sourceId: sourceMap.get(r.sourceId)! }))],
   }))
   return { codings: codings.length, memos: memos.length, candidates: candidates.length, codes: newCodes.length, skippedSources: skipped, coders: [...new Set(codings.map((c) => c.coder))] }
 }

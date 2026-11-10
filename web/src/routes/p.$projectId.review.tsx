@@ -3,16 +3,17 @@ import { useMemo, useState } from 'react'
 import { AlertTriangle, CheckCircle2, Plus, Trash2 } from 'lucide-react'
 import type { Candidate, Correction } from '../lib/types'
 import { update, useProject } from '../lib/store'
-import { agreement, checkRules, coders, describeRule, excerpt, findCorrections, formatTime, indexBy, timeAt, uid } from '../lib/model'
+import { agreement, checkRules, coders, describeRule, excerpt, findCorrections, formatTime, indexBy, pendingSuggestions, timeAt, uid } from '../lib/model'
 import { addCode, applyGlossary, updateCandidate } from '../lib/actions'
 import { Suggestions } from '../features/review/Suggestions'
+import { DecisionLog } from '../features/review/DecisionLog'
 import { Badge, Button, Empty, IconButton, Input, PageHeader, Panel, Select, Swatch, Tabs, Textarea, cx } from '../components/ui'
 
-type Tab = 'rules' | 'suggestions' | 'transcript' | 'candidates' | 'agreement'
+type Tab = 'rules' | 'suggestions' | 'log' | 'transcript' | 'candidates' | 'agreement'
 
 export const Route = createFileRoute('/p/$projectId/review')({
   validateSearch: (s: Record<string, unknown>): { tab?: Tab } => ({
-    tab: ['rules', 'suggestions', 'transcript', 'candidates', 'agreement'].includes(s.tab as string) ? (s.tab as Tab) : undefined,
+    tab: ['rules', 'suggestions', 'log', 'transcript', 'candidates', 'agreement'].includes(s.tab as string) ? (s.tab as Tab) : undefined,
   }),
   component: Review,
 })
@@ -22,15 +23,16 @@ function Review() {
   const { tab = 'rules' } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const violations = useMemo(() => checkRules(project), [project])
-  const suggested = project.codings.filter((c) => c.status === 'suggested').length
+  const suggested = pendingSuggestions(project).length
   const open = project.candidates.filter((c) => c.status === 'open').length
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-      <PageHeader title="Review" description="Everything that needs a researcher's decision: rule issues, suggestions, transcript corrections, candidate codes and coder agreement." />
+      <PageHeader title="Review" description="Everything that needs a researcher's decision: rule issues, AI-coded claims, transcript corrections, candidate codes and coder agreement." />
       <Tabs value={tab} onChange={(t) => navigate({ search: { tab: t } })} items={[
         { value: 'rules', label: <>Rule issues {violations.length > 0 && <Badge tone="bad">{violations.length}</Badge>}</> },
-        { value: 'suggestions', label: <>Suggestions {suggested > 0 && <Badge tone="accent">{suggested}</Badge>}</> },
+        { value: 'suggestions', label: <>AI review {suggested > 0 && <Badge tone="accent">{suggested}</Badge>}</> },
+        { value: 'log', label: 'Decision log' },
         { value: 'transcript', label: 'Transcript corrections' },
         { value: 'candidates', label: <>Candidate codes {open > 0 && <Badge tone="warn">{open}</Badge>}</> },
         { value: 'agreement', label: 'Agreement' },
@@ -38,6 +40,7 @@ function Review() {
       <div className="mt-4">
         {tab === 'rules' && <Rules violations={violations} />}
         {tab === 'suggestions' && <Suggestions />}
+        {tab === 'log' && <DecisionLog />}
         {tab === 'transcript' && <TranscriptQA />}
         {tab === 'candidates' && <Candidates />}
         {tab === 'agreement' && <Agreement />}

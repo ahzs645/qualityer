@@ -45,6 +45,16 @@
   --bad-soft: #fbe7e2;
   --good: #2d7a3e;
   --good-soft: #e3f2e6;
+  /* Chart colours. Evidence grade is an ordered teal ramp (one hue, strong to weak), kept
+     apart from the blue-to-red stance scale it sits beside;
+     stance diverges around a neutral grey; review states use status colours and
+     always carry a label. Validated with the dataviz palette checker. */
+  --viz-e1: #083f3c; --viz-e2: #176f69; --viz-e3: #2f9c92; --viz-e4: #6fc2b8;
+  --viz-s1: #1c5cab; --viz-s2: #86b6ef; --viz-s3: #b5b3aa; --viz-s4: #ef9f9e; --viz-s5: #d03b3b;
+  --viz-pending: #fab219; --viz-unchecked: #ec835a; --viz-checked: #0ca30c; --viz-human: #6250d6;
+  --viz-speaker-1: #2a78d6; --viz-speaker-2: #b5b3aa; --viz-speaker-3: #1baf7a;
+  --viz-grid: #e1e0d9;
+  --viz-seq: #2a78d6;
   color-scheme: light;
 }
 
@@ -67,6 +77,12 @@
     --bad-soft: #3d2019;
     --good: #7ccb8c;
     --good-soft: #1b3221;
+    --viz-e1: #a8e3db; --viz-e2: #5cc0b5; --viz-e3: #23938a; --viz-e4: #14605b;
+    --viz-s1: #86b6ef; --viz-s2: #256abf; --viz-s3: #5f5e58; --viz-s4: #a84848; --viz-s5: #f08a8a;
+    --viz-pending: #fab219; --viz-unchecked: #ec835a; --viz-checked: #0ca30c; --viz-human: #9085e9;
+    --viz-speaker-1: #3987e5; --viz-speaker-2: #5f5e58; --viz-speaker-3: #199e70;
+    --viz-grid: #2c2c2a;
+    --viz-seq: #3987e5;
     color-scheme: dark;
   }
 }
@@ -89,6 +105,12 @@
   --bad-soft: #3d2019;
   --good: #7ccb8c;
   --good-soft: #1b3221;
+  --viz-e1: #a8e3db; --viz-e2: #5cc0b5; --viz-e3: #23938a; --viz-e4: #14605b;
+  --viz-s1: #86b6ef; --viz-s2: #256abf; --viz-s3: #5f5e58; --viz-s4: #a84848; --viz-s5: #f08a8a;
+  --viz-pending: #fab219; --viz-unchecked: #ec835a; --viz-checked: #0ca30c; --viz-human: #9085e9;
+  --viz-speaker-1: #3987e5; --viz-speaker-2: #5f5e58; --viz-speaker-3: #199e70;
+  --viz-grid: #2c2c2a;
+  --viz-seq: #3987e5;
   color-scheme: dark;
 }
 
@@ -111,6 +133,8 @@ body {
 .transcript ::selection { background: color-mix(in oklab, var(--accent) 35%, transparent); }
 .coded { border-radius: 2px; box-decoration-break: clone; -webkit-box-decoration-break: clone; cursor: pointer; }
 .uncertain { text-decoration: underline wavy color-mix(in oklab, var(--warn) 70%, transparent); text-underline-offset: 4px; text-decoration-thickness: 1px; }
+/* Off-the-record wording: readable while coding, withheld from reports and exports. */
+.off-record { text-decoration: underline dotted var(--ink); text-underline-offset: 4px; text-decoration-thickness: 2px; }
 .flash { animation: flash 1.6s ease-out; }
 @keyframes flash { 0%, 30% { background: color-mix(in oklab, var(--accent) 22%, transparent); } 100% { background: transparent; } }
 

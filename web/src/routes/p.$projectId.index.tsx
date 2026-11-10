@@ -2,7 +2,7 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { useMemo } from 'react'
 import { AlertTriangle, ArrowRight, ClipboardList, FileText, Lightbulb, SpellCheck, Sparkles } from 'lucide-react'
 import { useProject } from '../lib/store'
-import { checkRules, findCorrections, saturation, sourceProgress } from '../lib/model'
+import { checkRules, findCorrections, pendingSuggestions, saturation, sourceProgress } from '../lib/model'
 import { Badge, Button, Empty, PageHeader, Panel, Progress, Stat, pct } from '../components/ui'
 
 export const Route = createFileRoute('/p/$projectId/')({ component: Overview })
@@ -11,7 +11,7 @@ function Overview() {
   const project = useProject()
   const pid = project.id
   const violations = useMemo(() => checkRules(project), [project])
-  const suggestions = project.codings.filter((c) => c.status === 'suggested').length
+  const suggestions = pendingSuggestions(project).length
   const openCandidates = project.candidates.filter((c) => c.status === 'open').length
   const glossaryHits = useMemo(
     () => project.sources.reduce((n, s) => n + findCorrections(s.text, project.glossary).length, 0),

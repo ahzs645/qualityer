@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { Download, Pin, Plus, Trash2, X } from 'lucide-react'
 import type { Case, Coding, FrameworkCell, Theme } from '../lib/types'
 import { update, useProject } from '../lib/store'
-import { download, excerpt, formatTime, indexBy, orderedCodes, slug, timeAt, toCSV, uid } from '../lib/model'
+import { download, excerpt, formatTime, indexBy, orderedCodes, quotable, slug, timeAt, toCSV, uid } from '../lib/model'
 import { Badge, Button, Empty, IconButton, Input, PageHeader, Panel, Select, Swatch, Textarea, cx } from '../components/ui'
 
 export const Route = createFileRoute('/p/$projectId/framework')({ component: Framework })
@@ -31,7 +31,7 @@ function Framework() {
       rows.push([k.name, ...project.themes.map((t) => {
         const cell = cellOf(k.id, t.id)
         const pinned = (cell?.pinned ?? []).map((id) => project.codings.find((c) => c.id === id)).filter(Boolean)
-          .map((c) => `“${excerpt(sources.get(c!.sourceId)?.text ?? '', c!.start, c!.end)}”`)
+          .map((c) => `“${quotable(project, sources.get(c!.sourceId), c!.start, c!.end)}”`)
         return [cell?.summary ?? '', ...pinned].filter(Boolean).join('\n')
       })])
     }

@@ -9,6 +9,7 @@ import {
 } from '../../lib/actions'
 import { Badge, Button, IconButton, Input, Select, Swatch, Textarea } from '../../components/ui'
 import { playRange } from '../../lib/player'
+import { setRestricted } from '../../lib/review'
 
 interface SpanProps {
   project: Project
@@ -79,6 +80,16 @@ export function SpanInspector({ project, source, span, onClose, onCode }: SpanPr
               </label>
             )}
           </section>
+        )
+      })()}
+
+      {(() => {
+        const r = project.restricted.find((x) => x.sourceId === source.id && x.start < span.end && x.end > span.start)
+        return (
+          <label className="flex items-start gap-2 text-xs text-muted">
+            <input type="checkbox" className="mt-0.5" checked={!!r} onChange={(e) => setRestricted(source.id, r ? { start: r.start, end: r.end } : span, e.target.checked ? 'Off the record' : null)} />
+            <span><span className="font-medium text-ink">Off the record</span> — keep it for analysis, withhold the wording from reports and exports.</span>
+          </label>
         )
       })()}
 
