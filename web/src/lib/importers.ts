@@ -66,8 +66,10 @@ export function parseWhisperJSON(json: { segments?: WhisperSegment[] }) {
     // breaking at sentence ends or long pauses.
     const pause = s.start != null && lastEnd != null ? s.start - lastEnd : 0
     lastEnd = s.end ?? lastEnd
-    const joinUnlabelled = !speaker && prev && !prev.speaker && text.length - prev.start + body.length <= 700 && !(pause > 2)
-    if (prev && prev.speaker === speaker && (speaker || joinUnlabelled)) { text += ' '; start = text.length; prev.end = start + body.length }
+    // Long monologues are split into paragraphs too, so a turn stays readable and codable.
+    const cap = speaker ? 1200 : 700
+    const join = prev && prev.speaker === speaker && text.length - prev.start + body.length <= cap && !(pause > 2)
+    if (join) { text += ' '; start = text.length; prev.end = start + body.length }
     else {
       if (text) text += '\n\n'
       start = text.length

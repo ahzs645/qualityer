@@ -265,7 +265,8 @@ export function verifyWindow(project: Project, source: Source, w: Window, raw: R
     const key = `${codeId}:${m.start}:${m.end}`
     if (seen.has(key)) continue
     seen.add(key)
-    if (project.codings.some((c) => c.sourceId === source.id && c.codeId === codeId && c.start === m.start && c.end === m.end)) continue
+    // Skip only repeats of AI output; agreeing with a human coding is kept so calibration counts it.
+    if (project.codings.some((c) => c.sourceId === source.id && c.codeId === codeId && c.start === m.start && c.end === m.end && (c.origin || c.coder === run.coder))) continue
     if (m.match === 'repaired') repaired++
     codings.push({
       id: uid(), sourceId: source.id, codeId, start: m.start, end: m.end, coder: run.coder, memo: '',

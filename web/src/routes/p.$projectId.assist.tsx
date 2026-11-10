@@ -4,7 +4,7 @@ import { Bot, Download, FileUp, Play, ShieldAlert, Square } from 'lucide-react'
 import type { AiRun } from '../lib/types'
 import { useProject } from '../lib/store'
 import { agreement, download, slug } from '../lib/model'
-import { DEFAULT_OPTIONS, windowsFor, type PipelineOptions } from '../lib/ai/pipeline'
+import { DEFAULT_OPTIONS, selectCodes, windowsFor, type PipelineOptions } from '../lib/ai/pipeline'
 import {
   exportAgentPack, getAiSettings, importAgentResponses, runPass, saveAiSettings,
   type AiSettings, type Progress, type Provider,
@@ -32,7 +32,7 @@ function Assist() {
   const fileRef = useRef<HTMLInputElement>(null)
   const scope = { sourceIds, groupIds, options: opts }
   const windows = useMemo(() => project.sources.filter((s) => sourceIds.includes(s.id)).reduce((n, s) => n + windowsFor(s, opts).length, 0), [project.sources, sourceIds, opts])
-  const codes = useMemo(() => project.codes.filter((c) => !groupIds.length || groupIds.includes(c.groupId ?? '')).length, [project.codes, groupIds])
+  const codes = useMemo(() => selectCodes(project, groupIds).length, [project, groupIds])
   const running = !!abort.current && !!progress && progress.done < progress.total
 
   async function start() {
@@ -108,8 +108,8 @@ function Assist() {
               <div className="space-y-3">
                 <p className="text-sm text-muted">Download a prompt pack, give it to an agent (or run it through any tool that returns JSON), then import the answers here. The same quote checks apply on import.</p>
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="primary" icon={<Download size={15} />} disabled={!windows || !codes} onClick={() => {
-                    const pack = exportAgentPack(scope, settings.effort)
+                  <Button variant="primary" icon={<Download size={15} />} disabled={!windows || !codes} onClick={async () => {
+                    const pack = await exportAgentPack(scope, settings.effort)
                     download(`${slug(project.name)}-ai-pack-${pack.runId.slice(0, 8)}.json`, JSON.stringify(pack, null, 1), 'application/json')
                     setMsg({ tone: 'good', text: `Prompt pack with ${pack.windows.length} windows downloaded. Import the answers when they are ready.` })
                   }}>Download prompt pack</Button>

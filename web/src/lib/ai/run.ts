@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
 import type { AiRun, Coding, Project } from '../types'
 import { indexBy, now, uid } from '../model'
-import { snapshot, store, update } from '../store'
+import { flush, snapshot, store, update } from '../store'
 import {
   DEFAULT_OPTIONS, SUGGESTION_JSON_SCHEMA, SuggestionSchema, codeKeys, examplesFrom, hash, selectCodes,
   systemPrompt, userMessage, verifyWindow, windowsFor, type PipelineOptions, type RawSuggestion, type Window,
@@ -92,7 +92,8 @@ function prepare(project: Project, scope: RunScope, provider: Provider, model: s
   return { codes, system, windows, run, toId }
 }
 
-const coderName = (run: AiRun) => `AI · ${run.model}`
+/** Unique per pass, so passes can be compared with humans (and each other) separately. */
+const coderName = (run: AiRun, model = run.model) => `AI · ${model} #${run.id.slice(0, 4)}`
 
 export interface Progress { done: number; total: number; suggestions: number; failed: number; message?: string }
 
@@ -157,11 +158,13 @@ export interface AgentResponses {
   responses: { window_id: string; suggestions: RawSuggestion[] }[]
 }
 
-export function exportAgentPack(scope: RunScope, effort = 'medium'): AgentPack {
+export async function exportAgentPack(scope: RunScope, effort = 'medium'): Promise<AgentPack> {
   const project = store.state.project
   if (!project) throw new Error('No project open')
   const { system, windows, run, codes } = prepare(project, scope, 'agent', 'agent', effort)
   update('prepare AI hand-off', (p) => ({ ...p, aiRuns: [{ ...run, notes: 'Waiting for agent responses.' }, ...p.aiRuns] }))
+  // The run holds the code-key map needed to read the answers: save it now, not on the next autosave.
+  await flush()
   const sources = indexBy(project.sources)
   return {
     format: 'research-weave-ai-pack', version: 1, runId: run.id,
@@ -186,7 +189,7 @@ export async function importAgentResponses(data: AgentResponses) {
   }
   const found: Coding[] = []
   const next: AiRun = { ...run, model: data.model || run.model, rejected: [...run.rejected], failed: [] }
-  const coder = `AI · ${next.model === 'agent' ? 'agent' : next.model}`
+  const coder = coderName(next)
   for (const r of data.responses ?? []) {
     const w = byId.get(r.window_id)
     if (!w) { next.failed.push(r.window_id); continue }

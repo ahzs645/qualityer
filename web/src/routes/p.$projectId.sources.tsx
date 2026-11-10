@@ -116,7 +116,7 @@ function Sources() {
                       <Button size="sm" variant="ghost" icon={<AudioLines size={13} />} onClick={() => { setMediaFor(s.id); mediaRef.current?.click() }}>Attach audio</Button>
                     )}
                     <Link to="/p/$projectId/code" params={{ projectId: project.id }} search={{ source: s.id }}><Button size="sm">Open</Button></Link>
-                    <IconButton label={`Remove ${s.name}`} onClick={() => confirm(`Remove “${s.name}” and its ${pr.codings} codings? You can undo this.`) && removeSource(s.id)}>
+                    <IconButton label={`Remove ${s.name}`} onClick={() => confirm(`Remove “${s.name}” and its ${pr.codings} codings? You can undo this${s.media ? ' (the attached recording is deleted)' : ''}.`) && (removeSource(s.id), s.media && void deleteMedia(project.id, s.id))}>
                       <Trash2 size={15} />
                     </IconButton>
                   </li>
