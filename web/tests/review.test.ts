@@ -4,7 +4,7 @@ import { buildClaims, choiceGroups, codeKey, stepEdge, summariseDecisions } from
 import { compare } from '../src/lib/compare'
 import { buildProfile, cellKey } from '../src/lib/profile'
 import { claimsCSV, reportHTML, reportMarkdown } from '../src/lib/report'
-import { chooseInGroup, confirmClaim, recodeCoding, rejectClaim, respanClaim, setComparisonOnly, setRestricted } from '../src/lib/review'
+import { adoptClaim, chooseInGroup, confirmClaim, recodeCoding, rejectClaim, respanClaim, setComparisonOnly, setRestricted } from '../src/lib/review'
 import { acceptSuggestions, rejectSuggestions } from '../src/lib/actions'
 import { store } from '../src/lib/store'
 import type { AiRun, Coding, Project } from '../src/lib/types'
@@ -152,6 +152,16 @@ describe('review decisions', () => {
     expect(project().codings.filter((c) => c.start === wider.start && c.end === wider.end).length).toBe(3)
     expect(project().restricted[0]).toMatchObject(wider)
     expect(project().reviewLog.at(-1)?.action).toBe('respan')
+  })
+
+  it('adopts one passage from a comparison-only pass and leaves the rest parked', () => {
+    setComparisonOnly('run', true)
+    adoptClaim(ctx.s.id, span(ctx.staff), 'run')
+    const claims = buildClaims(project())
+    expect(claims.map((c) => [c.start, c.state, c.codings.length])).toEqual([[ctx.staff[0], 'checked', 2]])
+    expect(pendingSuggestions(project()).length).toBe(0)
+    expect(project().codings.filter((c) => c.status === 'suggested').length).toBe(3)
+    expect(project().reviewLog.map((e) => e.action)).toEqual(['accept', 'accept'])
   })
 
   it('parks and returns a pass', () => {

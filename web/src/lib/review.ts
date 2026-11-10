@@ -169,6 +169,20 @@ export function setRestricted(sourceId: string, span: Span, reason: string | nul
   })
 }
 
+/**
+ * Takes one passage from a comparison-only pass into the coding: every
+ * suggestion that pass made on it is accepted and signed off, and can then be
+ * adjusted like any other AI-coded claim.
+ */
+export function adoptClaim(sourceId: string, span: Span, runId: string) {
+  update('adopt AI claim', (p) => {
+    const hit = (c: Coding) => c.sourceId === sourceId && c.start === span.start && c.end === span.end && c.origin?.runId === runId && c.status === 'suggested'
+    const log = p.codings.filter(hit).map((c) => reviewEvent(p, 'accept', c, { note: 'Adopted from a comparison-only pass' }))
+    if (!log.length) return p
+    return { ...p, codings: p.codings.map((c) => (hit(c) ? signedOff(c, p.coder) : c)), reviewLog: [...p.reviewLog, ...log] }
+  })
+}
+
 /** Keeps an AI pass for comparison only (or returns it to the review queue). */
 export function setComparisonOnly(runId: string, comparisonOnly: boolean) {
   update(comparisonOnly ? 'keep pass for comparison only' : 'return pass to review', (p) => ({

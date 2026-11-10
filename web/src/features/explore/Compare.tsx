@@ -1,10 +1,11 @@
 import { Link } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 import type { Coding, Project } from '../../lib/types'
-import { formatTime, indexBy, quotable, timeAt } from '../../lib/model'
+import { formatTime, groupOf, indexBy, quotable, timeAt } from '../../lib/model'
+import { addToClaim, adoptClaim } from '../../lib/review'
 import { choiceGroups, summariseDecisions } from '../../lib/claims'
 import { compare, type Confusion } from '../../lib/compare'
-import { Empty, Panel, Select, Stat, Swatch, cx, pct } from '../../components/ui'
+import { Badge, Button, Empty, Panel, Select, Stat, Swatch, cx, pct } from '../../components/ui'
 import { codeKey } from '../review/Claims'
 
 const SERIES = { both: 'var(--viz-speaker-1)', ref: 'var(--viz-human)', other: 'var(--viz-unchecked)' }
@@ -56,11 +57,19 @@ function Against({ project, runId, sourceId }: { project: Project; runId: string
   const codes = useMemo(() => indexBy(project.codes), [project.codes])
   const groups = useMemo(() => indexBy(project.groups), [project.groups])
   const choices = useMemo(() => choiceGroups(project), [project.rules, project.groups, project.codes])
+  // The reference is one person's coding, so codes a reviewer adds later do not move the baseline.
+  const people = useMemo(() => {
+    const n = new Map<string, number>()
+    for (const c of project.codings) if (c.sourceId === sourceId && !c.origin && c.status === 'accepted') n.set(c.coder, (n.get(c.coder) ?? 0) + 1)
+    return [...n].sort((a, b) => b[1] - a[1]).map(([name]) => name)
+  }, [project.codings, sourceId])
+  const [who, setWho] = useState('')
+  const person = people.includes(who) ? who : people[0] ?? ''
   const result = useMemo(() => {
-    const ref = project.codings.filter((c) => c.sourceId === sourceId && !c.origin && c.status === 'accepted')
+    const ref = project.codings.filter((c) => c.sourceId === sourceId && !c.origin && c.status === 'accepted' && c.coder === person)
     const other = project.codings.filter((c) => c.sourceId === sourceId && c.origin?.runId === runId)
     return compare(project, ref, other, choices.map((c) => c.group.id))
-  }, [project, runId, sourceId, choices])
+  }, [project, runId, sourceId, choices, person])
   const [cell, setCell] = useState<{ groupId: string; ref: string; other: string } | null>(null)
   const sub = result.byKind.substantive
   const fmt = (v: number | null | undefined) => (v == null ? '—' : v.toFixed(2))
@@ -72,6 +81,11 @@ function Against({ project, runId, sourceId }: { project: Project; runId: string
 
   return (
     <div className="space-y-4">
+      {people.length > 1 && (
+        <label className="flex items-center gap-2 text-sm text-muted">Compared with
+          <Select value={person} onChange={(e) => setWho(e.target.value)} className="h-8">{people.map((n) => <option key={n}>{n}</option>)}</Select>
+        </label>
+      )}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Substantive codes the AI also found" value={fmt(sub?.recall)} sub={`recall · of ${sub?.ref ?? 0} the person applied`} />
         <Stat label="AI substantive codes the person also had" value={fmt(sub?.precision)} sub={`precision · of ${sub?.other ?? 0} the AI applied`} />
@@ -101,6 +115,8 @@ function Against({ project, runId, sourceId }: { project: Project; runId: string
           </ul>
         </Panel>
       )}
+
+      <AiOnly project={project} sourceId={sourceId} runId={runId} person={person} items={result.otherOnly} />
 
       <Panel title="By domain: substantive codes each applied">
         <div className="space-y-1.5">
@@ -206,6 +222,70 @@ function Changed({ project, sourceId }: { project: Project; sourceId: string }) 
           </ul>
         </>
       )}
+    </Panel>
+  )
+}
+
+/**
+ * Substantive codes the AI applied where the person did not: the place to look
+ * for anything missed. A passage the person left uncoded can be adopted as a
+ * claim; a code on a passage they did code can be added to their passage.
+ */
+function AiOnly({ project, sourceId, runId, person, items }: { project: Project; sourceId: string; runId: string; person: string; items: Coding[] }) {
+  const source = project.sources.find((s) => s.id === sourceId)!
+  const codes = useMemo(() => indexBy(project.codes), [project.codes])
+  const groups = useMemo(() => indexBy(project.groups), [project.groups])
+  const [only, setOnly] = useState<'all' | 'uncoded'>('all')
+  const rows = useMemo(() => {
+    const kind = (c: Coding) => groupOf(codes.get(c.codeId), codes, groups)?.kind
+    const people = project.codings.filter((c) => c.sourceId === sourceId && !c.origin && c.status === 'accepted')
+    return items.filter((c) => kind(c) === 'substantive').sort((a, b) => a.start - b.start).map((c) => {
+      const over = people.filter((h) => h.coder === person && h.start < c.end && h.end > c.start && kind(h) === 'substantive')
+      let best: Coding | undefined
+      for (const h of over) if (!best || Math.min(h.end, c.end) - Math.max(h.start, c.start) > Math.min(best.end, c.end) - Math.max(best.start, c.start)) best = h
+      const pass = project.codings.filter((x) => x.origin?.runId === runId && x.sourceId === sourceId && x.start === c.start && x.end === c.end)
+      return {
+        c, best, pass,
+        theirs: [...new Set(over.map((h) => h.codeId))],
+        added: people.some((h) => h.codeId === c.codeId && h.start < c.end && h.end > c.start),
+      }
+    })
+  }, [items, project.codings, codes, groups, sourceId, runId, person])
+  const shown = only === 'uncoded' ? rows.filter((r) => !r.best) : rows
+  if (!rows.length) return null
+  const name = (id: string) => codes.get(id)?.name.replace(/\s{2,}/, ' ') ?? '?'
+  return (
+    <Panel
+      title={`Codes the AI applied and ${person || 'the person'} did not · ${rows.length}`}
+      actions={<Select value={only} onChange={(e) => setOnly(e.target.value as 'all' | 'uncoded')} className="h-7 text-xs" aria-label="Which passages"><option value="all">All {rows.length}</option><option value="uncoded">On passages left uncoded · {rows.filter((r) => !r.best).length}</option></Select>}
+      bodyClass="p-0"
+    >
+      <ul className="max-h-[32rem] divide-y divide-line overflow-y-auto scroll-thin">
+        {shown.map(({ c, best, pass, theirs, added }) => {
+          const adopted = c.status === 'accepted'
+          return (
+            <li key={c.id} className="px-4 py-3">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Swatch color={codes.get(c.codeId)?.color ?? '#888'} />
+                <span className="font-medium">{name(c.codeId)}</span>
+                <span className="text-xs text-muted">{pass.filter((x) => x.id !== c.id).map((x) => codeKey(codes.get(x.codeId)?.name ?? '')).join(' · ')}</span>
+                {adopted && <Badge tone="good">adopted</Badge>}
+                {added && <Badge tone="good">added to the passage</Badge>}
+                <span className="ml-auto flex gap-1.5">
+                  {!adopted && !added && <Button size="sm" onClick={() => adoptClaim(sourceId, { start: c.start, end: c.end }, runId)}>Adopt as a claim</Button>}
+                  {best && !added && !adopted && <Button size="sm" onClick={() => addToClaim(sourceId, { start: best.start, end: best.end }, c.codeId)}>Add the code to the coded passage</Button>}
+                </span>
+              </div>
+              <Link to="/p/$projectId/code" params={{ projectId: project.id }} search={{ source: sourceId, at: c.start, end: c.end }} className="mt-1 block font-serif text-[14.5px] hover:text-accent">{quotable(project, source, c.start, c.end)}</Link>
+              <p className="mt-0.5 text-xs text-muted">
+                <span className="font-mono">{formatTime(timeAt(source, c.start))}</span>
+                {c.rationale ? ` · AI: ${c.rationale}` : ''}
+                {' · '}{best ? <>coded here: {theirs.map(name).join('; ')}</> : <span className="text-warn">left uncoded</span>}
+              </p>
+            </li>
+          )
+        })}
+      </ul>
     </Panel>
   )
 }

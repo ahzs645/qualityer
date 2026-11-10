@@ -201,6 +201,8 @@ export async function importAgentResponses(data: AgentResponses) {
     next.repaired += v.repaired
     next.completed++
   }
+  // Answers can be imported more than once (a late window, a retry): count each window once.
+  next.completed = Math.min(run.windows, next.completed)
   next.suggestions += found.length
   next.finishedAt = now()
   next.notes = `${data.responses?.length ?? 0} of ${run.windows} windows answered.`

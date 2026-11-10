@@ -265,8 +265,9 @@ export function verifyWindow(project: Project, source: Source, w: Window, raw: R
     const key = `${codeId}:${m.start}:${m.end}`
     if (seen.has(key)) continue
     seen.add(key)
-    // Skip only repeats of AI output; agreeing with a human coding is kept so calibration counts it.
-    if (project.codings.some((c) => c.sourceId === source.id && c.codeId === codeId && c.start === m.start && c.end === m.end && (c.origin || c.coder === run.coder))) continue
+    // Skip only what this pass already produced (a re-import). A suggestion that agrees with a
+    // person's coding, or with an earlier pass, is kept: dropping it would understate agreement.
+    if (project.codings.some((c) => c.sourceId === source.id && c.codeId === codeId && c.start === m.start && c.end === m.end && (c.origin ? c.origin.runId === run.id : c.coder === run.coder))) continue
     if (m.match === 'repaired') repaired++
     codings.push({
       id: uid(), sourceId: source.id, codeId, start: m.start, end: m.end, coder: run.coder, memo: '',

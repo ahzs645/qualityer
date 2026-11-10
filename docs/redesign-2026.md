@@ -124,6 +124,30 @@ A reviewer checked all 132 AI-coded claims (415 codings) of the second interview
 - Two passages the respondent had called off the record were among the coded claims, and one was pinned as framework evidence. Nothing in the earlier interface could have kept them out of an export.
 - Two cost-benefit flags were removed and two were given extraction rows.
 
+## Added in the fourth pass: closing out the review
+
+The reviewer then worked through everything the first review had left open, again in the app. Four more gaps showed up.
+
+- **Extraction rows from the issue list.** Review → Rule issues now shows the passage in full and the extraction fields under every "flag has no extraction row" issue, with one *Save extraction row* button. Fourteen such issues were cleared without opening the transcript once.
+- **Adopting from a comparison-only pass.** Explore → AI and you lists every substantive code the AI applied and the person did not, with the AI's reason and what the person coded there. A passage they left uncoded can be adopted as a claim (it then appears in claim review like any other); a code on a passage they did code can be added to their passage.
+- **Comparing against one person.** The comparison takes one named coder as the reference, so codes a reviewer adds later do not shift the baseline the AI is measured against.
+- **A second pass no longer loses its overlap with the first.** On import, a suggestion identical to one from an earlier pass was treated as a repeat and dropped, which understated the newer pass's agreement (192 of 555 suggestions in the run below). Only repeats within the same pass are skipped now, and re-importing answers counts each window once.
+
+### Re-testing the AI after sharpening the codebook (aggregate numbers only)
+
+Include, exclude and anchor text was added to the evidence-grade and stance codes, written to describe how the analyst had coded the calibration interview. The same hand-off was then run again with nothing else changed.
+
+| Against the analyst | Before | After |
+|---|---|---|
+| Stance: same value where both graded | 51% | 69% |
+| "Sceptical" chosen where the analyst chose it | 0 of 27 | 27 of 29 |
+| Evidence grade: same value where both graded | 67% | 66% |
+| Substantive codes: recall / precision | 0.59 / 0.71 | 0.66 / 0.62 |
+
+The stance wording worked and then overshot: 15 of the 39 passages the analyst graded "neutral" came back "sceptical". The evidence wording changed nothing, so that difference is not only a matter of wording. The anchors were taken from the same interview; leaving those passages out moves each figure by a point at most, but a clean test needs a second human-coded interview.
+
+A second machine transcription of every coded passage of the other interview, made with a larger speech model, agreed with the first on 95% of words and supplied five corrections that changed meaning. It is a way to decide where to listen first, not a substitute for listening.
+
 ## AI-assisted coding pipeline
 
 Design decisions are drawn from published LLM-coding studies (Xiao et al. 2023; LACA; QualiGPT; MindCoder; ChatQDA) and labelling tools (Prodigy, Argilla, INCEpTION):
