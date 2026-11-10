@@ -113,6 +113,31 @@ Design decisions are drawn from published LLM-coding studies (Xiao et al. 2023; 
    - an **agent hand-off**: download a prompt pack, have an agent or other tool answer it, import the answers. The same checks run on import.
 7. **Calibration before trust.** AI assist compares a pass with a human coder per code group (character-level overlap and κ), including unreviewed suggestions. Lean on suggestions only for groups that reach your human-to-human agreement.
 
+### Calibration on a real interview (aggregate numbers only)
+
+The hand-off loop was run end to end on a private 68-minute calibration interview. That interview had already been coded by an analyst using a 118-code framework: 10 substantive domains, plus evidence-grade, stance and cost-benefit groups. The coder was an agent working only from the prompt pack, which held 10 windows of 16 turns.
+
+- **Quote checks.** Every quote matched the transcript verbatim in both passes (0 repaired, 0 rejected).
+- **Pass 1**, with stance set to *at most one*:
+  - substantive codes: precision 0.64 and recall 0.56 against the analyst (overlapping span, same code);
+  - κ per domain: 0.19–0.46;
+  - stance recall: 0.03, because the analyst applied a stance to every claim.
+- **Pass 2**, with stance set to *exactly one* to match the analyst's protocol:
+  - substantive codes: precision 0.71, recall 0.59;
+  - evidence grade: κ 0.25 → 0.36;
+  - stance: recall 0.03 → 0.44, κ 0.04 → 0.27.
+- **Remaining systematic differences:**
+  - The model over-used "opinion" against "firsthand" evidence grades.
+  - It rarely chose "sceptical" stance and defaulted to "neutral".
+
+  Both are boundaries to sharpen in the codebook's definitions before trusting suggestions for those groups.
+
+Bugs this run uncovered, all fixed:
+- A hand-off run could be lost if the tab closed before autosave.
+- Suggestions agreeing with a human coding were dropped, which hid agreement.
+- Passes shared one coder name.
+- The window count left out codes that inherit their group.
+
 ## Still not ported
 
 - **Speech-to-text and diarisation inside the app.** Transcribe with Whisper / WhisperX / noScribe and import the JSON. `services/transcription` is unchanged.
