@@ -1,6 +1,8 @@
-import type { Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, Project, Source } from './types'
+import type { Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, Project, Source, WordingCheck } from './types'
+import { applySpeakerTrack, splitSegments, type SpeakerInterval } from './listen'
 import { PALETTE, editSource, findCorrections, now, segmentsOf, uid } from './model'
 import { snapshot, store, update } from './store'
+import { recodeCoding, reviewEvent } from './review'
 
 const patch = <T extends { id: string }>(items: T[], id: string, change: Partial<T>) =>
   items.map((i) => (i.id === id ? { ...i, ...change } : i))
@@ -62,26 +64,39 @@ const accepted = (c: Coding, reviewer: string): Coding =>
   c.origin ? { ...c, status: 'accepted', reviewedBy: reviewer } : { ...c, status: 'accepted', coder: reviewer, reviewedBy: reviewer }
 
 export function acceptSuggestion(id: string) {
-  update('accept suggestion', (p) => ({ ...p, codings: p.codings.map((c) => (c.id === id ? accepted(c, p.coder) : c)) }))
+  acceptSuggestions([id], 'accept suggestion')
 }
 
-export function acceptSuggestions(ids: string[]) {
+export function acceptSuggestions(ids: string[], label = `accept ${ids.length} suggestions`) {
   const set = new Set(ids)
-  update(`accept ${ids.length} suggestions`, (p) => ({
-    ...p, codings: p.codings.map((c) => (set.has(c.id) ? accepted(c, p.coder) : c)),
-  }))
+  update(label, (p) => {
+    const hit = p.codings.filter((c) => set.has(c.id) && c.status === 'suggested')
+    if (!hit.length) return p
+    return {
+      ...p,
+      codings: p.codings.map((c) => (set.has(c.id) ? accepted(c, p.coder) : c)),
+      reviewLog: [...p.reviewLog, ...hit.map((c) => reviewEvent(p, 'accept', c))],
+    }
+  })
 }
 
 /** Accepts a suggestion under a different code (the reviewer's correction). */
 export function acceptAsCode(id: string, codeId: string) {
-  update('accept with a different code', (p) => ({
-    ...p, codings: p.codings.map((c) => (c.id === id ? { ...accepted(c, p.coder), codeId, memo: [c.memo, `Code changed in review from the suggested one.`].filter(Boolean).join('\n') } : c)),
-  }))
+  recodeCoding(id, codeId)
 }
 
 export function rejectSuggestions(ids: string[]) {
   const set = new Set(ids)
-  update(`reject ${ids.length} suggestions`, (p) => ({ ...p, codings: p.codings.filter((c) => !set.has(c.id)) }))
+  update(`reject ${ids.length} suggestions`, (p) => {
+    const gone = p.codings.filter((c) => set.has(c.id))
+    if (!gone.length) return p
+    return {
+      ...p,
+      codings: p.codings.filter((c) => !set.has(c.id)),
+      extractions: p.extractions.filter((e) => !set.has(e.codingId)),
+      reviewLog: [...p.reviewLog, ...gone.map((c) => reviewEvent(p, 'reject', c))],
+    }
+  })
 }
 
 // Sources --------------------------------------------------------------------
@@ -107,6 +122,8 @@ export function removeSource(id: string) {
       codings: p.codings.filter((c) => c.sourceId !== id),
       extractions: p.extractions.filter((e) => !gone.has(e.codingId)),
       coverage: p.coverage.filter((c) => c.sourceId !== id),
+      restricted: p.restricted.filter((r) => r.sourceId !== id),
+      wordingChecks: p.wordingChecks.filter((w) => w.sourceId !== id),
       memos: p.memos.map((m) => (m.sourceId === id ? { ...m, sourceId: null, start: null, end: null } : m)),
       cases: p.cases.map((c) => ({ ...c, sourceIds: c.sourceIds.filter((s) => s !== id) })),
     }
@@ -340,6 +357,44 @@ export async function mergeCoderFile(other: Project): Promise<MergeReport> {
     candidates: [...proj.candidates, ...candidates],
     extractions: [...proj.extractions, ...extractions],
     aiRuns: [...proj.aiRuns, ...(other.aiRuns ?? []).filter((r) => !proj.aiRuns.some((x) => x.id === r.id))],
+    reviewLog: [...proj.reviewLog, ...(other.reviewLog ?? []).filter((e) => sourceMap.has(e.sourceId) && !proj.reviewLog.some((x) => x.id === e.id)).map((e) => ({ ...e, sourceId: sourceMap.get(e.sourceId)! }))],
+    restricted: [...proj.restricted, ...(other.restricted ?? []).filter((r) => sourceMap.has(r.sourceId) && !proj.restricted.some((x) => x.id === r.id)).map((r) => ({ ...r, sourceId: sourceMap.get(r.sourceId)! }))],
   }))
   return { codings: codings.length, memos: memos.length, candidates: candidates.length, codes: newCodes.length, skippedSources: skipped, coders: [...new Set(codings.map((c) => c.coder))] }
+}
+
+// Audio review ---------------------------------------------------------------
+
+/** Stores a second transcription's reading of each coded passage, replacing earlier checks on that source. */
+export function setWordingChecks(sourceId: string, checks: WordingCheck[]) {
+  update(`compare ${checks.length} passages with a second transcription`, (p) => ({ ...p, wordingChecks: [...p.wordingChecks.filter((w) => w.sourceId !== sourceId), ...checks] }))
+}
+
+/** Makes a passage its own turn with the given speaker (an interviewer's question inside a respondent's turn). */
+export function splitTurn(sourceId: string, span: { start: number; end: number }, speaker: string) {
+  update('split turn', (p) => {
+    const s = p.sources.find((x) => x.id === sourceId)
+    const segments = s && splitSegments(s, span.start, span.end, speaker)
+    if (!s || !segments) return p
+    const speakers = s.speakers.some((x) => x.raw === speaker) ? s.speakers : [...s.speakers, { raw: speaker, name: speaker, role: 'unknown' as const }]
+    return { ...p, sources: p.sources.map((x) => (x.id === sourceId ? { ...x, segments, speakers } : x)) }
+  })
+}
+
+/** Lays an imported speaker track over a source's timed turns. A snapshot is taken first. */
+export async function importSpeakerTrack(sourceId: string, track: SpeakerInterval[]) {
+  const s = store.state.project?.sources.find((x) => x.id === sourceId)
+  if (!s) throw new Error('Source not found')
+  const result = applySpeakerTrack(s, track)
+  await snapshot('Before importing a speaker track')
+  update('import speaker track', (p) => ({
+    ...p,
+    sources: p.sources.map((x) => {
+      if (x.id !== sourceId) return x
+      const known = new Set(x.speakers.map((sp) => sp.raw))
+      const fresh = [...new Set(result.segments.map((g) => g.speaker))].filter((raw) => raw && !known.has(raw)).map((raw) => ({ raw, name: raw, role: 'unknown' as const }))
+      return { ...x, segments: result.segments, speakers: [...x.speakers, ...fresh] }
+    }),
+  }))
+  return result
 }

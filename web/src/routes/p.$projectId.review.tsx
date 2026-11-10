@@ -3,16 +3,18 @@ import { useMemo, useState } from 'react'
 import { AlertTriangle, CheckCircle2, Plus, Trash2 } from 'lucide-react'
 import type { Candidate, Correction } from '../lib/types'
 import { update, useProject } from '../lib/store'
-import { agreement, checkRules, coders, describeRule, excerpt, findCorrections, formatTime, indexBy, timeAt, uid } from '../lib/model'
-import { addCode, applyGlossary, updateCandidate } from '../lib/actions'
+import { agreement, checkRules, coders, describeRule, excerpt, findCorrections, formatTime, indexBy, pendingSuggestions, timeAt, uid } from '../lib/model'
+import { addCode, applyCodes, applyGlossary, setExtraction, updateCandidate } from '../lib/actions'
 import { Suggestions } from '../features/review/Suggestions'
+import { DecisionLog } from '../features/review/DecisionLog'
+import { Listen } from '../features/review/Listen'
 import { Badge, Button, Empty, IconButton, Input, PageHeader, Panel, Select, Swatch, Tabs, Textarea, cx } from '../components/ui'
 
-type Tab = 'rules' | 'suggestions' | 'transcript' | 'candidates' | 'agreement'
+type Tab = 'rules' | 'suggestions' | 'log' | 'listen' | 'transcript' | 'candidates' | 'agreement'
 
 export const Route = createFileRoute('/p/$projectId/review')({
   validateSearch: (s: Record<string, unknown>): { tab?: Tab } => ({
-    tab: ['rules', 'suggestions', 'transcript', 'candidates', 'agreement'].includes(s.tab as string) ? (s.tab as Tab) : undefined,
+    tab: ['rules', 'suggestions', 'log', 'listen', 'transcript', 'candidates', 'agreement'].includes(s.tab as string) ? (s.tab as Tab) : undefined,
   }),
   component: Review,
 })
@@ -22,15 +24,17 @@ function Review() {
   const { tab = 'rules' } = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const violations = useMemo(() => checkRules(project), [project])
-  const suggested = project.codings.filter((c) => c.status === 'suggested').length
+  const suggested = pendingSuggestions(project).length
   const open = project.candidates.filter((c) => c.status === 'open').length
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-      <PageHeader title="Review" description="Everything that needs a researcher's decision: rule issues, suggestions, transcript corrections, candidate codes and coder agreement." />
+      <PageHeader title="Review" />
       <Tabs value={tab} onChange={(t) => navigate({ search: { tab: t } })} items={[
         { value: 'rules', label: <>Rule issues {violations.length > 0 && <Badge tone="bad">{violations.length}</Badge>}</> },
-        { value: 'suggestions', label: <>Suggestions {suggested > 0 && <Badge tone="accent">{suggested}</Badge>}</> },
+        { value: 'suggestions', label: <>AI review {suggested > 0 && <Badge tone="accent">{suggested}</Badge>}</> },
+        { value: 'log', label: 'Decision log' },
+        { value: 'listen', label: 'Listen' },
         { value: 'transcript', label: 'Transcript corrections' },
         { value: 'candidates', label: <>Candidate codes {open > 0 && <Badge tone="warn">{open}</Badge>}</> },
         { value: 'agreement', label: 'Agreement' },
@@ -38,6 +42,8 @@ function Review() {
       <div className="mt-4">
         {tab === 'rules' && <Rules violations={violations} />}
         {tab === 'suggestions' && <Suggestions />}
+        {tab === 'log' && <DecisionLog />}
+        {tab === 'listen' && <Listen />}
         {tab === 'transcript' && <TranscriptQA />}
         {tab === 'candidates' && <Candidates />}
         {tab === 'agreement' && <Agreement />}
@@ -52,6 +58,13 @@ function Rules({ violations }: { violations: ReturnType<typeof checkRules> }) {
   const groups = indexBy(project.groups)
   const rules = indexBy(project.rules)
   const [rule, setRule] = useState('')
+  // Extraction rows are typed field by field and saved together, so a half-filled row never hides the issue.
+  const [drafts, setDrafts] = useState<Record<string, Record<string, string>>>({})
+  const setPending = (codingId: string, field: string, value: string) => setDrafts((d) => ({ ...d, [codingId]: { ...d[codingId], [field]: value } }))
+  const saveRow = (codingId: string) => {
+    setExtraction(codingId, { ...(project.extractions.find((e) => e.codingId === codingId)?.values ?? {}), ...drafts[codingId] })
+    setDrafts(({ [codingId]: _done, ...rest }) => rest)
+  }
   if (!project.rules.some((r) => r.enabled)) {
     return <Panel><Empty title="No rules are active" action={<Link to="/p/$projectId/codebook" params={{ projectId: project.id }}><Button>Set up rules</Button></Link>}>Rules live in the codebook, under Groups & rules.</Empty></Panel>
   }
@@ -59,7 +72,7 @@ function Rules({ violations }: { violations: ReturnType<typeof checkRules> }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={rule} onChange={(e) => setRule(e.target.value)} className="h-8">
+        <Select value={rule} onChange={(e) => setRule(e.target.value)} className="h-8 max-w-full">
           <option value="">All rules ({violations.length})</option>
           {project.rules.filter((r) => r.enabled).map((r) => (
             <option key={r.id} value={r.id}>{describeRule(r, groups)} ({violations.filter((v) => v.ruleId === r.id).length})</option>
@@ -70,18 +83,33 @@ function Rules({ violations }: { violations: ReturnType<typeof checkRules> }) {
         <Panel><Empty icon={<CheckCircle2 size={28} className="text-good" />} title="Every coded claim meets the rules" /></Panel>
       ) : (
         <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
-          {shown.map((v, i) => {
+          {shown.map((v) => {
             const src = sources.get(v.sourceId)
+            const needsRow = rules.get(v.ruleId)?.kind === 'requires-extraction'
+            const row = needsRow ? project.extractions.find((e) => e.codingId === v.codingIds[0]) : undefined
             return (
-              <li key={i}>
+              <li key={v.ruleId + v.codingIds.join()}>
                 <Link to="/p/$projectId/code" params={{ projectId: project.id }} search={{ source: v.sourceId, at: v.start, end: v.end }} className="flex items-start gap-3 px-4 py-3 hover:bg-sunken/60">
                   <AlertTriangle size={16} className="mt-0.5 shrink-0 text-bad" />
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-medium">{v.message}</div>
-                    <div className="line-clamp-2 font-serif text-sm text-muted">{src ? excerpt(src.text, v.start, v.end) : ''}</div>
+                    <div className={cx('font-serif text-sm text-muted', !needsRow && 'line-clamp-2')}>{src ? excerpt(src.text, v.start, v.end) : ''}</div>
                     <div className="mt-0.5 text-xs text-faint">{src?.name}{src && timeAt(src, v.start) != null ? ` · ${formatTime(timeAt(src, v.start))}` : ''} · {rules.get(v.ruleId) ? describeRule(rules.get(v.ruleId)!, groups) : ''}</div>
                   </div>
                 </Link>
+                {needsRow && (
+                  <div className="grid gap-2 px-4 pb-3 pl-11 sm:grid-cols-3">
+                    {project.extractionFields.map((f) => (
+                      <label key={f} className="block text-xs text-muted">{f}
+                        <Input className="h-7 text-[13px]" defaultValue={row?.values[f] ?? ''} onBlur={(e) => { if (e.target.value !== (row?.values[f] ?? '')) setPending(v.codingIds[0], f, e.target.value) }} />
+                      </label>
+                    ))}
+                    <div className="flex items-center gap-2 sm:col-span-3">
+                      <Button size="sm" variant="primary" disabled={!drafts[v.codingIds[0]]} onClick={() => saveRow(v.codingIds[0])}>Save extraction row</Button>
+                      <span className="text-xs text-faint">Saving the row settles this issue.</span>
+                    </div>
+                  </div>
+                )}
               </li>
             )
           })}
@@ -188,6 +216,26 @@ function TranscriptQA() {
 
 const CANDIDATE_STATUS: Candidate['status'][] = ['open', 'adopted', 'merged', 'parked']
 
+/** Adopting a candidate: give it its codebook name and group, and code the passage that prompted it. */
+function AdoptCandidate({ candidate: c }: { candidate: Candidate }) {
+  const project = useProject()
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState(c.name)
+  const [groupId, setGroupId] = useState(project.groups.find((g) => g.kind === 'substantive')?.id ?? '')
+  if (!open) return <Button size="sm" onClick={() => setOpen(true)}>Adopt as code…</Button>
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      <Input value={name} onChange={(e) => setName(e.target.value)} className="h-7 w-56 text-xs" aria-label="Code name in the codebook" />
+      <Select value={groupId} onChange={(e) => setGroupId(e.target.value)} className="h-7 max-w-44 text-xs" aria-label="Group">{project.groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</Select>
+      <Button size="sm" variant="primary" disabled={!name.trim()} onClick={() => {
+        const id = addCode({ name: name.trim(), groupId: groupId || null, definition: c.rationale })
+        if (c.sourceId && c.start != null && c.end != null) applyCodes(c.sourceId, c.start, c.end, [id])
+        updateCandidate(c.id, { status: 'adopted', resolution: c.resolution || `Adopted as “${name.trim()}”${c.sourceId && c.start != null ? ' and applied to the passage that prompted it' : ''}.` })
+      }}>Adopt</Button>
+    </span>
+  )
+}
+
 function Candidates() {
   const project = useProject()
   const sources = indexBy(project.sources)
@@ -218,9 +266,7 @@ function Candidates() {
                     <Select value={c.status} onChange={(e) => updateCandidate(c.id, { status: e.target.value as Candidate['status'] })} className="h-7 text-xs" aria-label="Decision">
                       {CANDIDATE_STATUS.map((s) => <option key={s} value={s}>{s}</option>)}
                     </Select>
-                    {c.status === 'open' && (
-                      <Button size="sm" onClick={() => { addCode({ name: c.name, definition: c.rationale }); updateCandidate(c.id, { status: 'adopted', resolution: c.resolution || 'Adopted into the codebook.' }) }}>Adopt as code</Button>
-                    )}
+                    {c.status === 'open' && <AdoptCandidate candidate={c} />}
                   </div>
                 </div>
                 {src && c.start != null && (

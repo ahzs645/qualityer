@@ -2,13 +2,14 @@ import { Link } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { Check, CheckCircle2, ChevronLeft, ChevronRight, Undo2, X } from 'lucide-react'
 import type { Coding, Project } from '../../lib/types'
-import { formatTime, groupOf, indexBy, orderedCodes, timeAt } from '../../lib/model'
+import { formatTime, groupOf, indexBy, orderedCodes, pendingSuggestions, timeAt } from '../../lib/model'
 import { acceptAsCode, acceptSuggestion, acceptSuggestions, rejectSuggestions } from '../../lib/actions'
 import { undo, useProject } from '../../lib/store'
 import { Badge, Button, Empty, Kbd, Panel, Select, Swatch, Tabs, cx } from '../../components/ui'
 import { CodeCard } from '../code/CodeCard'
+import { Claims } from './Claims'
 
-type Mode = 'focus' | 'list'
+type Mode = 'claims' | 'focus' | 'list'
 
 /** Review order: repaired quotes, then conflicts with human coding, then least confident first. */
 function priority(project: Project, c: Coding) {
@@ -21,34 +22,45 @@ function priority(project: Project, c: Coding) {
   return 2 + (c.confidence ?? 0.5)
 }
 
+const MODES: { value: Mode; label: string }[] = [{ value: 'claims', label: 'By claim' }, { value: 'focus', label: 'One code at a time' }, { value: 'list', label: 'In bulk' }]
+
 export function Suggestions() {
+  const [mode, setMode] = useState<Mode>('claims')
+  return (
+    <div className="space-y-3">
+      <div className="max-w-md"><Tabs value={mode} onChange={setMode} items={MODES} /></div>
+      {mode === 'claims' ? <Claims /> : <SingleSuggestions mode={mode} />}
+    </div>
+  )
+}
+
+function SingleSuggestions({ mode }: { mode: Mode }) {
   const project = useProject()
-  const [mode, setMode] = useState<Mode>('focus')
   const [run, setRun] = useState('')
   const [codeFilter, setCodeFilter] = useState('')
   const [minConf, setMinConf] = useState(0)
-  const items = useMemo(() => project.codings
-    .filter((c) => c.status === 'suggested' && (!run || c.origin?.runId === run) && (!codeFilter || c.codeId === codeFilter) && (c.confidence ?? 1) >= minConf)
+  const waiting = useMemo(() => pendingSuggestions(project), [project])
+  const items = useMemo(() => waiting
+    .filter((c) => (!run || c.origin?.runId === run) && (!codeFilter || c.codeId === codeFilter) && (c.confidence ?? 1) >= minConf)
     .map((c) => ({ c, p: priority(project, c) }))
     .sort((a, b) => a.p - b.p || a.c.sourceId.localeCompare(b.c.sourceId) || a.c.start - b.c.start)
-    .map((x) => x.c), [project, run, codeFilter, minConf])
-  const total = project.codings.filter((c) => c.status === 'suggested').length
+    .map((x) => x.c), [project, waiting, run, codeFilter, minConf])
+  const total = waiting.length
 
   if (!total) {
     return <Panel><Empty icon={<CheckCircle2 size={28} />} title="No suggestions waiting">Suggestions from AI assist or imports appear here for a decision. Nothing counts until you accept it.</Empty></Panel>
   }
-  const runs = project.aiRuns.filter((r) => project.codings.some((c) => c.origin?.runId === r.id && c.status === 'suggested'))
+  const runs = project.aiRuns.filter((r) => waiting.some((c) => c.origin?.runId === r.id))
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="w-44"><Tabs value={mode} onChange={setMode} items={[{ value: 'focus', label: 'One by one' }, { value: 'list', label: 'In bulk' }]} /></div>
         <Select value={run} onChange={(e) => setRun(e.target.value)} className="h-8" aria-label="Pass">
           <option value="">All passes</option>
           {runs.map((r) => <option key={r.id} value={r.id}>{r.model} · {new Date(r.startedAt).toLocaleDateString()}</option>)}
         </Select>
         <Select value={codeFilter} onChange={(e) => setCodeFilter(e.target.value)} className="h-8 max-w-56" aria-label="Code">
           <option value="">All codes</option>
-          {orderedCodes(project).filter(({ code }) => project.codings.some((c) => c.codeId === code.id && c.status === 'suggested')).map(({ code }) => <option key={code.id} value={code.id}>{code.name}</option>)}
+          {orderedCodes(project).filter(({ code }) => waiting.some((c) => c.codeId === code.id)).map(({ code }) => <option key={code.id} value={code.id}>{code.name}</option>)}
         </Select>
         <Select value={String(minConf)} onChange={(e) => setMinConf(Number(e.target.value))} className="h-8" aria-label="Confidence">
           <option value="0">Any confidence</option>

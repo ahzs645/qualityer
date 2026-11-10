@@ -7,6 +7,7 @@ import {
   DEFAULT_OPTIONS, SUGGESTION_JSON_SCHEMA, SuggestionSchema, codeKeys, examplesFrom, hash, selectCodes,
   systemPrompt, userMessage, verifyWindow, windowsFor, type PipelineOptions, type RawSuggestion, type Window,
 } from './pipeline'
+import { GRADE_JSON_SCHEMA, prepareGrades, verifyGrades, type GradeOptions, type GradePack, type RawGrade } from './grade'
 
 // Settings stay in this browser (localStorage), never in project exports.
 
@@ -201,6 +202,8 @@ export async function importAgentResponses(data: AgentResponses) {
     next.repaired += v.repaired
     next.completed++
   }
+  // Answers can be imported more than once (a late window, a retry): count each window once.
+  next.completed = Math.min(run.windows, next.completed)
   next.suggestions += found.length
   next.finishedAt = now()
   next.notes = `${data.responses?.length ?? 0} of ${run.windows} windows answered.`
@@ -213,4 +216,54 @@ export async function importAgentResponses(data: AgentResponses) {
 
 export function estimateWindows(project: Project, scope: RunScope) {
   return project.sources.filter((s) => scope.sourceIds.includes(s.id)).reduce((n, s) => n + windowsFor(s, scope.options ?? DEFAULT_OPTIONS).length, 0)
+}
+
+// ---------------------------------------------------------------------------
+// Grade pass: the same hand-off, for grading claims that already exist.
+
+export interface GradeResponses {
+  format?: 'research-weave-grade-responses'
+  runId: string
+  model?: string
+  responses: { window_id: string; grades: RawGrade[] }[]
+}
+
+export async function exportGradePack(opts: GradeOptions): Promise<GradePack> {
+  const project = store.state.project
+  if (!project) throw new Error('No project open')
+  const { run, system, windows, targets } = prepareGrades(project, opts)
+  if (!targets.length) throw new Error(opts.mode === 'held-out' ? 'This source has no claims graded by that person beyond the teaching share.' : 'Every coded claim in this source already has its grades.')
+  update('prepare grade pass', (p) => ({ ...p, aiRuns: [{ ...run, notes: 'Waiting for agent responses.' }, ...p.aiRuns] }))
+  await flush()
+  return {
+    format: 'research-weave-grade-pack', version: 1, runId: run.id,
+    instructions: 'For each window, act on `system` as your instructions and `user` as the input, and return {"grades": [...]} matching response_schema. Collect all answers as {"format":"research-weave-grade-responses","runId":<runId>,"model":<your model>,"responses":[{"window_id":<id>,"grades":[...]}]}.',
+    system, response_schema: GRADE_JSON_SCHEMA, windows,
+  }
+}
+
+export async function importGradeResponses(data: GradeResponses) {
+  const project = store.state.project
+  if (!project) throw new Error('No project open')
+  const run = project.aiRuns.find((r) => r.id === data.runId)
+  if (!run || run.kind !== 'grades') throw new Error('These grades belong to a grade pass that is not in this project.')
+  const next: AiRun = { ...run, model: data.model || run.model, rejected: [...run.rejected], failed: [] }
+  const coder = coderName(next)
+  const found: Coding[] = []
+  let working = project
+  for (const r of data.responses ?? []) {
+    if (!Array.isArray(r.grades)) { next.failed.push(r.window_id); continue }
+    const v = verifyGrades(working, run, r.grades, coder)
+    found.push(...v.codings)
+    working = { ...working, codings: [...working.codings, ...v.codings] }
+    next.rejected.push(...v.rejected)
+    next.completed++
+  }
+  next.completed = Math.min(run.windows, next.completed)
+  next.suggestions += found.length
+  next.finishedAt = now()
+  next.notes = `${data.responses?.length ?? 0} of ${run.windows} batches answered.`
+  await snapshot('Before importing AI grades')
+  update(`import ${found.length} AI grades`, (p) => ({ ...p, codings: [...p.codings, ...found], aiRuns: p.aiRuns.map((x) => (x.id === run.id ? next : x)) }))
+  return next
 }

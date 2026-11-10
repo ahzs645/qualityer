@@ -60,7 +60,6 @@ function Sources() {
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <PageHeader
         title="Sources"
-        description="Interview transcripts in this study. Set attributes before coding — an uncoded topic may mean the question was never asked."
         actions={
           <>
             <Button icon={<ClipboardPaste size={15} />} onClick={() => setPaste(true)}>Paste text</Button>

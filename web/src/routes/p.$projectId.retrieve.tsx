@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { Download, Star, X } from 'lucide-react'
 import type { Coding } from '../lib/types'
 import { useProject } from '../lib/store'
-import { coders, download, formatTime, indexBy, orderedCodes, segmentsOf, slug, speakerOf, timeAt, toCSV } from '../lib/model'
+import { coders, download, formatTime, indexBy, orderedCodes, quotable, segmentsOf, slug, speakerOf, timeAt, toCSV } from '../lib/model'
 import { Badge, Button, Empty, Input, PageHeader, Select, Swatch, cx } from '../components/ui'
 
 interface Search { codes?: string; sources?: string; mode?: 'any' | 'all'; attr?: string; coder?: string; key?: boolean; q?: string }
@@ -80,7 +80,7 @@ function Retrieve() {
       rows.push([
         src.name, seg ? speakerOf(src, seg.speaker)?.name || seg.speaker : '', formatTime(timeAt(src, h.start)),
         h.codings.map((c) => codes.get(c.codeId)?.name).join('; '), [...new Set(h.codings.map((c) => c.coder))].join('; '),
-        h.codings.some((c) => c.important) ? 'yes' : '', src.text.slice(h.start, h.end).replace(/\s+/g, ' ').trim(), String(h.start), String(h.end),
+        h.codings.some((c) => c.important) ? 'yes' : '', quotable(project, src, h.start, h.end), String(h.start), String(h.end),
       ])
     }
     download(`${slug(project.name)}-excerpts.csv`, '﻿' + toCSV(rows), 'text/csv')
@@ -90,7 +90,6 @@ function Retrieve() {
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <PageHeader
         title="Retrieve"
-        description="Pull coded passages back out by code, source, attribute or coder. Read them in context before writing them up."
         actions={<Button icon={<Download size={15} />} disabled={!hits.length} onClick={exportCSV}>Export {hits.length} as CSV</Button>}
       />
       <div className="grid gap-5 lg:grid-cols-[18rem_1fr]">

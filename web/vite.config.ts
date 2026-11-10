@@ -11,6 +11,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  // The legacy importers under ../src import these packages; resolve them from this
+  // folder's node_modules so `npm ci && npm run build` works here without a root install.
+  resolve: { dedupe: ['fflate', 'sql.js'] },
   build: { chunkSizeWarningLimit: 900 },
   // The original app's importers (../src) are loaded on demand.
   server: { fs: { allow: ['..'] } },

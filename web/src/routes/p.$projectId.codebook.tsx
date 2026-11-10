@@ -72,7 +72,6 @@ function Codebook() {
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <PageHeader
         title="Codebook"
-        description="Definitions, inclusion and exclusion criteria, and anchor examples, plus the rules each coded claim must meet."
         actions={
           <>
             <Button icon={<Upload size={15} />} onClick={() => csvRef.current?.click()}>Import CSV</Button>
@@ -252,13 +251,16 @@ function GroupsAndRules() {
         </p>
         <ul className="divide-y divide-line">
           {project.groups.map((g) => (
-            <li key={g.id} className="flex items-center gap-2 px-4 py-2">
+            <li key={g.id} className="flex flex-wrap items-center gap-2 px-4 py-2">
               <input type="color" value={g.color} onChange={(e) => updateGroup(g.id, { color: e.target.value })} className="h-6 w-7 shrink-0 rounded border border-line" aria-label={`Colour of ${g.name}`} />
               <Input defaultValue={g.name} onBlur={(e) => e.target.value !== g.name && updateGroup(g.id, { name: e.target.value })} className="h-7" aria-label="Group name" />
               <Select value={g.kind} onChange={(e) => updateGroup(g.id, { kind: e.target.value as GroupKind })} className="h-7 w-36 shrink-0 text-xs" aria-label="Kind">
                 {Object.entries(GROUP_KIND_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </Select>
               <IconButton label={`Delete group ${g.name}`} onClick={() => confirm(`Delete group “${g.name}”? Its codes are kept, ungrouped.`) && removeGroup(g.id)}><Trash2 size={14} /></IconButton>
+              {(g.kind === 'evidence' || g.kind === 'stance' || g.description) && (
+                <Textarea rows={3} defaultValue={g.description ?? ''} onBlur={(e) => e.target.value !== (g.description ?? '') && updateGroup(g.id, { description: e.target.value })} placeholder="How to choose between this group's codes: an ordered rule a coder works through. Sent to the AI with the codebook." className="basis-full text-[13px]" aria-label={`How to choose in ${g.name}`} />
+              )}
             </li>
           ))}
         </ul>

@@ -95,6 +95,84 @@ These were checked locally. The files are private and not committed.
 - **Team without a server.** Each coder codes their own copy and exports it. Settings → *Merge a colleague's copy* takes a set union of codings, memos and candidate codes, merging only sources whose text is identical and taking a snapshot first. *Only my coding* hides other coders' work for blind coding.
 - **Source inspector redesign.** Collapsible sections, speaker cards with role pills and share of talk, and attributes that wrap and can be edited in place.
 
+## Added in the third pass: reviewing AI coding as a person
+
+This pass came from doing the review rather than designing it: a reviewer went through every AI-coded claim of a real 104-minute interview in the app, and each thing they could not do became a feature.
+
+- **Review by claim** (`web/src/features/review/Claims.tsx`, `web/src/lib/claims.ts`). The codebook reads a passage as one claim: a substantive code, one evidence grade, one stance, perhaps a flag. The old queue showed one code at a time, so 415 suggestions meant 415 cards with the grade and stance of each claim scattered among them. Review → AI review now opens on *By claim*:
+  - one card per passage with everything proposed for it, the AI's reason for each code and the codebook entry beside it;
+  - evidence grade and stance are radio rows on number keys (the AI's own choice stays marked), `↵` confirms, `X` rejects, `Space` skips;
+  - a code can be changed or removed, another added, the passage's edges moved a word at a time or snapped to the sentence, an extraction row filled in for a flag, and a reviewer note written, all without leaving the card;
+  - the queue separates *needs a decision*, *accepted, not checked by you* and *checked by you*. A bulk acceptance by an assistant or a colleague is therefore still visibly unread by the person now reviewing.
+- **Decision log** (`Project.reviewLog`). Every accept, confirm, code change, rejection, addition and boundary move is recorded with the reviewer, the time, the AI's confidence and any note. Rejecting a suggestion deletes the coding, so the log is the only place it stays visible. When a reviewer changes a code the coding becomes theirs, and the log keeps what the AI proposed. Review → Decision log shows it and exports CSV.
+- **Comparison-only passes** (`AiRun.comparisonOnly`). A pass run over an interview a person already coded is a calibration check, not new coding. Marking it comparison-only takes its suggestions out of the queue, the badges and the transcript, and keeps them for Explore → AI and you.
+- **Off the record** (`Project.restricted`). A passage can be marked off the record from the claim card or the Code inspector. Its codes stay in the analysis, the transcript underlines it, and its wording is replaced by “[withheld — off the record]” in the report, the framework and Retrieve CSVs, the claims table and the decision log. The mark moves with transcript corrections.
+- **Explore** has three new views, and opens on the first:
+  - *Interview map*: one interview from start to end as lanes for who is speaking, where each guide question was answered, each code group, evidence grade, stance, review state and off-the-record passages, on a time axis with zoom. Every mark opens the passage.
+  - *Cases by domain*: a domain × case table giving the number of claims and two bars, how they were graded and what stance they took.
+  - *AI and you*: against a person's coding of the same interview, precision and recall on substantive codes, a clickable confusion matrix for each single-choice group, and per-domain bars of both / person only / AI only; and, for reviewed interviews, what review changed, by confidence, with the most frequent corrections.
+- **Report** (`web/src/lib/report.ts`, new *Report* screen). One document built from the project alone: sources, guide coverage, the framework matrix with pinned quotes and grade bars, cases by domain, code counts, flagged figures with their extraction rows, the AI audit (passes, calibration matrices, review outcome), open items, memos and optionally the codebook. It downloads as a self-contained HTML page (prints to PDF) or Markdown; a claims table (one row per coded passage) and the decision log download as CSV.
+
+Chart colours are tokens in `styles/app.css`: an ordered teal ramp for evidence grade, a blue-to-red scale around neutral grey for stance, and status colours (always with a label) for review state. The evidence ramp was run through a palette checker for lightness order and contrast in both themes.
+
+### What the review of a real interview showed (aggregate numbers only)
+
+A reviewer checked all 132 AI-coded claims (415 codings) of the second interview, using the analyst's own coding of the first interview as the standard.
+
+- 88% of the AI's codings were kept as proposed, 9% were given a different code and 2% were rejected. Low-confidence suggestions were kept 55% of the time, against about 90% for medium and high.
+- Almost every change was to evidence grade or stance, in the two directions the calibration matrix had predicted: "neutral" to "sceptical" or "supportive", and "opinion" to "firsthand". One substantive code was changed.
+- Two passages the respondent had called off the record were among the coded claims, and one was pinned as framework evidence. Nothing in the earlier interface could have kept them out of an export.
+- Two cost-benefit flags were removed and two were given extraction rows.
+
+## Added in the fourth pass: closing out the review
+
+The reviewer then worked through everything the first review had left open, again in the app. Four more gaps showed up.
+
+- **Extraction rows from the issue list.** Review → Rule issues now shows the passage in full and the extraction fields under every "flag has no extraction row" issue, with one *Save extraction row* button. Fourteen such issues were cleared without opening the transcript once.
+- **Adopting from a comparison-only pass.** Explore → AI and you lists every substantive code the AI applied and the person did not, with the AI's reason and what the person coded there. A passage they left uncoded can be adopted as a claim (it then appears in claim review like any other); a code on a passage they did code can be added to their passage.
+- **Comparing against one person.** The comparison takes one named coder as the reference, so codes a reviewer adds later do not shift the baseline the AI is measured against.
+- **A second pass no longer loses its overlap with the first.** On import, a suggestion identical to one from an earlier pass was treated as a repeat and dropped, which understated the newer pass's agreement (192 of 555 suggestions in the run below). Only repeats within the same pass are skipped now, and re-importing answers counts each window once.
+
+### Re-testing the AI after sharpening the codebook (aggregate numbers only)
+
+Include, exclude and anchor text was added to the evidence-grade and stance codes, written to describe how the analyst had coded the calibration interview. The same hand-off was then run again with nothing else changed.
+
+| Against the analyst | Before | After |
+|---|---|---|
+| Stance: same value where both graded | 51% | 69% |
+| "Sceptical" chosen where the analyst chose it | 0 of 27 | 27 of 29 |
+| Evidence grade: same value where both graded | 67% | 66% |
+| Substantive codes: recall / precision | 0.59 / 0.71 | 0.66 / 0.62 |
+
+The stance wording worked and then overshot: 15 of the 39 passages the analyst graded "neutral" came back "sceptical". The evidence wording changed nothing, so that difference is not only a matter of wording. The anchors were taken from the same interview; leaving those passages out moves each figure by a point at most, but a clean test needs a second human-coded interview.
+
+A second machine transcription of every coded passage of the other interview, made with a larger speech model, agreed with the first on 95% of words and supplied five corrections that changed meaning. It is a way to decide where to listen first, not a substitute for listening.
+
+## Added in the fifth pass: a grade pass, a listening queue and speaker fixes
+
+Three things from the review still needed a person and had no pipeline behind them.
+
+- **Grade pass** (`web/src/lib/ai/grade.ts`, AI assist → *Grade pass*). Finding claims and grading them are different jobs. This pass takes claims that already exist and asks only for the single-choice groups (evidence grade, stance). Its prompt carries what a person would use:
+  - the respondent's attributes from the source sheet (the ordinary coding pass now sends these too);
+  - an ordered decision rule per group, edited under Codebook → Groups & rules and stored as the group's description;
+  - several examples per value from a named person's coding, with passages an earlier AI pass got wrong first, marked with the value it wrongly chose.
+
+  In *held-out* mode the examples come only from the first share of that person's claims in the source, and the rest are graded blind, so the result is a test and stays out of the review queue. In *ungraded* mode it grades claims that lack a grade. It runs through the same agent hand-off; a hand-off exported by mistake can be discarded.
+- **Listen** (Review → *Listen*, `web/src/lib/listen.ts`). Coded passages in the order worth hearing: quoted evidence first, then passages where a second transcription disagrees, then low-confidence words. The card plays the passage, corrects its wording and records "wording matches the recording". A second transcription can be imported as Whisper-style JSON of the whole recording (matched to each passage by time) or as a list of passages; a passage it does not cover gets no comparison rather than a false alarm.
+- **Speakers.** A selected passage can be made its own turn for another speaker (an interviewer's question inside a respondent's turn). An RTTM speaker track can be laid over a source that has word timings: turns split where the speaker changes, and text and coding offsets do not move.
+- **Candidate codes** can be adopted with a codebook name and group, and the adoption codes the passage that prompted the candidate.
+
+### Held-out test of the grade pass (aggregate numbers only)
+
+Examples came from the first half of the analyst's claims in the calibration interview; the model graded the 73 claims in the second half.
+
+| Same value as the analyst, on those 73 claims | Coding pass, v1.1 codebook | Coding pass, v1.2 | Grade pass |
+|---|---|---|---|
+| Evidence grade | 51% | 48% | 58% |
+| Stance | 56% | 72% | 67% |
+
+The coding passes are scored on the claims they happened to grade (59 and 67 of the 73); the grade pass grades all of them. "Direct authority" was recognised on 17 of 29 claims once the model was told who was speaking. Of the 31 remaining evidence errors, 26 are the model reading a proposal author's "would" and "should" as opinion where the analyst graded them as authority or firsthand. That is a ruling for the analyst to make, not something to tune further on one interview.
+
 ## AI-assisted coding pipeline
 
 Design decisions are drawn from published LLM-coding studies (Xiao et al. 2023; LACA; QualiGPT; MindCoder; ChatQDA) and labelling tools (Prodigy, Argilla, INCEpTION):

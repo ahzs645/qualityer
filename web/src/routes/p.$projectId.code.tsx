@@ -2,7 +2,7 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BookOpen, ChevronDown, ChevronRight, EyeOff, FileText, Search, Users, Waves, X } from 'lucide-react'
 import { useProject } from '../lib/store'
-import { GROUP_KIND_LABEL, groupOf, indexBy, offsetAt, orderedCodes, snapToWords } from '../lib/model'
+import { GROUP_KIND_LABEL, comparisonRuns, groupOf, indexBy, offsetAt, orderedCodes, snapToWords } from '../lib/model'
 import { seek, skip, toggle, usePlayer } from '../lib/player'
 import { AudioBar } from '../features/code/AudioBar'
 import { markReadTo, toggleCode } from '../lib/actions'
@@ -51,9 +51,14 @@ function CodeView() {
   }, [nowOffset, follow, playing])
   const onSeekTime = useCallback((t: number) => seek(t, true), [])
   const codes = useMemo(() => indexBy(project.codes), [project.codes])
+  const restricted = useMemo(() => project.restricted.filter((r) => r.sourceId === source?.id), [project.restricted, source?.id])
 
   const codings = useMemo(
-    () => (source ? project.codings.filter((c) => c.sourceId === source.id && (c.status === 'accepted' || c.status === 'suggested') && (!onlyMine || c.coder === project.coder)) : []),
+    () => {
+      if (!source) return []
+      const parked = comparisonRuns(project)
+      return project.codings.filter((c) => c.sourceId === source.id && !(c.status === 'suggested' && c.origin && parked.has(c.origin.runId)) && (!onlyMine || c.coder === project.coder))
+    },
     [project.codings, source, onlyMine, project.coder],
   )
 
@@ -188,6 +193,7 @@ function CodeView() {
             handle={transcript}
             source={source}
             codings={codings}
+            restricted={restricted}
             codes={codes}
             focusCodeId={focusCode}
             active={active}

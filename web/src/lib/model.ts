@@ -26,7 +26,7 @@ export function emptyProject(name = 'Untitled study'): Project {
     id: uid(), name, question: '', method: '', createdAt: t, updatedAt: t, coder: 'Researcher',
     sources: [], groups: [], codes: [], codings: [], rules: [], guide: [], coverage: [], memos: [],
     cases: [], themes: [], cells: [], glossary: [], extractionFields: ['Figure', 'Unit', 'Basis'],
-    extractions: [], candidates: [], aiRuns: [], importNotes: [],
+    extractions: [], candidates: [], aiRuns: [], reviewLog: [], restricted: [], wordingChecks: [], importNotes: [],
   }
 }
 
@@ -237,6 +237,37 @@ export function groupOf(code: Code | undefined, codes: Map<string, Code>, groups
   return undefined
 }
 
+/** Ids of AI passes kept only for comparison with a human coder. */
+export function comparisonRuns(project: Project) {
+  return new Set(project.aiRuns.filter((r) => r.comparisonOnly).map((r) => r.id))
+}
+
+/** Suggestions waiting for a decision, leaving out comparison-only passes. */
+export function pendingSuggestions(project: Project) {
+  const skip = comparisonRuns(project)
+  return project.codings.filter((c) => c.status === 'suggested' && !(c.origin && skip.has(c.origin.runId)))
+}
+
+/** The off-the-record restriction a passage touches, if any. */
+export function restrictionAt(project: Project, sourceId: string, start: number, end: number) {
+  return project.restricted.find((r) => r.sourceId === sourceId && r.start < end && r.end > start)
+}
+
+export const WITHHELD = '[withheld — off the record]'
+
+/** A passage's text for quoting outside the app: withheld when it is off the record. */
+export function quotable(project: Project, source: Source | undefined, start: number, end: number) {
+  if (!source) return ''
+  return restrictionAt(project, source.id, start, end) ? WITHHELD : excerpt(source.text, start, end)
+}
+
+/** Every code that belongs to a group, including children that inherit it. */
+export function codesInGroup(project: Project, groupId: string): Code[] {
+  const codes = indexBy(project.codes)
+  const groups = indexBy(project.groups)
+  return project.codes.filter((c) => groupOf(c, codes, groups)?.id === groupId)
+}
+
 // ---------------------------------------------------------------------------
 // Intervals
 
@@ -413,6 +444,14 @@ export function editSource(project: Project, sourceId: string, edits: Edit[]): P
       m.sourceId !== sourceId ? m : { ...m, start: nullableMap(m.start, 'start'), end: nullableMap(m.end, 'end') }),
     candidates: project.candidates.map((m) =>
       m.sourceId !== sourceId ? m : { ...m, start: nullableMap(m.start, 'start'), end: nullableMap(m.end, 'end') }),
+    restricted: project.restricted.map((r) =>
+      r.sourceId !== sourceId ? r : { ...r, start: map(r.start, 'start'), end: map(r.end, 'end') }),
+    reviewLog: project.reviewLog.map((e) =>
+      e.sourceId !== sourceId ? e : { ...e, start: map(e.start, 'start'), end: map(e.end, 'end') }),
+    wordingChecks: project.wordingChecks.map((w) =>
+      w.sourceId !== sourceId ? w : { ...w, start: map(w.start, 'start'), end: map(w.end, 'end') }),
+    aiRuns: project.aiRuns.map((r) =>
+      !r.claims || r.sourceIds[0] !== sourceId ? r : { ...r, claims: Object.fromEntries(Object.entries(r.claims).map(([k, [a, b]]) => [k, [map(a, 'start'), map(b, 'end')] as [number, number]])) }),
   }
 }
 
@@ -502,7 +541,7 @@ export function sourceProgress(project: Project, source: Source) {
     read: source.text.length ? Math.min(1, source.readTo / source.text.length) : 0,
     coded: source.text.length ? covered / source.text.length : 0,
     codings: own.length,
-    suggested: project.codings.filter((c) => c.sourceId === source.id && c.status === 'suggested').length,
+    suggested: pendingSuggestions(project).filter((c) => c.sourceId === source.id).length,
     guideMarked: marks.length,
   }
 }

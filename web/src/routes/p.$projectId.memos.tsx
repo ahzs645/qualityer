@@ -30,7 +30,6 @@ function Memos() {
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <PageHeader
         title="Memos & journal"
-        description="Analytic memos record what you think the data means. The journal records how and why the analysis was done — protocol, decisions, saturation notes."
         actions={
           <>
             <Button icon={<Plus size={15} />} onClick={() => setOpenId(addMemo({ kind: 'journal', title: 'Journal entry' }))}>Journal entry</Button>

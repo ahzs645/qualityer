@@ -100,6 +100,11 @@ export function systemPrompt(project: Project, codes: Code[], keys: Map<string, 
     return `- ${trig} codes mark figures for a separate extraction table; apply them only when the quote contains the quantity or estimate itself.`
   }).join('\n')
 
+  // A group's decision rule ("how to choose"), for the groups in this pass that have one.
+  const used = new Set(codes.map((c) => groupOf(c, all, groups)?.id))
+  const choosing = project.groups.filter((g) => used.has(g.id) && g.description?.trim())
+    .map((g) => `<how_to_choose group="${xml(g.name)}">\n${xml(g.description!.trim())}\n</how_to_choose>\n`).join('')
+
   const guide = project.guide.length
     ? `<interview_guide>\n${project.guide.map((q) => `${q.key} ${q.title}: ${q.prompt}`).join('\n')}\n</interview_guide>\n`
     : ''
@@ -110,7 +115,7 @@ export function systemPrompt(project: Project, codes: Code[], keys: Map<string, 
 Research question: ${project.question || '(not recorded)'}
 Method: ${project.method || '(not recorded)'}
 </study>
-${guide}
+${guide}${choosing}
 <codebook>
 ${cards}
 </codebook>
@@ -129,8 +134,9 @@ export function userMessage(source: Source, w: Window) {
   const fmt = (t: Turn) => `<turn id="${t.id}" speaker="${xml(t.speaker)}"${t.role !== 'unknown' ? ` role="${t.role}"` : ''}${t.time != null ? ` time="${formatTime(t.time)}"` : ''}>${xml(source.text.slice(t.start, t.end).trim())}</turn>`
   const before = w.context.filter((t) => t.index < w.targets[0].index)
   const others = w.context.filter((t) => t.index >= w.targets[0].index)
+  const attrs = Object.entries(source.attributes).filter(([, v]) => v.trim()).map(([k, v]) => `  ${xml(k)}: ${xml(v)}`).join('\n')
   return `Source: ${xml(source.name)}
-
+${attrs ? `<respondent>\n${attrs}\n</respondent>\n` : ''}
 <context_turns>
 ${before.map(fmt).join('\n')}
 ${others.map(fmt).join('\n')}
@@ -265,8 +271,9 @@ export function verifyWindow(project: Project, source: Source, w: Window, raw: R
     const key = `${codeId}:${m.start}:${m.end}`
     if (seen.has(key)) continue
     seen.add(key)
-    // Skip only repeats of AI output; agreeing with a human coding is kept so calibration counts it.
-    if (project.codings.some((c) => c.sourceId === source.id && c.codeId === codeId && c.start === m.start && c.end === m.end && (c.origin || c.coder === run.coder))) continue
+    // Skip only what this pass already produced (a re-import). A suggestion that agrees with a
+    // person's coding, or with an earlier pass, is kept: dropping it would understate agreement.
+    if (project.codings.some((c) => c.sourceId === source.id && c.codeId === codeId && c.start === m.start && c.end === m.end && (c.origin ? c.origin.runId === run.id : c.coder === run.coder))) continue
     if (m.match === 'repaired') repaired++
     codings.push({
       id: uid(), sourceId: source.id, codeId, start: m.start, end: m.end, coder: run.coder, memo: '',

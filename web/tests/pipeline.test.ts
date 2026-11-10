@@ -57,6 +57,20 @@ describe('windows and prompts', () => {
     expect(r.codings[0].confidence).toBe(0.9)
     expect(r.rejected.map((x) => x.reason)).toEqual(['Unknown code id', 'Turn T9999 is not a target turn'])
   })
+
+  it('keeps a suggestion an earlier pass also made, and skips only its own repeats', () => {
+    const p = demoProject()
+    const s = p.sources[0]
+    const cold = p.codes.find((c) => c.name.startsWith('02.1'))!
+    const { toKey, toId } = codeKeys(p.codes)
+    const w = windowsFor(s, { windowSize: 40, contextTurns: 0, respondentOnly: true })[0]
+    const turn = w.targets.find((t) => s.text.slice(t.start, t.end).includes('squash'))!
+    const raw = [{ code_id: toKey.get(cold.id)!, turn_id: turn.id, quote: 'we had nowhere cold to put it', rationale: '', criterion: '', confidence: 'medium' as const }]
+    const first = verifyWindow({ ...p, codings: [] }, s, w, raw, toId, { id: 'run-1', coder: 'AI #1' })
+    const withFirst = { ...p, codings: first.codings }
+    expect(verifyWindow(withFirst, s, w, raw, toId, { id: 'run-2', coder: 'AI #2' }).codings).toHaveLength(1)
+    expect(verifyWindow(withFirst, s, w, raw, toId, { id: 'run-1', coder: 'AI #1' }).codings).toHaveLength(0)
+  })
 })
 
 describe('word timings', () => {
