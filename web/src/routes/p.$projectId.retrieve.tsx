@@ -90,7 +90,6 @@ function Retrieve() {
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <PageHeader
         title="Retrieve"
-        description="Pull coded passages back out by code, source, attribute or coder. Read them in context before writing them up."
         actions={<Button icon={<Download size={15} />} disabled={!hits.length} onClick={exportCSV}>Export {hits.length} as CSV</Button>}
       />
       <div className="grid gap-5 lg:grid-cols-[18rem_1fr]">

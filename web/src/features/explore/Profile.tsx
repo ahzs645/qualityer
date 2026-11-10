@@ -52,7 +52,6 @@ export function Profile({ project }: { project: Project }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted">Each cell counts coded claims in a domain, with a bar for how they were graded and a bar for the stance taken. Counts describe the coding so far; they are not how common a view is.</p>
       <div className="overflow-x-auto rounded-lg border border-line bg-surface" onMouseLeave={() => setTip(null)}>
         <table className="w-full min-w-[40rem] border-collapse text-sm">
           <thead>

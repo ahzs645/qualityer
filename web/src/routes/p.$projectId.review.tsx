@@ -28,7 +28,7 @@ function Review() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-      <PageHeader title="Review" description="Everything that needs a researcher's decision: rule issues, AI-coded claims, transcript corrections, candidate codes and coder agreement." />
+      <PageHeader title="Review" />
       <Tabs value={tab} onChange={(t) => navigate({ search: { tab: t } })} items={[
         { value: 'rules', label: <>Rule issues {violations.length > 0 && <Badge tone="bad">{violations.length}</Badge>}</> },
         { value: 'suggestions', label: <>AI review {suggested > 0 && <Badge tone="accent">{suggested}</Badge>}</> },

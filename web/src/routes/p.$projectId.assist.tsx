@@ -52,7 +52,6 @@ function Assist() {
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <PageHeader
         title="AI assist"
-        description="Draft codings with a language model, then review every suggestion yourself. Quotes are checked against the transcript before they reach you, and each pass keeps a manifest for your audit trail."
         actions={<Link to="/p/$projectId/review" params={{ projectId: project.id }} search={{ tab: 'suggestions' }}><Button>Review suggestions</Button></Link>}
       />
       <div className="grid gap-5 lg:grid-cols-[1fr_24rem]">

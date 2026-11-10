@@ -72,7 +72,6 @@ function Codebook() {
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <PageHeader
         title="Codebook"
-        description="Definitions, inclusion and exclusion criteria, and anchor examples, plus the rules each coded claim must meet."
         actions={
           <>
             <Button icon={<Upload size={15} />} onClick={() => csvRef.current?.click()}>Import CSV</Button>

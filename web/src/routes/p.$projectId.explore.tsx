@@ -25,7 +25,7 @@ function Explore() {
   const accepted = project.codings.filter((c) => c.status === 'accepted')
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-      <PageHeader title="Explore" description="Ways to see the coding whole: each interview laid out from start to end, how each case covers each domain, how the AI's coding compares with a person's, and which codes travel together. Starting points for memos, not findings on their own." />
+      <PageHeader title="Explore" />
       <Tabs value={tab} onChange={(t) => navigate({ search: { tab: t } })} items={[
         { value: 'map', label: 'Interview map' },
         { value: 'profile', label: 'Cases by domain' },

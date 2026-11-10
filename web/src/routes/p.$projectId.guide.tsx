@@ -30,7 +30,6 @@ function Guide() {
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
       <PageHeader
         title="Guide & coverage"
-        description="Track which guide questions each interview actually covered. “Not asked” and “asked, no view” are different findings — don't read silence as absence of opinion."
         actions={<Button icon={<Upload size={15} />} onClick={() => fileRef.current?.click()}>Import guide</Button>}
       />
       <input ref={fileRef} type="file" accept=".md,.markdown,.txt" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void importGuide(f); e.target.value = '' }} />

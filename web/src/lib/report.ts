@@ -325,7 +325,7 @@ export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPOR
   if (opts.codebook && project.codes.length) {
     h('<h2>Codebook</h2>')
     for (const g of project.groups) {
-      h(`<h3>${esc(g.name)}</h3><table><thead><tr><th>Code</th><th>Definition</th><th>Include</th><th>Exclude</th></tr></thead><tbody>${codesInGroup(project, g.id).map((c) => `<tr><td>${esc(tidy(c.name))}</td><td>${esc(c.definition)}</td><td>${esc(c.include)}</td><td>${esc(c.exclude)}</td></tr>`).join('')}</tbody></table>`)
+      h(`<h3>${esc(g.name)}</h3><div class="scroll"><table><thead><tr><th>Code</th><th>Definition</th><th>Include</th><th>Exclude</th><th>Anchor</th></tr></thead><tbody>${codesInGroup(project, g.id).map((c) => `<tr><td>${esc(tidy(c.name))}</td><td>${esc(c.definition)}</td><td>${esc(c.include)}</td><td>${esc(c.exclude)}</td><td><i>${esc(c.anchor)}</i></td></tr>`).join('')}</tbody></table></div>`)
     }
   }
 
@@ -400,7 +400,7 @@ export function reportMarkdown(project: Project, opts: ReportOptions = DEFAULT_R
   }
   if (opts.codebook) {
     h('## Codebook')
-    for (const g of project.groups) h(`### ${g.name}`, table(['Code', 'Definition', 'Include', 'Exclude'], codesInGroup(project, g.id).map((c) => [tidy(c.name), c.definition, c.include, c.exclude])))
+    for (const g of project.groups) h(`### ${g.name}`, table(['Code', 'Definition', 'Include', 'Exclude', 'Anchor'], codesInGroup(project, g.id).map((c) => [tidy(c.name), c.definition, c.include, c.exclude, c.anchor])))
   }
   return out.join('\n').replace(/\n{3,}/g, '\n\n')
 }

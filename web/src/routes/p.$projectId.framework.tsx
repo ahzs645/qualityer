@@ -46,7 +46,6 @@ function Framework() {
       <div className="px-4 pt-6 sm:px-6">
         <PageHeader
           title="Framework matrix"
-          description="Chart each case against each theme. Cells pull in passages coded with the theme's codes; summarise them in your own words and pin the quotes that carry the point."
           actions={
             <>
               <Button onClick={() => setEditThemes((v) => !v)}>{editThemes ? 'Done editing themes' : 'Edit themes'}</Button>

@@ -166,7 +166,7 @@ function Matrix({ project, confusion, active, onPick }: { project: Project; conf
           ))}
         </tbody>
       </table>
-      <p className="mt-2 text-xs text-muted">Outlined cells are agreement. Each of the person's codings is paired with the AI coding in the same group that overlaps it most. Click a cell to read its passages.</p>
+      <p className="mt-2 text-xs text-muted">Outlined cells are agreement. Click a cell to read its passages.</p>
     </Panel>
   )
 }

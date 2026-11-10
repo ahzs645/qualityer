@@ -147,7 +147,6 @@ function Passes({ project, parked, queued }: { project: Project; parked: Project
   return (
     <details className="rounded-lg border border-line bg-surface px-4 py-2" open={queued.some((r) => r.sourceIds.some((id) => project.codings.some((c) => c.sourceId === id && !c.origin && c.status === 'accepted')))}>
       <summary className="cursor-pointer text-sm font-medium">AI passes <span className="font-normal text-muted">· {queued.length} in review{parked.length ? `, ${parked.length} kept for comparison only` : ''}</span></summary>
-      <p className="mt-1 text-xs text-muted">A pass run over an interview you had already coded is a calibration check, not new coding. Keep it for comparison only and its suggestions leave this queue but stay available under Explore → AI and you.</p>
       <ul className="mt-1 divide-y divide-line">{queued.map((r) => row(r, false))}{parked.map((r) => row(r, true))}</ul>
     </details>
   )
