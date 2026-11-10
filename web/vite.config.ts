@@ -12,4 +12,6 @@ export default defineConfig({
     tailwindcss(),
   ],
   build: { chunkSizeWarningLimit: 900 },
+  // The original app's importers (../src) are loaded on demand.
+  server: { fs: { allow: ['..'] } },
 })

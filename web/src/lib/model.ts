@@ -26,15 +26,25 @@ export function emptyProject(name = 'Untitled study'): Project {
     id: uid(), name, question: '', method: '', createdAt: t, updatedAt: t, coder: 'Researcher',
     sources: [], groups: [], codes: [], codings: [], rules: [], guide: [], coverage: [], memos: [],
     cases: [], themes: [], cells: [], glossary: [], extractionFields: ['Figure', 'Unit', 'Basis'],
-    extractions: [], candidates: [], importNotes: [],
+    extractions: [], candidates: [], aiRuns: [], importNotes: [],
   }
 }
 
 export function newSource(name: string, text: string, importedFrom = 'Pasted text'): Source {
   return {
-    id: uid(), name, text, attributes: {}, speakers: [], segments: null, status: 'new',
+    id: uid(), name, text, attributes: {}, speakers: [], segments: null, media: null, status: 'new',
     readTo: 0, importedFrom, createdAt: now(),
   }
+}
+
+/** Returns a converter from code-point offsets to UTF-16 offsets for `text`. */
+export function codePointToUtf16(text: string) {
+  if (!/[\uD800-\uDFFF]/.test(text)) return (n: number) => n
+  const table: number[] = []
+  let u = 0
+  for (const ch of text) { table.push(u); u += ch.length }
+  table.push(u)
+  return (n: number) => table[Math.max(0, Math.min(n, table.length - 1))]
 }
 
 // ---------------------------------------------------------------------------
@@ -123,7 +133,7 @@ export function formatTime(sec: number | null | undefined) {
   return (h ? `${h}:${String(m).padStart(2, '0')}` : String(m)) + ':' + String(s).padStart(2, '0')
 }
 
-/** Time of the turn that contains `offset`. */
+/** Time at `offset`: word-level when word timings exist, else the turn's start. */
 export function timeAt(source: Source, offset: number) {
   const segs = segmentsOf(source)
   let best: Segment | undefined
@@ -131,7 +141,46 @@ export function timeAt(source: Source, offset: number) {
     if (s.start <= offset) best = s
     else break
   }
+  if (best?.words?.length) {
+    let t: number | null = null
+    for (const [o, time] of best.words) {
+      if (o <= offset) t = time
+      else break
+    }
+    if (t != null) return t
+  }
   return best?.time ?? null
+}
+
+/** Text offset spoken at `time` seconds (nearest preceding word or turn). */
+export function offsetAt(source: Source, time: number): number | null {
+  const segs = segmentsOf(source)
+  let seg: Segment | undefined
+  for (const s of segs) {
+    if (s.time != null && s.time <= time) seg = s
+    else if (s.time != null && s.time > time) break
+  }
+  if (!seg) return null
+  let off = seg.start
+  for (const [o, t] of seg.words ?? []) {
+    if (t <= time) off = o
+    else break
+  }
+  return off
+}
+
+/** Start and end time of a passage, using the next word's start as the end. */
+export function timeRange(source: Source, start: number, end: number): [number, number] | null {
+  const a = timeAt(source, start)
+  if (a == null) return null
+  const segs = segmentsOf(source)
+  let b: number | null = null
+  for (const s of segs) {
+    for (const [o, t] of s.words ?? []) if (o >= end) { b = t; break }
+    if (b != null) break
+    if (s.start >= end && s.time != null) { b = s.time; break }
+  }
+  return [a, b ?? a + Math.max(3, (end - start) / 14)]
 }
 
 // ---------------------------------------------------------------------------
@@ -353,6 +402,7 @@ export function editSource(project: Project, sourceId: string, edits: Edit[]): P
           uncertain: g.uncertain
             ?.map(([a, b]) => [map(a, 'start'), map(b, 'end')] as [number, number])
             .filter(([a, b]) => b > a),
+          words: g.words?.map(([o, t]) => [map(o, 'start'), t] as [number, number]),
         })) ?? null,
       }),
     codings: project.codings.map((c) =>
@@ -379,18 +429,19 @@ export interface AgreementRow {
   kappa: number | null
 }
 
-export function agreement(project: Project, coderA: string, coderB: string, sourceIds: string[]) {
+export function agreement(project: Project, coderA: string, coderB: string, sourceIds: string[], opts: { includeSuggested?: boolean; codeIds?: string[] } = {}) {
   const sources = project.sources.filter((s) => sourceIds.includes(s.id))
   const total = sources.reduce((n, s) => n + s.text.length, 0)
   const codes = indexBy(project.codes)
   const groups = indexBy(project.groups)
   const cells = new Map<string, { both: number; onlyA: number; onlyB: number }>()
   for (const code of project.codes) {
+    if (opts.codeIds && !opts.codeIds.includes(code.id)) continue
     let both = 0, onlyA = 0, onlyB = 0
     for (const s of sources) {
       const pick = (coder: string) => mergeIntervals(
         project.codings
-          .filter((c) => c.sourceId === s.id && c.codeId === code.id && c.coder === coder && c.status === 'accepted')
+          .filter((c) => c.sourceId === s.id && c.codeId === code.id && c.coder === coder && (c.status === 'accepted' || (opts.includeSuggested && c.status === 'suggested')))
           .map((c) => [c.start, c.end] as [number, number]),
       )
       const a = pick(coderA)
@@ -436,8 +487,8 @@ export function agreement(project: Project, coderA: string, coderB: string, sour
   return { byCode, byGroup }
 }
 
-export function coders(project: Project) {
-  return [...new Set(project.codings.map((c) => c.coder).filter(Boolean))].sort()
+export function coders(project: Project, includeSuggested = false) {
+  return [...new Set(project.codings.filter((c) => includeSuggested || c.status === 'accepted').map((c) => c.coder).filter(Boolean))].sort()
 }
 
 // ---------------------------------------------------------------------------

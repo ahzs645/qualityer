@@ -5,7 +5,7 @@ import { emptyProject } from './model'
 export function migrate(input: Partial<Project> & { id: string }): Project {
   const p = { ...emptyProject(input.name), ...input } as Project
   p.sources = (p.sources ?? []).map((s: Partial<Source>) => ({
-    attributes: {}, speakers: [], segments: null, status: 'new', readTo: 0, importedFrom: '', ...s,
+    attributes: {}, speakers: [], segments: null, media: null, status: 'new', readTo: 0, importedFrom: '', ...s,
   }) as Source)
   p.codings = (p.codings ?? []).map((c: Partial<Coding>) => ({
     memo: '', important: false, status: 'accepted', coder: p.coder, ...c,

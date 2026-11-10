@@ -6,7 +6,7 @@ import { formatTime, segmentsOf, speakerOf } from '../../lib/model'
 import { cx } from '../../components/ui'
 
 export interface TranscriptHandle {
-  scrollToOffset: (offset: number) => void
+  scrollToOffset: (offset: number, align?: 'center' | 'auto') => void
 }
 
 interface Props {
@@ -21,6 +21,10 @@ interface Props {
   onSelect: (span: { start: number; end: number; rect: DOMRect } | null) => void
   onClickCoding: (span: { start: number; end: number }, rect: DOMRect) => void
   onMarkRead: (offset: number) => void
+  /** Text offset currently being played, for the follow-along highlight. */
+  nowOffset: number | null
+  /** Present when a recording is attached: timestamps become seek buttons. */
+  onSeekTime?: (seconds: number) => void
   handle: Ref<TranscriptHandle>
 }
 
@@ -111,6 +115,7 @@ export function Transcript(props: Props) {
                 turnCodings={turnCodings}
                 isRead={source.readTo >= seg.end}
                 flashHere={!!flash && flash.start < seg.end && flash.end > seg.start}
+                speaking={props.nowOffset != null && props.nowOffset >= seg.start && props.nowOffset < seg.end}
               />
             </div>
           )
@@ -125,9 +130,10 @@ interface TurnProps extends Props {
   turnCodings: Coding[]
   isRead: boolean
   flashHere: boolean
+  speaking: boolean
 }
 
-const Turn = memo(function Turn({ source, seg, turnCodings, codes, focusCodeId, active, dimInterviewer, find, isRead, flashHere, onClickCoding, onMarkRead }: TurnProps) {
+const Turn = memo(function Turn({ source, seg, turnCodings, codes, focusCodeId, active, dimInterviewer, find, isRead, flashHere, speaking, onClickCoding, onMarkRead, onSeekTime }: TurnProps) {
   const speaker = seg.speaker ? speakerOf(source, seg.speaker) : undefined
   const role = speaker?.role ?? (seg.speaker ? 'unknown' : null)
   const dim = dimInterviewer && role === 'interviewer'
@@ -150,7 +156,7 @@ const Turn = memo(function Turn({ source, seg, turnCodings, codes, focusCodeId, 
   return (
     <article
       data-turn
-      className={cx('group relative grid grid-cols-[1fr] gap-x-4 border-l-2 px-5 py-3 sm:grid-cols-[1fr_9.5rem]', isRead ? 'border-accent/35' : 'border-transparent', flashHere && 'flash')}
+      className={cx('group relative grid grid-cols-[1fr] gap-x-4 border-l-2 px-5 py-3 sm:grid-cols-[1fr_9.5rem]', speaking ? 'border-accent bg-accent-soft/40' : isRead ? 'border-accent/35' : 'border-transparent', flashHere && 'flash')}
     >
       <div className="min-w-0">
         {(label || seg.time != null) && (
@@ -159,7 +165,11 @@ const Turn = memo(function Turn({ source, seg, turnCodings, codes, focusCodeId, 
               <span className={cx('font-semibold', role === 'interviewer' ? 'text-muted' : 'text-ink')}>{label}</span>
             )}
             {role && role !== 'unknown' && role !== 'respondent' && role !== label?.toLowerCase() && <span className="text-faint">{role}</span>}
-            {seg.time != null && <span className="font-mono text-faint">{formatTime(seg.time)}</span>}
+            {seg.time != null && (onSeekTime ? (
+              <button type="button" onClick={() => onSeekTime(seg.time!)} className="rounded px-1 font-mono text-faint hover:bg-accent-soft hover:text-accent" title="Play from here" aria-label={`Play from ${formatTime(seg.time)}`}>
+                ▸ {formatTime(seg.time)}
+              </button>
+            ) : <span className="font-mono text-faint">{formatTime(seg.time)}</span>)}
             <button
               type="button"
               onClick={() => onMarkRead(seg.end)}

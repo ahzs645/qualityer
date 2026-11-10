@@ -5,7 +5,7 @@ import { migrate } from './migrate'
 // use export to keep a copy or move a project elsewhere.
 
 const DB_NAME = 'research-weave-web'
-const VERSION = 1
+const VERSION = 2
 
 let dbPromise: Promise<IDBDatabase> | null = null
 
@@ -18,6 +18,7 @@ function db(): Promise<IDBDatabase> {
       if (!d.objectStoreNames.contains('snapshots')) {
         d.createObjectStore('snapshots', { keyPath: 'id' }).createIndex('projectId', 'projectId')
       }
+      if (!d.objectStoreNames.contains('media')) d.createObjectStore('media')
     }
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
@@ -55,6 +56,7 @@ export const saveProject = (p: Project) => tx('projects', 'readwrite', (s) => s.
 export async function deleteProject(id: string) {
   const snaps = await listSnapshots(id)
   await tx('projects', 'readwrite', (s) => s.delete(id))
+  await tx('media', 'readwrite', (s) => s.delete(IDBKeyRange.bound(id + ':', id + ':\uffff')))
   for (const sn of snaps) await tx('snapshots', 'readwrite', (s) => s.delete(sn.id))
 }
 
@@ -68,3 +70,13 @@ export async function listSnapshots(projectId: string): Promise<Omit<Snapshot, '
 export const getSnapshot = (id: string) => tx<Snapshot | undefined>('snapshots', 'readonly', (s) => s.get(id))
 export const putSnapshot = (s: Snapshot) => tx('snapshots', 'readwrite', (st) => st.put(s))
 export const deleteSnapshot = (id: string) => tx('snapshots', 'readwrite', (s) => s.delete(id))
+
+// Media blobs, keyed "projectId:sourceId". Peaks are cached alongside.
+export interface StoredMedia { blob: Blob; peaks: number[] | null }
+const mediaKey = (projectId: string, sourceId: string) => `${projectId}:${sourceId}`
+export const getMedia = (projectId: string, sourceId: string) =>
+  tx<StoredMedia | undefined>('media', 'readonly', (s) => s.get(mediaKey(projectId, sourceId)))
+export const putMedia = (projectId: string, sourceId: string, m: StoredMedia) =>
+  tx('media', 'readwrite', (s) => s.put(m, mediaKey(projectId, sourceId)))
+export const deleteMedia = (projectId: string, sourceId: string) =>
+  tx('media', 'readwrite', (s) => s.delete(mediaKey(projectId, sourceId)))

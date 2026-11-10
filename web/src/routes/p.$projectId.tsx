@@ -1,8 +1,8 @@
 import { Link, Outlet, createFileRoute, redirect, useRouterState } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
-  BookOpen, CheckCircle2, ClipboardList, FileText, Grid3x3, Highlighter, LayoutDashboard, Menu, Moon,
-  NotebookPen, Redo2, Search, Settings, Sun, SunMoon, Undo2, X,
+  BookOpen, Bot, CheckCircle2, ClipboardList, FileText, Grid3x3, Highlighter, LayoutDashboard, Menu, Moon,
+  Network, NotebookPen, Redo2, Search, Settings, Sun, SunMoon, Undo2, X,
 } from 'lucide-react'
 import { openProject, redo, undo, useProject, useStore } from '../lib/store'
 import { checkRules } from '../lib/model'
@@ -26,7 +26,9 @@ const NAV = [
   { to: '/p/$projectId/codebook', label: 'Codebook', icon: BookOpen },
   { to: '/p/$projectId/guide', label: 'Guide & coverage', icon: ClipboardList },
   { to: '/p/$projectId/review', label: 'Review', icon: CheckCircle2, badge: 'issues' as const },
+  { to: '/p/$projectId/assist', label: 'AI assist', icon: Bot },
   { to: '/p/$projectId/framework', label: 'Framework', icon: Grid3x3 },
+  { to: '/p/$projectId/explore', label: 'Explore', icon: Network },
   { to: '/p/$projectId/retrieve', label: 'Retrieve', icon: Search },
   { to: '/p/$projectId/memos', label: 'Memos', icon: NotebookPen },
 ] as const

@@ -61,6 +61,39 @@ export interface Coding {
   /** `suggested` codings are proposals (AI or import) awaiting a decision. */
   status: 'accepted' | 'suggested'
   createdAt: string
+  /** When the quoted wording was checked against the recording. */
+  verifiedAt?: string | null
+  /** Model confidence (0–1) for suggestions. */
+  confidence?: number
+  /** Why a suggestion was made, shown in review. */
+  rationale?: string
+  /** For AI suggestions: the run that produced it and how the quote matched the transcript. */
+  origin?: { runId: string; match: 'exact' | 'repaired' } | null
+  /** Who accepted a suggestion (AI codings keep the AI as coder for provenance). */
+  reviewedBy?: string | null
+}
+
+/** Manifest of one AI coding pass, kept for the audit trail. */
+export interface AiRun {
+  id: string
+  startedAt: string
+  finishedAt: string | null
+  provider: 'anthropic' | 'openai' | 'agent'
+  model: string
+  promptHash: string
+  codebookHash: string
+  sourceIds: string[]
+  codeIds: string[]
+  windows: number
+  completed: number
+  failed: string[]
+  suggestions: number
+  repaired: number
+  rejected: { windowId: string; quote: string; codeId: string; reason: string }[]
+  notes: string
+  /** Prompt code key (C001…) → code id, so responses can be matched later. */
+  codeKeys: Record<string, string>
+  options: { windowSize: number; contextTurns: number; respondentOnly: boolean; effort: string }
 }
 
 export interface Speaker {
@@ -81,6 +114,16 @@ export interface Segment {
   time: number | null
   /** Low-confidence ASR word ranges, as absolute text offsets. */
   uncertain?: [number, number][]
+  /** Word start times as [text offset, seconds], ascending. */
+  words?: [number, number][]
+}
+
+/** An audio or video recording attached to a source. The bytes live in IndexedDB. */
+export interface MediaInfo {
+  name: string
+  type: string
+  size: number
+  duration: number | null
 }
 
 export interface Source {
@@ -91,6 +134,7 @@ export interface Source {
   speakers: Speaker[]
   /** Supplied turn structure; when absent, turns are parsed from the text. */
   segments: Segment[] | null
+  media: MediaInfo | null
   status: SourceStatus
   /** Character offset the reader has confirmed reading up to. */
   readTo: number
@@ -211,6 +255,7 @@ export interface Project {
   extractionFields: string[]
   extractions: Extraction[]
   candidates: Candidate[]
+  aiRuns: AiRun[]
   importNotes: string[]
 }
 

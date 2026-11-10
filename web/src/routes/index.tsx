@@ -69,7 +69,7 @@ function Projects() {
           ref={fileRef}
           type="file"
           hidden
-          accept=".qda,.zip,.json,.sqlite,.db,.md"
+          accept=".qda,.qdpx,.zip,.json,.sqlite,.db,.rqda,.md"
           onChange={(e) => onImport(e.target.files)}
         />
 
@@ -88,7 +88,7 @@ function Projects() {
                 </div>
               }
             >
-              Start a study, or import a QualCoder project (<code>.qda</code> folder zipped, or its <code>data.qda</code>) or a Research Weave export.
+              Start a study, or import a QualCoder project (zipped <code>.qda</code> folder or its <code>data.qda</code>), a REFI-QDA <code>.qdpx</code> from NVivo / ATLAS.ti / MAXQDA, a Requal, RQDA or Taguette database, or a Research Weave export.
             </Empty>
           </div>
         ) : (
@@ -130,7 +130,7 @@ function Projects() {
 
         <section className="mt-10 grid gap-4 sm:grid-cols-3">
           {[
-            ['Imports', 'QualCoder projects, Research Weave exports, transcripts (.txt, .srt, .vtt, Whisper JSON) and Markdown interview guides.'],
+            ['Imports', 'QualCoder, REFI-QDA (.qdpx), Requal, RQDA, Taguette and Research Weave projects; transcripts as text, Word, ODT, PDF, SRT/VTT or Whisper JSON; Markdown interview guides.'],
             ['Codebook rules', 'Declare “exactly one evidence grade per claim” or “every cost-benefit flag needs an extraction row” and see violations as you code.'],
             ['Safe changes', 'Undo any edit. Snapshots are taken before bulk changes like transcript corrections, and can be restored.'],
           ].map(([t, d]) => (

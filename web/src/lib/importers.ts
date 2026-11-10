@@ -3,21 +3,13 @@ import type {
   Code, CodeGroup, Coding, GuideQuestion, Memo, Project, Segment, Source, Theme,
 } from './types'
 import {
-  PALETTE, emptyProject, guessGroupKind, newSource, now, splitDefinition, suggestedRules, uid,
+  PALETTE, codePointToUtf16, emptyProject, guessGroupKind, newSource, now, splitDefinition, suggestedRules, uid,
 } from './model'
 
 // ---------------------------------------------------------------------------
 // Offsets: imports store Unicode code points, the app uses UTF-16 indices.
 
-/** Returns a converter from code-point offsets to UTF-16 offsets for `text`. */
-export function codePointToUtf16(text: string) {
-  if (!/[\uD800-\uDFFF]/.test(text)) return (n: number) => n
-  const table: number[] = []
-  let u = 0
-  for (const ch of text) { table.push(u); u += ch.length }
-  table.push(u)
-  return (n: number) => table[Math.max(0, Math.min(n, table.length - 1))]
-}
+export { codePointToUtf16 }
 
 // ---------------------------------------------------------------------------
 // Plain transcripts
@@ -73,7 +65,7 @@ export function parseWhisperJSON(json: { segments?: WhisperSegment[] }) {
     else {
       if (text) text += '\n\n'
       start = text.length
-      segments.push({ start, end: start + body.length, speaker, time: s.start ?? null, uncertain: [] })
+      segments.push({ start, end: start + body.length, speaker, time: s.start ?? null, uncertain: [], words: [] })
     }
     text += body
     const seg = segments[segments.length - 1]
@@ -83,6 +75,7 @@ export function parseWhisperJSON(json: { segments?: WhisperSegment[] }) {
       const at = word ? text.indexOf(word, cursor) : -1
       if (at < 0) continue
       cursor = at + word.length
+      if (w.start != null) seg.words!.push([at, w.start])
       const p = w.probability ?? w.score
       if (p != null && p < 0.5) seg.uncertain!.push([at, at + word.length])
     }
@@ -97,6 +90,16 @@ export async function sourceFromFile(file: File): Promise<Source> {
   if (ext === 'srt' || ext === 'vtt') {
     const { text, segments } = parseSubtitles(raw)
     return { ...newSource(name, text, file.name), segments }
+  }
+  if (ext === 'docx' || ext === 'odt' || ext === 'pdf' || ext === 'html' || ext === 'htm' || ext === 'rtf') {
+    const docs = await import('./documents')
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    const text = ext === 'docx' ? docs.docxText(bytes)
+      : ext === 'odt' ? docs.odtText(bytes)
+      : ext === 'pdf' ? await docs.pdfText(bytes)
+      : ext === 'rtf' ? docs.rtfText(raw)
+      : docs.htmlText(raw)
+    return newSource(name, text, file.name)
   }
   if (ext === 'json') {
     const json = JSON.parse(raw)
@@ -290,10 +293,38 @@ export async function importQualCoder(bytes: Uint8Array, name: string): Promise<
   return p
 }
 
+/**
+ * QualCoder is read directly. Requal, RQDA, AQDA and Taguette databases go
+ * through the original app's native importers (loaded on demand), then the
+ * Research Weave v1 adapter.
+ */
+export async function importSQLiteProject(bytes: Uint8Array, name: string): Promise<Project> {
+  const initSqlJs = (await import('sql.js')).default
+  const wasmUrl = (await import('sql.js/dist/sql-wasm.wasm?url')).default
+  const SQL = await initSqlJs({ locateFile: () => wasmUrl })
+  const dbh = new SQL.Database(bytes)
+  let tables: string[]
+  try {
+    tables = (dbh.exec("select name from sqlite_master where type='table'")[0]?.values ?? []).map((r) => String(r[0]))
+    if (tables.includes('code_name') && tables.includes('code_text')) { dbh.close(); return importQualCoder(bytes, name) }
+    const native = await import('../../../src/native-project-import.mjs')
+    const choices = native.nativeProjectChoices(dbh)
+    const first = choices?.projects?.[0]
+    const state = native.readNativeProject(dbh, first ? { projectId: first.id } : {})
+    const p = importLegacyState(state, name)
+    p.importNotes.push(`Imported from a ${choices?.format ?? 'native'} database${(choices?.projects?.length ?? 0) > 1 ? ` (first of ${choices?.projects.length} projects)` : ''}.`)
+    return p
+  } catch (e) {
+    throw new Error(`This SQLite file isn't a project format I can read (QualCoder, Requal, RQDA, AQDA, Taguette). ${e instanceof Error ? e.message : ''}`)
+  } finally {
+    try { dbh.close() } catch { /* already closed */ }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Research Weave (previous app) export
 
-interface LegacyTurn { start: number; end: number; speaker?: string; timeStart?: number; raw?: { words?: { word: string; probability?: number }[] } }
+interface LegacyTurn { start: number; end: number; speaker?: string; timeStart?: number; raw?: { words?: { word: string; start?: number; probability?: number }[] } }
 interface LegacyDoc { id: string; name: string; text: string; attributes?: Record<string, unknown>; turns?: LegacyTurn[]; reviewStatus?: string }
 interface LegacyState {
   name?: string; description?: string
@@ -324,15 +355,17 @@ export function importLegacyState(state: LegacyState, fallbackName = 'Imported s
         const start = f(t.start)
         const end = f(t.end)
         const uncertain: [number, number][] = []
+        const words: [number, number][] = []
         let cursor = start
         for (const w of t.raw?.words ?? []) {
           const word = w.word.trim()
           const at = word ? s.text.indexOf(word, cursor) : -1
           if (at < 0 || at > end) continue
           cursor = at + word.length
+          if (w.start != null) words.push([at, w.start])
           if (w.probability != null && w.probability < 0.5) uncertain.push([at, at + word.length])
         }
-        return { start, end, speaker: t.speaker && t.speaker !== 'Unassigned' ? t.speaker : '', time: t.timeStart ?? null, uncertain }
+        return { start, end, speaker: t.speaker && t.speaker !== 'Unassigned' ? t.speaker : '', time: t.timeStart ?? null, uncertain, words }
       })
       s.segments = mergeSegments(s.segments)
     }
@@ -405,7 +438,8 @@ export function mergeSegments(segments: Segment[], cap = 700): Segment[] {
     if (prev && prev.speaker === g.speaker && (g.speaker || g.end - prev.start <= cap)) {
       prev.end = g.end
       prev.uncertain = [...(prev.uncertain ?? []), ...(g.uncertain ?? [])]
-    } else out.push({ ...g, uncertain: [...(g.uncertain ?? [])] })
+      prev.words = [...(prev.words ?? []), ...(g.words ?? [])]
+    } else out.push({ ...g, uncertain: [...(g.uncertain ?? [])], words: [...(g.words ?? [])] })
   }
   return out
 }
@@ -424,7 +458,8 @@ export async function importProjectFile(file: File): Promise<{ project: Project;
   const bytes = new Uint8Array(await file.arrayBuffer())
   const base = file.name.replace(/(\.qda)?\.(zip|json|qda|sqlite|db)$/i, '')
   const head = strFromU8(bytes.slice(0, 16))
-  if (head.startsWith(SQLITE_MAGIC)) return { project: await importQualCoder(bytes, base) }
+  if (head.startsWith(SQLITE_MAGIC)) return { project: await importSQLiteProject(bytes, base) }
+  if (/\.qdpx$/i.test(file.name)) return { project: (await import('./refi')).importQDPX(bytes, base.replace(/\.qdpx$/i, '')) }
   if (bytes[0] === 0x50 && bytes[1] === 0x4b) return importZip(bytes, base)
   const text = strFromU8(bytes)
   if (/\.(md|markdown)$/i.test(file.name)) {
@@ -450,6 +485,10 @@ async function importZip(bytes: Uint8Array, base: string) {
     files = unzipSync(bytes, { filter: (f) => /(^|\/)(data\.qda|research-weave\.json|project\.json)$/.test(f.name) })
   } catch {
     files = await recoverStreamedZip(bytes)
+  }
+  if (Object.keys(files).length === 0) {
+    const all = unzipSync(bytes, { filter: (f) => f.name.toLowerCase().endsWith('.qde') })
+    if (Object.keys(all).length) return { project: (await import('./refi')).importQDPX(bytes, base) }
   }
   const qda = Object.keys(files).find((n) => n.endsWith('data.qda') && !/bkup|pre_/i.test(n)) ?? Object.keys(files).find((n) => n.endsWith('data.qda'))
   if (qda) return { project: await importQualCoder(files[qda], base) }

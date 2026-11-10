@@ -12,8 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PProjectIdRouteImport } from './routes/p.$projectId'
 import { Route as PProjectIdIndexRouteImport } from './routes/p.$projectId.index'
+import { Route as PProjectIdAssistRouteImport } from './routes/p.$projectId.assist'
 import { Route as PProjectIdCodeRouteImport } from './routes/p.$projectId.code'
 import { Route as PProjectIdCodebookRouteImport } from './routes/p.$projectId.codebook'
+import { Route as PProjectIdExploreRouteImport } from './routes/p.$projectId.explore'
 import { Route as PProjectIdFrameworkRouteImport } from './routes/p.$projectId.framework'
 import { Route as PProjectIdGuideRouteImport } from './routes/p.$projectId.guide'
 import { Route as PProjectIdMemosRouteImport } from './routes/p.$projectId.memos'
@@ -37,6 +39,11 @@ const PProjectIdIndexRoute = PProjectIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PProjectIdRoute,
 } as any)
+const PProjectIdAssistRoute = PProjectIdAssistRouteImport.update({
+  id: '/assist',
+  path: '/assist',
+  getParentRoute: () => PProjectIdRoute,
+} as any)
 const PProjectIdCodeRoute = PProjectIdCodeRouteImport.update({
   id: '/code',
   path: '/code',
@@ -45,6 +52,11 @@ const PProjectIdCodeRoute = PProjectIdCodeRouteImport.update({
 const PProjectIdCodebookRoute = PProjectIdCodebookRouteImport.update({
   id: '/codebook',
   path: '/codebook',
+  getParentRoute: () => PProjectIdRoute,
+} as any)
+const PProjectIdExploreRoute = PProjectIdExploreRouteImport.update({
+  id: '/explore',
+  path: '/explore',
   getParentRoute: () => PProjectIdRoute,
 } as any)
 const PProjectIdFrameworkRoute = PProjectIdFrameworkRouteImport.update({
@@ -86,8 +98,10 @@ const PProjectIdSourcesRoute = PProjectIdSourcesRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/p/$projectId': typeof PProjectIdRouteWithChildren
+  '/p/$projectId/assist': typeof PProjectIdAssistRoute
   '/p/$projectId/code': typeof PProjectIdCodeRoute
   '/p/$projectId/codebook': typeof PProjectIdCodebookRoute
+  '/p/$projectId/explore': typeof PProjectIdExploreRoute
   '/p/$projectId/framework': typeof PProjectIdFrameworkRoute
   '/p/$projectId/guide': typeof PProjectIdGuideRoute
   '/p/$projectId/memos': typeof PProjectIdMemosRoute
@@ -99,8 +113,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/p/$projectId/assist': typeof PProjectIdAssistRoute
   '/p/$projectId/code': typeof PProjectIdCodeRoute
   '/p/$projectId/codebook': typeof PProjectIdCodebookRoute
+  '/p/$projectId/explore': typeof PProjectIdExploreRoute
   '/p/$projectId/framework': typeof PProjectIdFrameworkRoute
   '/p/$projectId/guide': typeof PProjectIdGuideRoute
   '/p/$projectId/memos': typeof PProjectIdMemosRoute
@@ -114,8 +130,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/p/$projectId': typeof PProjectIdRouteWithChildren
+  '/p/$projectId/assist': typeof PProjectIdAssistRoute
   '/p/$projectId/code': typeof PProjectIdCodeRoute
   '/p/$projectId/codebook': typeof PProjectIdCodebookRoute
+  '/p/$projectId/explore': typeof PProjectIdExploreRoute
   '/p/$projectId/framework': typeof PProjectIdFrameworkRoute
   '/p/$projectId/guide': typeof PProjectIdGuideRoute
   '/p/$projectId/memos': typeof PProjectIdMemosRoute
@@ -130,8 +148,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/p/$projectId'
+    | '/p/$projectId/assist'
     | '/p/$projectId/code'
     | '/p/$projectId/codebook'
+    | '/p/$projectId/explore'
     | '/p/$projectId/framework'
     | '/p/$projectId/guide'
     | '/p/$projectId/memos'
@@ -143,8 +163,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/p/$projectId/assist'
     | '/p/$projectId/code'
     | '/p/$projectId/codebook'
+    | '/p/$projectId/explore'
     | '/p/$projectId/framework'
     | '/p/$projectId/guide'
     | '/p/$projectId/memos'
@@ -157,8 +179,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/p/$projectId'
+    | '/p/$projectId/assist'
     | '/p/$projectId/code'
     | '/p/$projectId/codebook'
+    | '/p/$projectId/explore'
     | '/p/$projectId/framework'
     | '/p/$projectId/guide'
     | '/p/$projectId/memos'
@@ -197,6 +221,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PProjectIdIndexRouteImport
       parentRoute: typeof PProjectIdRoute
     }
+    '/p/$projectId/assist': {
+      id: '/p/$projectId/assist'
+      path: '/assist'
+      fullPath: '/p/$projectId/assist'
+      preLoaderRoute: typeof PProjectIdAssistRouteImport
+      parentRoute: typeof PProjectIdRoute
+    }
     '/p/$projectId/code': {
       id: '/p/$projectId/code'
       path: '/code'
@@ -209,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/codebook'
       fullPath: '/p/$projectId/codebook'
       preLoaderRoute: typeof PProjectIdCodebookRouteImport
+      parentRoute: typeof PProjectIdRoute
+    }
+    '/p/$projectId/explore': {
+      id: '/p/$projectId/explore'
+      path: '/explore'
+      fullPath: '/p/$projectId/explore'
+      preLoaderRoute: typeof PProjectIdExploreRouteImport
       parentRoute: typeof PProjectIdRoute
     }
     '/p/$projectId/framework': {
@@ -264,8 +302,10 @@ declare module '@tanstack/react-router' {
 }
 
 interface PProjectIdRouteChildren {
+  PProjectIdAssistRoute: typeof PProjectIdAssistRoute
   PProjectIdCodeRoute: typeof PProjectIdCodeRoute
   PProjectIdCodebookRoute: typeof PProjectIdCodebookRoute
+  PProjectIdExploreRoute: typeof PProjectIdExploreRoute
   PProjectIdFrameworkRoute: typeof PProjectIdFrameworkRoute
   PProjectIdGuideRoute: typeof PProjectIdGuideRoute
   PProjectIdMemosRoute: typeof PProjectIdMemosRoute
@@ -277,8 +317,10 @@ interface PProjectIdRouteChildren {
 }
 
 const PProjectIdRouteChildren: PProjectIdRouteChildren = {
+  PProjectIdAssistRoute: PProjectIdAssistRoute,
   PProjectIdCodeRoute: PProjectIdCodeRoute,
   PProjectIdCodebookRoute: PProjectIdCodebookRoute,
+  PProjectIdExploreRoute: PProjectIdExploreRoute,
   PProjectIdFrameworkRoute: PProjectIdFrameworkRoute,
   PProjectIdGuideRoute: PProjectIdGuideRoute,
   PProjectIdMemosRoute: PProjectIdMemosRoute,

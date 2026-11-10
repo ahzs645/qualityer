@@ -1,8 +1,10 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useMemo, useRef, useState } from 'react'
-import { ClipboardPaste, FileText, FileUp, Plus, Trash2 } from 'lucide-react'
+import { AudioLines, ClipboardPaste, FileText, FileUp, Plus, Trash2 } from 'lucide-react'
 import { useProject } from '../lib/store'
-import { newSource, rawSpeakers, segmentsOf, sourceProgress } from '../lib/model'
+import { formatTime, newSource, rawSpeakers, segmentsOf, sourceProgress } from '../lib/model'
+import { storeRecording } from '../lib/player'
+import { deleteMedia } from '../lib/storage'
 import { sourceFromFile } from '../lib/importers'
 import { addSources, removeSource, updateSource } from '../lib/actions'
 import { Badge, Button, Dialog, Empty, Field, IconButton, Input, PageHeader, Panel, Textarea, pct } from '../components/ui'
@@ -17,6 +19,23 @@ function Sources() {
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [newAttr, setNewAttr] = useState('')
+  const mediaRef = useRef<HTMLInputElement>(null)
+  const [mediaFor, setMediaFor] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+
+  async function onMedia(file: File | undefined) {
+    if (!file || !mediaFor) return
+    setBusy(`Attaching ${file.name}… large recordings can take a minute to analyse.`)
+    try {
+      const media = await storeRecording(project.id, mediaFor, file)
+      updateSource(mediaFor, { media }, 'attach recording')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(null); setMediaFor(null)
+      if (mediaRef.current) mediaRef.current.value = ''
+    }
+  }
 
   const attrKeys = useMemo(() => {
     const keys: string[] = []
@@ -49,7 +68,9 @@ function Sources() {
           </>
         }
       />
-      <input ref={fileRef} type="file" multiple hidden accept=".txt,.md,.srt,.vtt,.json" onChange={(e) => onFiles(e.target.files)} />
+      <input ref={fileRef} type="file" multiple hidden accept=".txt,.md,.srt,.vtt,.json,.docx,.odt,.pdf,.html,.htm,.rtf" onChange={(e) => onFiles(e.target.files)} />
+      <input ref={mediaRef} type="file" hidden accept="audio/*,video/*,.m4a,.qta,.mov,.mp3,.wav,.ogg,.webm,.mp4" onChange={(e) => onMedia(e.target.files?.[0])} />
+      {busy && <p className="mb-4 rounded-md bg-accent-soft px-3 py-2 text-sm text-accent">{busy}</p>}
       {error && <p role="alert" className="mb-4 rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
 
       {project.sources.length === 0 ? (
@@ -81,10 +102,19 @@ function Sources() {
                         <span>{turns} turns · {speakers} speakers</span>
                         <span>from {s.importedFrom || 'unknown'}</span>
                         {uncertain > 0 && <span className="text-warn">{uncertain} low-confidence words</span>}
+                        {s.media && <span className="inline-flex items-center gap-1 text-accent"><AudioLines size={12} />{s.media.name}{s.media.duration ? ` · ${formatTime(s.media.duration)}` : ''}</span>}
                       </div>
                     </div>
                     <Badge tone={s.status === 'done' ? 'good' : s.status === 'new' ? 'neutral' : 'accent'}>{s.status}</Badge>
                     <span className="w-28 text-xs text-muted">{pct(pr.read)} read · {pr.codings} codings</span>
+                    {s.media ? (
+                      <Button size="sm" variant="ghost" onClick={async () => {
+                        if (!confirm(`Detach ${s.media!.name} from this source? The transcript and codes are kept.`)) return
+                        await deleteMedia(project.id, s.id); updateSource(s.id, { media: null }, 'detach recording')
+                      }}>Detach audio</Button>
+                    ) : (
+                      <Button size="sm" variant="ghost" icon={<AudioLines size={13} />} onClick={() => { setMediaFor(s.id); mediaRef.current?.click() }}>Attach audio</Button>
+                    )}
                     <Link to="/p/$projectId/code" params={{ projectId: project.id }} search={{ source: s.id }}><Button size="sm">Open</Button></Link>
                     <IconButton label={`Remove ${s.name}`} onClick={() => confirm(`Remove “${s.name}” and its ${pr.codings} codings? You can undo this.`) && removeSource(s.id)}>
                       <Trash2 size={15} />

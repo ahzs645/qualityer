@@ -1,12 +1,15 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { BookOpen, ChevronDown, ChevronRight, FileText, Search, Users, X } from 'lucide-react'
+import { BookOpen, ChevronDown, ChevronRight, FileText, Search, Users, Waves, X } from 'lucide-react'
 import { useProject } from '../lib/store'
-import { GROUP_KIND_LABEL, groupOf, indexBy, orderedCodes, snapToWords } from '../lib/model'
+import { GROUP_KIND_LABEL, groupOf, indexBy, offsetAt, orderedCodes, snapToWords } from '../lib/model'
+import { seek, skip, toggle, usePlayer } from '../lib/player'
+import { AudioBar } from '../features/code/AudioBar'
 import { markReadTo, toggleCode } from '../lib/actions'
 import { Transcript, type TranscriptHandle } from '../features/code/Transcript'
 import { CodePicker } from '../features/code/CodePicker'
-import { SourceInspector, SpanInspector } from '../features/code/Inspector'
+import { SpanInspector } from '../features/code/Inspector'
+import { SourceInspector } from '../features/code/SourceInspector'
 import { Button, Empty, IconButton, Input, Progress, Select, Swatch, cx, pct } from '../components/ui'
 
 interface CodeSearch { source?: string; at?: number; end?: number }
@@ -34,7 +37,18 @@ function CodeView() {
   const [dim, setDim] = useState(true)
   const [find, setFind] = useState('')
   const [showTree, setShowTree] = useState(false)
+  const [follow, setFollow] = useState(true)
   const transcript = useRef<TranscriptHandle>(null)
+  const { time, playing } = usePlayer((s) => ({ time: s.time, playing: s.playing }))
+  const nowOffset = useMemo(() => (source?.media && (playing || time > 0) ? offsetAt(source, time) : null), [source, time, playing])
+  const lastFollowed = useRef<number | null>(null)
+  useEffect(() => {
+    if (!follow || !playing || nowOffset == null) return
+    if (lastFollowed.current != null && Math.abs(nowOffset - lastFollowed.current) < 300) return
+    lastFollowed.current = nowOffset
+    transcript.current?.scrollToOffset(nowOffset, 'auto')
+  }, [nowOffset, follow, playing])
+  const onSeekTime = useCallback((t: number) => seek(t, true), [])
   const codes = useMemo(() => indexBy(project.codes), [project.codes])
 
   const codings = useMemo(
@@ -71,8 +85,12 @@ function CodeView() {
   const onMarkRead = useCallback((offset: number) => { if (source) markReadTo(source.id, offset) }, [source])
 
   // Keyboard: "c" opens the picker for the active span, Escape clears.
+  // Ctrl+Space plays/pauses, Ctrl+←/→ skips five seconds (works while typing too).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.code === 'Space') { e.preventDefault(); toggle(); return }
+      if (e.ctrlKey && e.key === 'ArrowLeft') { e.preventDefault(); skip(-5); return }
+      if (e.ctrlKey && e.key === 'ArrowRight') { e.preventDefault(); skip(5); return }
       if ((e.target as HTMLElement).closest('input, textarea, select, dialog')) return
       if (e.key === 'Escape') { setPicker(null); setActive(null); window.getSelection()?.removeAllRanges() }
       if (e.key === 'c' && active && !picker) {
@@ -138,6 +156,17 @@ function CodeView() {
               <X size={13} />
             </button>
           )}
+          {source.media && (
+            <button
+              type="button"
+              onClick={() => setFollow((f) => !f)}
+              className={cx('inline-flex h-8.5 items-center gap-1.5 rounded-md border px-2.5 text-sm', follow ? 'border-accent/40 bg-accent-soft text-accent' : 'border-line-strong text-muted')}
+              aria-pressed={follow}
+              title="Scroll the transcript with the recording"
+            >
+              <Waves size={14} /> <span className="hidden sm:inline">Follow audio</span>
+            </button>
+          )}
           <div className="ml-auto flex w-36 items-center gap-2" title="Read progress">
             <Progress value={readFrac} label="Read" />
             <span className="text-xs tabular-nums text-muted">{pct(readFrac)}</span>
@@ -158,16 +187,19 @@ function CodeView() {
             onSelect={onSelect}
             onClickCoding={onClickCoding}
             onMarkRead={onMarkRead}
+            nowOffset={nowOffset}
+            onSeekTime={source.media ? onSeekTime : undefined}
           />
         </div>
-        <div className="border-t border-line bg-surface px-4 py-1.5 text-xs text-muted">
-          Select text to code it. Click a highlight or a margin label to inspect it. <kbd className="font-mono">c</kbd> codes the selected passage, <kbd className="font-mono">esc</kbd> clears.
+        {source.media && <AudioBar projectId={project.id} source={source} codings={codings} codes={codes} focusCodeId={focusCode} />}
+        <div className="hidden border-t border-line bg-surface px-4 py-1.5 text-xs text-muted md:block">
+          Select text to code it. Click a highlight or a margin label to inspect it. <kbd className="font-mono">c</kbd> codes the selected passage, <kbd className="font-mono">esc</kbd> clears{source.media ? <>, <kbd className="font-mono">ctrl+space</kbd> plays</> : null}.
         </div>
       </section>
 
       {/* Inspector */}
       <aside className={cx(
-        'shrink-0 overflow-y-auto border-l border-line bg-surface scroll-thin xl:block xl:w-80',
+        'shrink-0 overflow-y-auto border-l border-line bg-surface scroll-thin xl:block xl:w-80 2xl:w-96',
         active ? 'fixed inset-x-0 bottom-0 z-30 max-h-[60vh] rounded-t-xl border-t shadow-2xl xl:static xl:max-h-none xl:rounded-none xl:border-t-0 xl:shadow-none' : 'hidden',
       )}>
         {active ? (

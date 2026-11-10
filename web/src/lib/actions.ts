@@ -49,14 +49,33 @@ export function resizeSpan(sourceId: string, from: { start: number; end: number 
   }))
 }
 
+/** Marks every coding on a span as checked against the recording (or clears it). */
+export function setSpanVerified(sourceId: string, span: { start: number; end: number }, verified: boolean) {
+  const at = verified ? now() : null
+  update(verified ? 'mark verified against audio' : 'clear audio verification', (p) => ({
+    ...p,
+    codings: p.codings.map((c) => (c.sourceId === sourceId && c.start === span.start && c.end === span.end ? { ...c, verifiedAt: at } : c)),
+  }))
+}
+
+const accepted = (c: Coding, reviewer: string): Coding =>
+  c.origin ? { ...c, status: 'accepted', reviewedBy: reviewer } : { ...c, status: 'accepted', coder: reviewer, reviewedBy: reviewer }
+
 export function acceptSuggestion(id: string) {
-  update('accept suggestion', (p) => ({ ...p, codings: patch(p.codings, id, { status: 'accepted', coder: p.coder }) }))
+  update('accept suggestion', (p) => ({ ...p, codings: p.codings.map((c) => (c.id === id ? accepted(c, p.coder) : c)) }))
 }
 
 export function acceptSuggestions(ids: string[]) {
   const set = new Set(ids)
   update(`accept ${ids.length} suggestions`, (p) => ({
-    ...p, codings: p.codings.map((c) => (set.has(c.id) ? { ...c, status: 'accepted' as const, coder: p.coder } : c)),
+    ...p, codings: p.codings.map((c) => (set.has(c.id) ? accepted(c, p.coder) : c)),
+  }))
+}
+
+/** Accepts a suggestion under a different code (the reviewer's correction). */
+export function acceptAsCode(id: string, codeId: string) {
+  update('accept with a different code', (p) => ({
+    ...p, codings: p.codings.map((c) => (c.id === id ? { ...accepted(c, p.coder), codeId, memo: [c.memo, `Code changed in review from the suggested one.`].filter(Boolean).join('\n') } : c)),
   }))
 }
 

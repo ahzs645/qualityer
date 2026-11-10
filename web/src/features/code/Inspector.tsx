@@ -1,15 +1,14 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Lightbulb, Pencil, Star, Trash2, X } from 'lucide-react'
-import type { CoverageStatus, Project, Source, SourceStatus } from '../../lib/types'
+import { AlertTriangle, AudioLines, CheckCircle2, Lightbulb, Pencil, Play, Star, Trash2, X } from 'lucide-react'
+import type { Project, Source } from '../../lib/types'
 import {
-  checkRules, excerpt, formatTime, groupOf, indexBy, rawSpeakers, snapToSentence, timeAt,
+  checkRules, excerpt, formatTime, groupOf, indexBy, snapToSentence, timeAt, timeRange,
 } from '../../lib/model'
 import {
-  addCandidate, addMemo, editPassage, removeCoding, resizeSpan, setCoverage, setExtraction, updateCoding, updateMemo, updateSource,
+  addCandidate, addMemo, editPassage, removeCoding, resizeSpan, setCoverage, setExtraction, setSpanVerified, updateCoding, updateMemo,
 } from '../../lib/actions'
-import { Badge, Button, IconButton, Input, Select, Swatch, Textarea, cx } from '../../components/ui'
-import { CodeCard } from './CodeCard'
-import { COVERAGE_LABEL } from '../guide/coverage'
+import { Badge, Button, IconButton, Input, Select, Swatch, Textarea } from '../../components/ui'
+import { playRange } from '../../lib/player'
 
 interface SpanProps {
   project: Project
@@ -64,6 +63,24 @@ export function SpanInspector({ project, source, span, onClose, onCode }: SpanPr
           </button>
         </blockquote>
       )}
+
+      {source.media && (() => {
+        const range = timeRange(source, span.start, span.end)
+        const verified = here.length > 0 && here.every((c) => c.verifiedAt)
+        return (
+          <section className="flex flex-wrap items-center gap-2">
+            <Button size="sm" icon={<Play size={13} />} disabled={!range} onClick={() => range && playRange(range[0], range[1])}>
+              Play passage{range ? ` (${formatTime(range[0])})` : ''}
+            </Button>
+            {here.length > 0 && (
+              <label className="flex items-center gap-1.5 text-xs text-muted" title="Confirm the quoted wording matches the recording">
+                <input type="checkbox" checked={verified} onChange={(e) => setSpanVerified(source.id, span, e.target.checked)} />
+                <AudioLines size={13} className={verified ? 'text-good' : ''} /> Wording checked against audio
+              </label>
+            )}
+          </section>
+        )
+      })()}
 
       <section>
         <div className="mb-2 flex items-center justify-between">
@@ -179,122 +196,3 @@ export function SpanInspector({ project, source, span, onClose, onCode }: SpanPr
   )
 }
 
-const STATUSES: SourceStatus[] = ['new', 'reading', 'coding', 'done']
-
-export function SourceInspector({ project, source, focusCodeId, onJump }: { project: Project; source: Source; focusCodeId: string | null; onJump: (o: { start: number; end: number }) => void }) {
-  const issues = useMemo(() => checkRules(project, source.id), [project, source.id])
-  const focus = focusCodeId ? project.codes.find((c) => c.id === focusCodeId) : undefined
-  const speakers = rawSpeakers(source)
-  const coverage = project.guide.map((q) => ({ q, mark: project.coverage.find((c) => c.sourceId === source.id && c.questionId === q.id) }))
-
-  return (
-    <div className="space-y-6 p-4">
-      {focus && (
-        <section className="rounded-lg border border-line p-3">
-          <div className="mb-1 text-[11px] font-semibold tracking-wide text-faint uppercase">Showing only</div>
-          <CodeCard code={focus} />
-        </section>
-      )}
-
-      <section>
-        <h3 className="mb-2 text-sm font-semibold">Status</h3>
-        <div className="grid grid-cols-4 gap-1 rounded-md bg-sunken p-0.5">
-          {STATUSES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => {
-                if (s === 'done' && issues.length && !confirm(`This source has ${issues.length} codebook rule issues. Mark it done anyway?`)) return
-                updateSource(source.id, { status: s }, 'set status')
-              }}
-              className={cx('rounded px-1 py-1 text-xs font-medium capitalize', source.status === s ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink')}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <h3 className="mb-2 flex items-center justify-between text-sm font-semibold">
-          Rule issues <Badge tone={issues.length ? 'bad' : 'good'}>{issues.length}</Badge>
-        </h3>
-        {issues.length === 0 ? <p className="text-sm text-muted">No issues in this source.</p> : (
-          <ul className="max-h-56 space-y-1 overflow-y-auto scroll-thin">
-            {issues.map((v, i) => (
-              <li key={i}>
-                <button type="button" onClick={() => onJump(v)} className="w-full rounded-md px-2 py-1.5 text-left hover:bg-sunken">
-                  <div className="text-sm text-bad">{v.message}</div>
-                  <div className="truncate font-serif text-xs text-muted">{excerpt(source.text, v.start, v.end)}</div>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {coverage.length > 0 && (
-        <section>
-          <h3 className="mb-2 text-sm font-semibold">Interview guide</h3>
-          <ul className="space-y-1">
-            {coverage.map(({ q, mark }) => (
-              <li key={q.id} className="flex items-center gap-2">
-                <span className="w-8 font-mono text-xs text-muted">{q.key}</span>
-                <span className="min-w-0 flex-1 truncate text-sm" title={q.prompt}>{q.title}</span>
-                <Select
-                  value={mark?.status ?? 'unmarked'}
-                  onChange={(e) => setCoverage(source.id, q.id, { status: e.target.value as CoverageStatus })}
-                  className="h-7 w-28 text-xs"
-                  aria-label={`Coverage of ${q.key}`}
-                >
-                  {Object.entries(COVERAGE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </Select>
-                {mark?.start != null && (
-                  <IconButton label="Jump to answer" onClick={() => onJump({ start: mark.start!, end: mark.end ?? mark.start! })}>↗</IconButton>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {speakers.length > 0 && (
-        <section>
-          <h3 className="mb-2 text-sm font-semibold">Speakers</h3>
-          <ul className="space-y-2">
-            {speakers.map((raw) => {
-              const sp = source.speakers.find((s) => s.raw === raw)
-              const save = (change: Partial<{ name: string; role: 'respondent' | 'interviewer' | 'observer' | 'unknown' }>) => {
-                const next = { raw, name: sp?.name ?? '', role: sp?.role ?? 'unknown', ...change }
-                updateSource(source.id, { speakers: [...source.speakers.filter((s) => s.raw !== raw), next] }, 'edit speaker')
-              }
-              return (
-                <li key={raw} className="grid grid-cols-[5.5rem_1fr_6.5rem] items-center gap-1.5">
-                  <span className="truncate text-xs text-muted" title={raw}>{raw}</span>
-                  <Input className="h-7 text-xs" placeholder="Name or ID" defaultValue={sp?.name ?? ''} onBlur={(e) => e.target.value !== (sp?.name ?? '') && save({ name: e.target.value })} />
-                  <Select className="h-7 text-xs" value={sp?.role ?? 'unknown'} onChange={(e) => save({ role: e.target.value as 'respondent' })}>
-                    <option value="unknown">Unknown</option>
-                    <option value="respondent">Respondent</option>
-                    <option value="interviewer">Interviewer</option>
-                    <option value="observer">Observer</option>
-                  </Select>
-                </li>
-              )
-            })}
-          </ul>
-        </section>
-      )}
-
-      {Object.keys(source.attributes).length > 0 && (
-        <section>
-          <h3 className="mb-2 text-sm font-semibold">Attributes</h3>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-            {Object.entries(source.attributes).map(([k, v]) => (
-              <div key={k} className="contents"><dt className="text-muted">{k}</dt><dd className="truncate">{v || '—'}</dd></div>
-            ))}
-          </dl>
-        </section>
-      )}
-    </div>
-  )
-}

@@ -1,10 +1,11 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Check, CheckCircle2, Plus, Trash2, X } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Plus, Trash2 } from 'lucide-react'
 import type { Candidate, Correction } from '../lib/types'
 import { update, useProject } from '../lib/store'
 import { agreement, checkRules, coders, describeRule, excerpt, findCorrections, formatTime, indexBy, timeAt, uid } from '../lib/model'
-import { acceptSuggestion, acceptSuggestions, addCode, applyGlossary, rejectSuggestions, updateCandidate } from '../lib/actions'
+import { addCode, applyGlossary, updateCandidate } from '../lib/actions'
+import { Suggestions } from '../features/review/Suggestions'
 import { Badge, Button, Empty, IconButton, Input, PageHeader, Panel, Select, Swatch, Tabs, Textarea, cx } from '../components/ui'
 
 type Tab = 'rules' | 'suggestions' | 'transcript' | 'candidates' | 'agreement'
@@ -86,51 +87,6 @@ function Rules({ violations }: { violations: ReturnType<typeof checkRules> }) {
           })}
         </ul>
       )}
-    </div>
-  )
-}
-
-function Suggestions() {
-  const project = useProject()
-  const sources = indexBy(project.sources)
-  const codes = indexBy(project.codes)
-  const items = project.codings.filter((c) => c.status === 'suggested')
-  const [picked, setPicked] = useState<Set<string>>(new Set())
-  if (!items.length) {
-    return <Panel><Empty icon={<CheckCircle2 size={28} />} title="No suggestions waiting">Suggested codings from imports or an assistant appear here for a yes/no decision. Nothing is counted until you accept it.</Empty></Panel>
-  }
-  const all = picked.size === items.length
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={all} onChange={() => setPicked(all ? new Set() : new Set(items.map((i) => i.id)))} /> Select all</label>
-        <Button size="sm" icon={<Check size={13} />} disabled={!picked.size} onClick={() => { acceptSuggestions([...picked]); setPicked(new Set()) }}>Accept {picked.size || ''}</Button>
-        <Button size="sm" variant="danger" icon={<X size={13} />} disabled={!picked.size} onClick={() => { rejectSuggestions([...picked]); setPicked(new Set()) }}>Reject {picked.size || ''}</Button>
-      </div>
-      <ul className="space-y-2">
-        {items.map((c) => {
-          const src = sources.get(c.sourceId)
-          const code = codes.get(c.codeId)
-          return (
-            <li key={c.id} className="flex gap-3 rounded-lg border border-line bg-surface p-3">
-              <input type="checkbox" className="mt-1" checked={picked.has(c.id)} onChange={(e) => setPicked((s) => { const n = new Set(s); if (e.target.checked) n.add(c.id); else n.delete(c.id); return n })} aria-label="Select suggestion" />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <Badge tone="accent"><Swatch color={code?.color ?? '#888'} />{code?.name}</Badge>
-                  <span className="text-xs text-muted">by {c.coder} · {src?.name}</span>
-                </div>
-                <p className="mt-1.5 font-serif text-[15px]">{src ? excerpt(src.text, c.start, c.end) : ''}</p>
-                {c.memo && <p className="mt-1 text-xs text-muted">{c.memo}</p>}
-              </div>
-              <div className="flex shrink-0 flex-col gap-1">
-                <Button size="sm" variant="primary" onClick={() => acceptSuggestion(c.id)}>Accept</Button>
-                <Button size="sm" variant="ghost" onClick={() => rejectSuggestions([c.id])}>Reject</Button>
-                <Link to="/p/$projectId/code" params={{ projectId: project.id }} search={{ source: c.sourceId, at: c.start, end: c.end }} className="text-center text-xs text-accent hover:underline">Context</Link>
-              </div>
-            </li>
-          )
-        })}
-      </ul>
     </div>
   )
 }
