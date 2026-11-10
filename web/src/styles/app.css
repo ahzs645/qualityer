@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Design tokens. Components use these through Tailwind (`bg-surface`, `text-muted` …). */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+}
+
+:root {
+  --canvas: #f6f5f2;
+  --surface: #ffffff;
+  --sunken: #efeee9;
+  --line: #e4e2db;
+  --line-strong: #cfccc2;
+  --ink: #1d2221;
+  --muted: #5d6662;
+  --faint: #8b938f;
+  --accent: #1f6f6b;
+  --accent-ink: #ffffff;
+  --accent-soft: #e2f0ee;
+  --warn: #9a6400;
+  --warn-soft: #fbf0d9;
+  --bad: #b3402a;
+  --bad-soft: #fbe7e2;
+  --good: #2d7a3e;
+  --good-soft: #e3f2e6;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #121514;
+    --surface: #1a1e1d;
+    --sunken: #151918;
+    --line: #2a302e;
+    --line-strong: #3a423f;
+    --ink: #e6ebe8;
+    --muted: #a3ada8;
+    --faint: #6f7974;
+    --accent: #5cc0b5;
+    --accent-ink: #0d1716;
+    --accent-soft: #1d3633;
+    --warn: #e0b04c;
+    --warn-soft: #3a2e14;
+    --bad: #f08a72;
+    --bad-soft: #3d2019;
+    --good: #7ccb8c;
+    --good-soft: #1b3221;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --canvas: #121514;
+  --surface: #1a1e1d;
+  --sunken: #151918;
+  --line: #2a302e;
+  --line-strong: #3a423f;
+  --ink: #e6ebe8;
+  --muted: #a3ada8;
+  --faint: #6f7974;
+  --accent: #5cc0b5;
+  --accent-ink: #0d1716;
+  --accent-soft: #1d3633;
+  --warn: #e0b04c;
+  --warn-soft: #3a2e14;
+  --bad: #f08a72;
+  --bad-soft: #3d2019;
+  --good: #7ccb8c;
+  --good-soft: #1b3221;
+  color-scheme: dark;
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+*:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+::selection { background: color-mix(in oklab, var(--accent) 30%, transparent); }
+
+/* Transcript reading surface */
+.transcript { font-family: var(--font-serif); font-size: 16.5px; line-height: 1.75; }
+.transcript ::selection { background: color-mix(in oklab, var(--accent) 35%, transparent); }
+.coded { border-radius: 2px; box-decoration-break: clone; -webkit-box-decoration-break: clone; cursor: pointer; }
+.uncertain { text-decoration: underline wavy color-mix(in oklab, var(--warn) 70%, transparent); text-underline-offset: 4px; text-decoration-thickness: 1px; }
+.flash { animation: flash 1.6s ease-out; }
+@keyframes flash { 0%, 30% { background: color-mix(in oklab, var(--accent) 22%, transparent); } 100% { background: transparent; } }
+
+.scroll-thin { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

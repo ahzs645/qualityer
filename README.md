@@ -1,6 +1,8 @@
 # qualityer
 
-Research Weave: a modular TanStack Start app for qualitative interview analysis, with a separate browser-local GitHub Pages demo. This public source includes synthetic examples only. Uploaded interviews, research projects, account notes, credentials, generated bundles and private Git history are excluded.
+Research Weave: a modular TanStack Start app for qualitative interview analysis, with a separate browser-local GitHub Pages demo.
+
+> **Rebuild in progress:** [`web/`](web) is a redesigned app built with Vite 8 and TanStack Router: nine screens, codebook rules, guide coverage, transcript corrections that keep code anchors, and a Framework summary grid. Read [docs/redesign-2026.md](docs/redesign-2026.md) for the rationale and for what is not ported yet. This public source includes synthetic examples only. Uploaded interviews, research projects, account notes, credentials, generated bundles and private Git history are excluded.
 
 ## Run locally
 
