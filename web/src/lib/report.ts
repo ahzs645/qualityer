@@ -103,7 +103,8 @@ export function reportData(project: Project) {
   const calibrations = project.aiRuns.flatMap((r) => r.sourceIds.map((sid) => ({ r, sid }))).filter(({ r, sid }) =>
     project.codings.some((c) => c.sourceId === sid && !c.origin && c.status === 'accepted') && project.codings.some((c) => c.origin?.runId === r.id && c.sourceId === sid),
   ).map(({ r, sid }) => {
-    const result = compare(project, project.codings.filter((c) => c.sourceId === sid && !c.origin && c.status === 'accepted'), project.codings.filter((c) => c.sourceId === sid && c.origin?.runId === r.id), choices.map((c) => c.group.id))
+    const asked = r.claims ? new Set(Object.values(r.claims).map(([a, b]) => `${a}:${b}`)) : null
+    const result = compare(project, project.codings.filter((c) => c.sourceId === sid && !c.origin && c.status === 'accepted' && (!asked || asked.has(`${c.start}:${c.end}`))), project.codings.filter((c) => c.sourceId === sid && c.origin?.runId === r.id), choices.map((c) => c.group.id))
     return { run: r, source: sources.get(sid)!, result }
   })
 
@@ -135,6 +136,7 @@ function statusLine(d: Data) {
 
 /** What became of an AI pass, for the audit table. */
 function runUse(d: Data, runId: string, comparisonOnly: boolean) {
+  if (d.project.aiRuns.find((r) => r.id === runId)?.kind === 'grades') return comparisonOnly ? 'Held-out test of evidence grade and stance' : 'Grades on existing claims'
   if (comparisonOnly) return 'Comparison with a human coder only'
   const left = d.project.codings.filter((c) => c.origin?.runId === runId)
   const decided = d.project.reviewLog.some((e) => e.runId === runId)
@@ -280,7 +282,8 @@ export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPOR
     }
     for (const c of d.calibrations) {
       const sub = c.result.byKind.substantive
-      h(`<h3>Calibration on ${esc(c.source.name.split(' — ')[0])}: the AI against the human coding</h3><p>The model coded this interview without seeing the human coding. On substantive codes it matched <b>${sub?.recall != null ? pc(sub.recall) : '—'}</b> of the ${sub?.ref ?? 0} human codings (recall), and <b>${sub?.precision != null ? pc(sub.precision) : '—'}</b> of its own ${sub?.other ?? 0} were ones the human coder also applied to an overlapping passage (precision).</p>`)
+      if (c.run.kind === 'grades') h(`<h3>Grade pass on ${esc(c.source.name.split(' — ')[0])}: held-out test</h3><p>${Object.keys(c.run.claims ?? {}).length} claims the human coder had graded were graded again by the model, which saw the respondent's attributes, the decision rules and ${c.run.gradeOptions?.examples ?? 0} examples taken only from the first ${Math.round((c.run.gradeOptions?.teachShare ?? 0) * 100)}% of the interview.</p>`)
+      else h(`<h3>Calibration on ${esc(c.source.name.split(' — ')[0])}: the AI against the human coding</h3><p>The model coded this interview without seeing the human coding. On substantive codes it matched <b>${sub?.recall != null ? pc(sub.recall) : '—'}</b> of the ${sub?.ref ?? 0} human codings (recall), and <b>${sub?.precision != null ? pc(sub.precision) : '—'}</b> of its own ${sub?.other ?? 0} were ones the human coder also applied to an overlapping passage (precision).</p>`)
       for (const m of c.result.confusions) {
         const ids = m.codeIds.filter((id) => id === '' || m.codeIds.some((o) => (m.counts.get(id)?.get(o) ?? 0) || (m.counts.get(o)?.get(id) ?? 0)))
         const lab = (id: string) => (id ? short(d.codes.get(id)?.name ?? '?') : 'none')

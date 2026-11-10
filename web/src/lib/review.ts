@@ -189,3 +189,8 @@ export function setComparisonOnly(runId: string, comparisonOnly: boolean) {
     ...p, aiRuns: p.aiRuns.map((r) => (r.id === runId ? { ...r, comparisonOnly } : r)),
   }))
 }
+
+/** Discards a pass that never produced a coding still in the study, such as a hand-off exported by mistake. */
+export function discardRun(runId: string) {
+  update('discard AI pass', (p) => (p.codings.some((c) => c.origin?.runId === runId) ? p : { ...p, aiRuns: p.aiRuns.filter((r) => r.id !== runId) }))
+}

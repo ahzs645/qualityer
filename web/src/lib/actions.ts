@@ -1,4 +1,5 @@
-import type { Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, Project, Source } from './types'
+import type { Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, Project, Source, WordingCheck } from './types'
+import { applySpeakerTrack, splitSegments, type SpeakerInterval } from './listen'
 import { PALETTE, editSource, findCorrections, now, segmentsOf, uid } from './model'
 import { snapshot, store, update } from './store'
 import { recodeCoding, reviewEvent } from './review'
@@ -122,6 +123,7 @@ export function removeSource(id: string) {
       extractions: p.extractions.filter((e) => !gone.has(e.codingId)),
       coverage: p.coverage.filter((c) => c.sourceId !== id),
       restricted: p.restricted.filter((r) => r.sourceId !== id),
+      wordingChecks: p.wordingChecks.filter((w) => w.sourceId !== id),
       memos: p.memos.map((m) => (m.sourceId === id ? { ...m, sourceId: null, start: null, end: null } : m)),
       cases: p.cases.map((c) => ({ ...c, sourceIds: c.sourceIds.filter((s) => s !== id) })),
     }
@@ -359,4 +361,40 @@ export async function mergeCoderFile(other: Project): Promise<MergeReport> {
     restricted: [...proj.restricted, ...(other.restricted ?? []).filter((r) => sourceMap.has(r.sourceId) && !proj.restricted.some((x) => x.id === r.id)).map((r) => ({ ...r, sourceId: sourceMap.get(r.sourceId)! }))],
   }))
   return { codings: codings.length, memos: memos.length, candidates: candidates.length, codes: newCodes.length, skippedSources: skipped, coders: [...new Set(codings.map((c) => c.coder))] }
+}
+
+// Audio review ---------------------------------------------------------------
+
+/** Stores a second transcription's reading of each coded passage, replacing earlier checks on that source. */
+export function setWordingChecks(sourceId: string, checks: WordingCheck[]) {
+  update(`compare ${checks.length} passages with a second transcription`, (p) => ({ ...p, wordingChecks: [...p.wordingChecks.filter((w) => w.sourceId !== sourceId), ...checks] }))
+}
+
+/** Makes a passage its own turn with the given speaker (an interviewer's question inside a respondent's turn). */
+export function splitTurn(sourceId: string, span: { start: number; end: number }, speaker: string) {
+  update('split turn', (p) => {
+    const s = p.sources.find((x) => x.id === sourceId)
+    const segments = s && splitSegments(s, span.start, span.end, speaker)
+    if (!s || !segments) return p
+    const speakers = s.speakers.some((x) => x.raw === speaker) ? s.speakers : [...s.speakers, { raw: speaker, name: speaker, role: 'unknown' as const }]
+    return { ...p, sources: p.sources.map((x) => (x.id === sourceId ? { ...x, segments, speakers } : x)) }
+  })
+}
+
+/** Lays an imported speaker track over a source's timed turns. A snapshot is taken first. */
+export async function importSpeakerTrack(sourceId: string, track: SpeakerInterval[]) {
+  const s = store.state.project?.sources.find((x) => x.id === sourceId)
+  if (!s) throw new Error('Source not found')
+  const result = applySpeakerTrack(s, track)
+  await snapshot('Before importing a speaker track')
+  update('import speaker track', (p) => ({
+    ...p,
+    sources: p.sources.map((x) => {
+      if (x.id !== sourceId) return x
+      const known = new Set(x.speakers.map((sp) => sp.raw))
+      const fresh = [...new Set(result.segments.map((g) => g.speaker))].filter((raw) => raw && !known.has(raw)).map((raw) => ({ raw, name: raw, role: 'unknown' as const }))
+      return { ...x, segments: result.segments, speakers: [...x.speakers, ...fresh] }
+    }),
+  }))
+  return result
 }

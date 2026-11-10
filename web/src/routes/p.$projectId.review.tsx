@@ -4,16 +4,17 @@ import { AlertTriangle, CheckCircle2, Plus, Trash2 } from 'lucide-react'
 import type { Candidate, Correction } from '../lib/types'
 import { update, useProject } from '../lib/store'
 import { agreement, checkRules, coders, describeRule, excerpt, findCorrections, formatTime, indexBy, pendingSuggestions, timeAt, uid } from '../lib/model'
-import { addCode, applyGlossary, setExtraction, updateCandidate } from '../lib/actions'
+import { addCode, applyCodes, applyGlossary, setExtraction, updateCandidate } from '../lib/actions'
 import { Suggestions } from '../features/review/Suggestions'
 import { DecisionLog } from '../features/review/DecisionLog'
+import { Listen } from '../features/review/Listen'
 import { Badge, Button, Empty, IconButton, Input, PageHeader, Panel, Select, Swatch, Tabs, Textarea, cx } from '../components/ui'
 
-type Tab = 'rules' | 'suggestions' | 'log' | 'transcript' | 'candidates' | 'agreement'
+type Tab = 'rules' | 'suggestions' | 'log' | 'listen' | 'transcript' | 'candidates' | 'agreement'
 
 export const Route = createFileRoute('/p/$projectId/review')({
   validateSearch: (s: Record<string, unknown>): { tab?: Tab } => ({
-    tab: ['rules', 'suggestions', 'log', 'transcript', 'candidates', 'agreement'].includes(s.tab as string) ? (s.tab as Tab) : undefined,
+    tab: ['rules', 'suggestions', 'log', 'listen', 'transcript', 'candidates', 'agreement'].includes(s.tab as string) ? (s.tab as Tab) : undefined,
   }),
   component: Review,
 })
@@ -33,6 +34,7 @@ function Review() {
         { value: 'rules', label: <>Rule issues {violations.length > 0 && <Badge tone="bad">{violations.length}</Badge>}</> },
         { value: 'suggestions', label: <>AI review {suggested > 0 && <Badge tone="accent">{suggested}</Badge>}</> },
         { value: 'log', label: 'Decision log' },
+        { value: 'listen', label: 'Listen' },
         { value: 'transcript', label: 'Transcript corrections' },
         { value: 'candidates', label: <>Candidate codes {open > 0 && <Badge tone="warn">{open}</Badge>}</> },
         { value: 'agreement', label: 'Agreement' },
@@ -41,6 +43,7 @@ function Review() {
         {tab === 'rules' && <Rules violations={violations} />}
         {tab === 'suggestions' && <Suggestions />}
         {tab === 'log' && <DecisionLog />}
+        {tab === 'listen' && <Listen />}
         {tab === 'transcript' && <TranscriptQA />}
         {tab === 'candidates' && <Candidates />}
         {tab === 'agreement' && <Agreement />}
@@ -213,6 +216,26 @@ function TranscriptQA() {
 
 const CANDIDATE_STATUS: Candidate['status'][] = ['open', 'adopted', 'merged', 'parked']
 
+/** Adopting a candidate: give it its codebook name and group, and code the passage that prompted it. */
+function AdoptCandidate({ candidate: c }: { candidate: Candidate }) {
+  const project = useProject()
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState(c.name)
+  const [groupId, setGroupId] = useState(project.groups.find((g) => g.kind === 'substantive')?.id ?? '')
+  if (!open) return <Button size="sm" onClick={() => setOpen(true)}>Adopt as code…</Button>
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      <Input value={name} onChange={(e) => setName(e.target.value)} className="h-7 w-56 text-xs" aria-label="Code name in the codebook" />
+      <Select value={groupId} onChange={(e) => setGroupId(e.target.value)} className="h-7 max-w-44 text-xs" aria-label="Group">{project.groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</Select>
+      <Button size="sm" variant="primary" disabled={!name.trim()} onClick={() => {
+        const id = addCode({ name: name.trim(), groupId: groupId || null, definition: c.rationale })
+        if (c.sourceId && c.start != null && c.end != null) applyCodes(c.sourceId, c.start, c.end, [id])
+        updateCandidate(c.id, { status: 'adopted', resolution: c.resolution || `Adopted as “${name.trim()}”${c.sourceId && c.start != null ? ' and applied to the passage that prompted it' : ''}.` })
+      }}>Adopt</Button>
+    </span>
+  )
+}
+
 function Candidates() {
   const project = useProject()
   const sources = indexBy(project.sources)
@@ -243,9 +266,7 @@ function Candidates() {
                     <Select value={c.status} onChange={(e) => updateCandidate(c.id, { status: e.target.value as Candidate['status'] })} className="h-7 text-xs" aria-label="Decision">
                       {CANDIDATE_STATUS.map((s) => <option key={s} value={s}>{s}</option>)}
                     </Select>
-                    {c.status === 'open' && (
-                      <Button size="sm" onClick={() => { addCode({ name: c.name, definition: c.rationale }); updateCandidate(c.id, { status: 'adopted', resolution: c.resolution || 'Adopted into the codebook.' }) }}>Adopt as code</Button>
-                    )}
+                    {c.status === 'open' && <AdoptCandidate candidate={c} />}
                   </div>
                 </div>
                 {src && c.start != null && (

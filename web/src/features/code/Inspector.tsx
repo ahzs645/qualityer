@@ -5,7 +5,7 @@ import {
   checkRules, excerpt, formatTime, groupOf, indexBy, snapToSentence, timeAt, timeRange,
 } from '../../lib/model'
 import {
-  addCandidate, addMemo, editPassage, removeCoding, resizeSpan, setCoverage, setExtraction, setSpanVerified, updateCoding, updateMemo,
+  addCandidate, addMemo, editPassage, removeCoding, resizeSpan, setCoverage, setExtraction, setSpanVerified, splitTurn, updateCoding, updateMemo,
 } from '../../lib/actions'
 import { Badge, Button, IconButton, Input, Select, Swatch, Textarea } from '../../components/ui'
 import { playRange } from '../../lib/player'
@@ -80,6 +80,22 @@ export function SpanInspector({ project, source, span, onClose, onCode }: SpanPr
               </label>
             )}
           </section>
+        )
+      })()}
+
+      {(() => {
+        const seg = source.segments?.find((g) => g.start <= span.start && g.end >= span.end)
+        if (!seg || (seg.start === span.start && seg.end === span.end)) return null
+        const others = source.speakers.filter((sp) => sp.raw !== seg.speaker)
+        if (!others.length) return null
+        return (
+          <label className="flex flex-wrap items-center gap-2 text-xs text-muted">
+            <span><span className="font-medium text-ink">Someone else is speaking here.</span> Make this passage its own turn for</span>
+            <Select value="" onChange={(e) => e.target.value && splitTurn(source.id, span, e.target.value)} className="h-7 text-xs" aria-label="Split the turn: speaker of this passage">
+              <option value="">Choose a speaker…</option>
+              {others.map((sp) => <option key={sp.raw} value={sp.raw}>{sp.name || sp.raw}</option>)}
+            </Select>
+          </label>
         )
       })()}
 

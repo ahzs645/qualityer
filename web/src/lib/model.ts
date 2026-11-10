@@ -26,7 +26,7 @@ export function emptyProject(name = 'Untitled study'): Project {
     id: uid(), name, question: '', method: '', createdAt: t, updatedAt: t, coder: 'Researcher',
     sources: [], groups: [], codes: [], codings: [], rules: [], guide: [], coverage: [], memos: [],
     cases: [], themes: [], cells: [], glossary: [], extractionFields: ['Figure', 'Unit', 'Basis'],
-    extractions: [], candidates: [], aiRuns: [], reviewLog: [], restricted: [], importNotes: [],
+    extractions: [], candidates: [], aiRuns: [], reviewLog: [], restricted: [], wordingChecks: [], importNotes: [],
   }
 }
 
@@ -448,6 +448,10 @@ export function editSource(project: Project, sourceId: string, edits: Edit[]): P
       r.sourceId !== sourceId ? r : { ...r, start: map(r.start, 'start'), end: map(r.end, 'end') }),
     reviewLog: project.reviewLog.map((e) =>
       e.sourceId !== sourceId ? e : { ...e, start: map(e.start, 'start'), end: map(e.end, 'end') }),
+    wordingChecks: project.wordingChecks.map((w) =>
+      w.sourceId !== sourceId ? w : { ...w, start: map(w.start, 'start'), end: map(w.end, 'end') }),
+    aiRuns: project.aiRuns.map((r) =>
+      !r.claims || r.sourceIds[0] !== sourceId ? r : { ...r, claims: Object.fromEntries(Object.entries(r.claims).map(([k, [a, b]]) => [k, [map(a, 'start'), map(b, 'end')] as [number, number]])) }),
   }
 }
 

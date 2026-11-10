@@ -6,9 +6,11 @@ import { useProject } from '../lib/store'
 import { agreement, download, slug } from '../lib/model'
 import { DEFAULT_OPTIONS, selectCodes, windowsFor, type PipelineOptions } from '../lib/ai/pipeline'
 import {
-  exportAgentPack, getAiSettings, importAgentResponses, runPass, saveAiSettings,
+  exportAgentPack, exportGradePack, getAiSettings, importAgentResponses, importGradeResponses, runPass, saveAiSettings,
   type AiSettings, type Progress, type Provider,
 } from '../lib/ai/run'
+import { discardRun } from '../lib/review'
+import { DEFAULT_GRADE, gradeExamples, gradeTargets, type GradeOptions } from '../lib/ai/grade'
 import { Badge, Button, Field, Input, PageHeader, Panel, Progress as Bar, Select, cx } from '../components/ui'
 
 export const Route = createFileRoute('/p/$projectId/assist')({ component: Assist })
@@ -54,10 +56,10 @@ function Assist() {
         title="AI assist"
         actions={<Link to="/p/$projectId/review" params={{ projectId: project.id }} search={{ tab: 'suggestions' }}><Button>Review suggestions</Button></Link>}
       />
-      <div className="grid gap-5 lg:grid-cols-[1fr_24rem]">
-        <div className="space-y-5">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_24rem]">
+        <div className="min-w-0 space-y-5">
           <Panel title="1 · What to code">
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
                 <div className="mb-1.5 text-[13px] font-medium">Sources</div>
                 <div className="max-h-48 space-y-1 overflow-y-auto scroll-thin">
@@ -119,7 +121,13 @@ function Assist() {
                   e.target.value = ''
                   if (!f) return
                   try {
-                    const run = await importAgentResponses(JSON.parse(await f.text()))
+                    const data = JSON.parse(await f.text())
+                    if (data?.format === 'research-weave-grade-responses' || data?.responses?.[0]?.grades) {
+                      const run = await importGradeResponses(data)
+                      setMsg({ tone: 'good', text: `Imported ${run.suggestions} grades on ${Object.keys(run.claims ?? {}).length} claims. ${run.rejected.length} were rejected.` })
+                      return
+                    }
+                    const run = await importAgentResponses(data)
                     setMsg({ tone: 'good', text: `Imported ${run.suggestions} suggestions (${run.repaired} with repaired quotes). ${run.rejected.length} quotes were rejected.` })
                   } catch (err) { setMsg({ tone: 'bad', text: err instanceof Error ? err.message : String(err) }) }
                 }} />
@@ -146,6 +154,8 @@ function Assist() {
             )}
             {msg && <p className={cx('mt-3 rounded-md px-3 py-2 text-sm', msg.tone === 'good' ? 'bg-good-soft text-good' : 'bg-bad-soft text-bad')}>{msg.text}</p>}
           </Panel>
+
+          <GradePass onMessage={setMsg} />
 
           <Runs runs={project.aiRuns} />
           <Calibration />
@@ -201,6 +211,59 @@ function Assist() {
   )
 }
 
+/**
+ * Grades claims that already exist: evidence grade and stance only, with the
+ * respondent's attributes, each group's decision rule and examples from a
+ * person's coding. In held-out mode it is a test of the prompt, not new coding.
+ */
+function GradePass({ onMessage }: { onMessage: (m: { tone: 'good' | 'bad'; text: string }) => void }) {
+  const project = useProject()
+  const people = useMemo(() => [...new Set(project.codings.filter((c) => !c.origin && c.status === 'accepted').map((c) => c.coder))], [project.codings])
+  const [sourceId, setSourceId] = useState(project.sources[0]?.id ?? '')
+  const [mode, setMode] = useState<GradeOptions['mode']>('held-out')
+  const [reference, setReference] = useState('')
+  const [teachShare, setTeachShare] = useState(DEFAULT_GRADE.teachShare)
+  const [examplesPerCode, setExamples] = useState(DEFAULT_GRADE.examplesPerCode)
+  const who = people.includes(reference) ? reference : people[0] ?? ''
+  const opts: GradeOptions = { ...DEFAULT_GRADE, sourceId, mode, reference: who, teachShare, examplesPerCode }
+  const plan = useMemo(() => {
+    if (!sourceId || !who) return null
+    const { targets, teach, choice } = gradeTargets(project, opts)
+    return { targets: targets.length, examples: gradeExamples(project, teach, choice, examplesPerCode).length, groups: choice.map((c) => c.group.name) }
+  }, [project, sourceId, mode, who, teachShare, examplesPerCode])
+  if (!people.length) return null
+  return (
+    <Panel title="Grade pass · evidence and stance on existing claims">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Source to grade">{(id) => <Select id={id} value={sourceId} onChange={(e) => setSourceId(e.target.value)} className="w-full">{project.sources.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select>}</Field>
+        <Field label="What to grade">{(id) => (
+          <Select id={id} value={mode} onChange={(e) => setMode(e.target.value as GradeOptions['mode'])} className="w-full">
+            <option value="held-out">Held-out test: claims a person has graded</option>
+            <option value="ungraded">Claims that have no grade yet</option>
+          </Select>
+        )}</Field>
+        <Field label="Whose grades are the standard">{(id) => <Select id={id} value={who} onChange={(e) => setReference(e.target.value)} className="w-full">{people.map((n) => <option key={n}>{n}</option>)}</Select>}</Field>
+        <div className="grid grid-cols-2 gap-3">
+          {mode === 'held-out' && (
+            <Field label="Teach from the first">{(id) => <Select id={id} value={teachShare} onChange={(e) => setTeachShare(Number(e.target.value))} className="w-full">{[0.3, 0.5, 0.7].map((v) => <option key={v} value={v}>{Math.round(v * 100)}% of claims</option>)}</Select>}</Field>
+          )}
+          <Field label="Examples per value">{(id) => <Select id={id} value={examplesPerCode} onChange={(e) => setExamples(Number(e.target.value))} className="w-full">{[0, 2, 3, 5].map((v) => <option key={v} value={v}>{v}</option>)}</Select>}</Field>
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-muted">{plan ? `${plan.targets} claims to grade for ${plan.groups.join(' and ') || 'no single-choice groups'} · ${plan.examples} examples from ${who}'s coding in the prompt.` : 'Choose a source.'}</p>
+      <div className="mt-3">
+        <Button icon={<Download size={15} />} disabled={!plan?.targets || !plan.groups.length} onClick={async () => {
+          try {
+            const pack = await exportGradePack(opts)
+            download(`${slug(project.name)}-grade-pack-${pack.runId.slice(0, 8)}.json`, JSON.stringify(pack, null, 1), 'application/json')
+            onMessage({ tone: 'good', text: `Grade pack with ${pack.windows.length} batches downloaded. Import the answers with “Import answers” when they are ready.` })
+          } catch (e) { onMessage({ tone: 'bad', text: e instanceof Error ? e.message : String(e) }) }
+        }}>Download grade pack</Button>
+      </div>
+    </Panel>
+  )
+}
+
 function Runs({ runs }: { runs: AiRun[] }) {
   const project = useProject()
   const [open, setOpen] = useState<string | null>(null)
@@ -218,6 +281,8 @@ function Runs({ runs }: { runs: AiRun[] }) {
                 <span className="font-medium">{r.model}</span>
                 <span className="text-xs text-muted">{new Date(r.startedAt).toLocaleString()}</span>
                 <span className="ml-auto flex flex-wrap gap-1">
+                  {r.kind === 'grades' && <Badge tone="accent">grade pass</Badge>}
+                  {pending + accepted === 0 && !r.finishedAt && <button type="button" className="text-xs text-accent hover:underline" onClick={() => discardRun(r.id)}>Discard</button>}
                   <Badge>{r.completed}/{r.windows} windows</Badge>
                   <Badge tone="accent">{pending} to review</Badge>
                   <Badge tone="good">{accepted} accepted</Badge>

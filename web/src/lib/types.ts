@@ -99,6 +99,11 @@ export interface AiRun {
    * Its unreviewed suggestions stay out of the review queue and the counts.
    */
   comparisonOnly?: boolean
+  /** `grades` passes grade existing claims (evidence, stance) and find no new ones. */
+  kind?: 'coding' | 'grades'
+  /** Grade passes: prompt claim id → the claim's passage in the source. */
+  claims?: Record<string, [number, number]>
+  gradeOptions?: { mode: 'held-out' | 'ungraded'; reference: string; teachShare: number; examples: number }
 }
 
 /**
@@ -276,6 +281,18 @@ export interface Candidate {
   createdAt: string
 }
 
+/** A second transcription of one coded passage, kept to show where two machine readings disagree. */
+export interface WordingCheck {
+  sourceId: ID
+  start: number
+  end: number
+  /** What the other transcription heard. */
+  other: string
+  /** Share of the transcript's words the other transcription also has, in order (0–1). */
+  agreement: number
+  model?: string
+}
+
 export interface Project {
   id: ID
   name: string
@@ -302,6 +319,7 @@ export interface Project {
   aiRuns: AiRun[]
   reviewLog: ReviewEvent[]
   restricted: Restriction[]
+  wordingChecks: WordingCheck[]
   importNotes: string[]
 }
 

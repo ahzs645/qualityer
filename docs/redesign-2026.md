@@ -148,6 +148,31 @@ The stance wording worked and then overshot: 15 of the 39 passages the analyst g
 
 A second machine transcription of every coded passage of the other interview, made with a larger speech model, agreed with the first on 95% of words and supplied five corrections that changed meaning. It is a way to decide where to listen first, not a substitute for listening.
 
+## Added in the fifth pass: a grade pass, a listening queue and speaker fixes
+
+Three things from the review still needed a person and had no pipeline behind them.
+
+- **Grade pass** (`web/src/lib/ai/grade.ts`, AI assist → *Grade pass*). Finding claims and grading them are different jobs. This pass takes claims that already exist and asks only for the single-choice groups (evidence grade, stance). Its prompt carries what a person would use:
+  - the respondent's attributes from the source sheet (the ordinary coding pass now sends these too);
+  - an ordered decision rule per group, edited under Codebook → Groups & rules and stored as the group's description;
+  - several examples per value from a named person's coding, with passages an earlier AI pass got wrong first, marked with the value it wrongly chose.
+
+  In *held-out* mode the examples come only from the first share of that person's claims in the source, and the rest are graded blind, so the result is a test and stays out of the review queue. In *ungraded* mode it grades claims that lack a grade. It runs through the same agent hand-off; a hand-off exported by mistake can be discarded.
+- **Listen** (Review → *Listen*, `web/src/lib/listen.ts`). Coded passages in the order worth hearing: quoted evidence first, then passages where a second transcription disagrees, then low-confidence words. The card plays the passage, corrects its wording and records "wording matches the recording". A second transcription can be imported as Whisper-style JSON of the whole recording (matched to each passage by time) or as a list of passages; a passage it does not cover gets no comparison rather than a false alarm.
+- **Speakers.** A selected passage can be made its own turn for another speaker (an interviewer's question inside a respondent's turn). An RTTM speaker track can be laid over a source that has word timings: turns split where the speaker changes, and text and coding offsets do not move.
+- **Candidate codes** can be adopted with a codebook name and group, and the adoption codes the passage that prompted the candidate.
+
+### Held-out test of the grade pass (aggregate numbers only)
+
+Examples came from the first half of the analyst's claims in the calibration interview; the model graded the 73 claims in the second half.
+
+| Same value as the analyst, on those 73 claims | Coding pass, v1.1 codebook | Coding pass, v1.2 | Grade pass |
+|---|---|---|---|
+| Evidence grade | 51% | 48% | 58% |
+| Stance | 56% | 72% | 67% |
+
+The coding passes are scored on the claims they happened to grade (59 and 67 of the 73); the grade pass grades all of them. "Direct authority" was recognised on 17 of 29 claims once the model was told who was speaking. Of the 31 remaining evidence errors, 26 are the model reading a proposal author's "would" and "should" as opinion where the analyst graded them as authority or firsthand. That is a ruling for the analyst to make, not something to tune further on one interview.
+
 ## AI-assisted coding pipeline
 
 Design decisions are drawn from published LLM-coding studies (Xiao et al. 2023; LACA; QualiGPT; MindCoder; ChatQDA) and labelling tools (Prodigy, Argilla, INCEpTION):

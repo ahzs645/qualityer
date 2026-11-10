@@ -35,7 +35,7 @@ export function Compare({ project }: { project: Project }) {
             <Select value={cur.key} onChange={(e) => setPick(e.target.value)} className="h-8 w-full min-w-0 sm:w-auto sm:max-w-xl" aria-label="Pass to compare">
               {pairs.map((p) => {
                 const n = project.codings.filter((c) => c.origin?.runId === p.run.id && c.sourceId === p.sourceId).length
-                return <option key={p.key} value={p.key}>{project.sources.find((s) => s.id === p.sourceId)?.name.split(' — ')[0]} · {p.run.model} · {new Date(p.run.startedAt).toLocaleString()} · {n} codings</option>
+                return <option key={p.key} value={p.key}>{project.sources.find((s) => s.id === p.sourceId)?.name.split(' — ')[0]} · {p.run.kind === 'grades' ? 'grade pass' : 'coding pass'} · {p.run.model} · {new Date(p.run.startedAt).toLocaleString()} · {n} codings</option>
               })}
             </Select>
           </div>
@@ -66,11 +66,17 @@ function Against({ project, runId, sourceId }: { project: Project; runId: string
   const [who, setWho] = useState('')
   const person = people.includes(who) ? who : people[0] ?? ''
   const result = useMemo(() => {
-    const ref = project.codings.filter((c) => c.sourceId === sourceId && !c.origin && c.status === 'accepted' && c.coder === person)
+    // A grade pass is scored only on the claims it was given.
+    const given = project.aiRuns.find((r) => r.id === runId)?.claims
+    const asked = given ? new Set(Object.values(given).map(([a, b]) => `${a}:${b}`)) : null
+    const ref = project.codings.filter((c) => c.sourceId === sourceId && !c.origin && c.status === 'accepted' && c.coder === person && (!asked || asked.has(`${c.start}:${c.end}`)))
     const other = project.codings.filter((c) => c.sourceId === sourceId && c.origin?.runId === runId)
     return compare(project, ref, other, choices.map((c) => c.group.id))
   }, [project, runId, sourceId, choices, person])
   const [cell, setCell] = useState<{ groupId: string; ref: string; other: string } | null>(null)
+  // A grade pass only grades existing claims, so substantive recall and "AI only" have no meaning for it.
+  const run = project.aiRuns.find((r) => r.id === runId)
+  const gradesOnly = run?.kind === 'grades'
   const sub = result.byKind.substantive
   const fmt = (v: number | null | undefined) => (v == null ? '—' : v.toFixed(2))
   const domains = result.byGroup.filter((g) => groups.get(g.groupId)?.kind === 'substantive')
@@ -87,8 +93,10 @@ function Against({ project, runId, sourceId }: { project: Project; runId: string
         </label>
       )}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {!gradesOnly && <>
         <Stat label="Substantive codes the AI also found" value={fmt(sub?.recall)} sub={`recall · of ${sub?.ref ?? 0} the person applied`} />
         <Stat label="AI substantive codes the person also had" value={fmt(sub?.precision)} sub={`precision · of ${sub?.other ?? 0} the AI applied`} />
+        </>}
         {result.confusions.map((c) => (
           <Stat key={c.groupId} label={`Same ${groups.get(c.groupId)?.name.replace(/^[A-Z]\s+/, '').toLowerCase()}`} value={c.compared ? pct(c.agree / c.compared) : '—'} sub={`${c.agree} of ${c.compared} passages both graded`} />
         ))}
@@ -116,9 +124,10 @@ function Against({ project, runId, sourceId }: { project: Project; runId: string
         </Panel>
       )}
 
-      <AiOnly project={project} sourceId={sourceId} runId={runId} person={person} items={result.otherOnly} />
+      {gradesOnly && run?.gradeOptions && <p className="text-sm text-muted">A grade pass: {Object.keys(run.claims ?? {}).length} claims {person} had already graded were graded again blind{run.gradeOptions.mode === 'held-out' ? `, with ${run.gradeOptions.examples} examples taken only from the first ${Math.round(run.gradeOptions.teachShare * 100)}% of the interview` : ''}.</p>}
+      {!gradesOnly && <AiOnly project={project} sourceId={sourceId} runId={runId} person={person} items={result.otherOnly} />}
 
-      <Panel title="By domain: substantive codes each applied">
+      {!gradesOnly && <Panel title="By domain: substantive codes each applied">
         <div className="space-y-1.5">
           {domains.map((g) => {
             const total = g.both + g.refOnly + g.otherOnly
@@ -140,7 +149,7 @@ function Against({ project, runId, sourceId }: { project: Project; runId: string
           <span className="inline-flex items-center gap-1.5"><Swatch color={SERIES.other} />AI only</span>
           <span className="ml-auto">Numbers on the right: both · person only · AI only</span>
         </div>
-      </Panel>
+      </Panel>}
     </div>
   )
 }

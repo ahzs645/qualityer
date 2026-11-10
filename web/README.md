@@ -30,6 +30,8 @@ src/
   lib/claims.ts      claims (everything coded on one passage), review states, decision summaries
   lib/review.ts      reviewer decisions, each written to the decision log
   lib/compare.ts     passage-level comparison of two coders (precision/recall, confusion matrices)
+  lib/listen.ts      transcription comparison, listening order, turn splitting, RTTM speaker tracks
+  lib/ai/grade.ts    grade pass: evidence grade and stance on existing claims, with a held-out test
   lib/profile.ts     cases by domain, with evidence-grade and stance mix
   lib/report.ts      study report (HTML, Markdown) and the claims table
   features/review/   claim-by-claim AI review, decision log
