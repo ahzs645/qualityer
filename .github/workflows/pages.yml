@@ -1,5 +1,7 @@
 name: Publish synthetic Pages demo
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       app:
@@ -25,11 +27,11 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: ${{ inputs.app == 'web' && 'web/package-lock.json' || 'package-lock.json' }}
+          cache-dependency-path: ${{ (inputs.app || 'web') == 'web' && 'web/package-lock.json' || 'package-lock.json' }}
       - uses: actions/configure-pages@v5
         id: pages
       # Rebuilt app (Vite 8 + TanStack Router), browser-local storage.
-      - if: inputs.app == 'web'
+      - if: (inputs.app || 'web') == 'web'
         working-directory: web
         run: |
           npm ci
@@ -50,7 +52,7 @@ jobs:
           PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: ${{ inputs.app == 'web' && 'web/dist' || 'dist/pages' }}
+          path: ${{ (inputs.app || 'web') == 'web' && 'web/dist' || 'dist/pages' }}
   deploy:
     environment:
       name: github-pages
