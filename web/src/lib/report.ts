@@ -4,6 +4,7 @@ import {
 } from './model'
 import { CLAIM_STATE_LABEL, buildClaims, choiceGroups, confidenceBand, summariseDecisions } from './claims'
 import { compare } from './compare'
+import { forExport } from './names'
 import { buildProfile, cellKey, type ProfileCell } from './profile'
 
 // The study report: one document a team can read, print or paste from. It is
@@ -151,6 +152,9 @@ function runUse(d: Data, runId: string, comparisonOnly: boolean) {
 // ---------------------------------------------------------------------------
 // HTML
 
+const anonymised = (p: Project) => p.anonymise && (p.names ?? []).some((e) => e.mask)
+const ANON_NOTE = 'Names are anonymised: people and other masked names in quotes, titles, summaries and memos are replaced by stand-ins such as [R01] or [Person 1].'
+
 const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const para = (s: string) => esc(s).replace(/\n{2,}/g, '</p><p>').replace(/\n/g, '<br>')
 
@@ -208,6 +212,7 @@ export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPOR
   h(`<h1>${esc(project.name)}</h1>`)
   if (project.question) h(`<p class="lede">${esc(project.question)}</p>`)
   h(`<p class="meta">Analysis report · generated ${esc(generatedAt.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }))} · reviewer ${esc(project.coder)}</p>`)
+  if (anonymised(project)) h(`<p class="note">${esc(ANON_NOTE)}</p>`)
   if (project.method) h(`<p class="meta">${esc(project.method)}</p>`)
   h(`<p class="status">${esc(statusLine(d))}</p>`)
 
@@ -335,7 +340,7 @@ export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPOR
     }
   }
 
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(project.name)} — analysis report</title><style>${CSS}</style></head><body><main>${out.join('\n')}</main></body></html>`
+  return forExport(project, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(project.name)} — analysis report</title><style>${CSS}</style></head><body><main>${out.join('\n')}</main></body></html>`, { html: true })
 }
 
 // ---------------------------------------------------------------------------
@@ -351,6 +356,7 @@ export function reportMarkdown(project: Project, opts: ReportOptions = DEFAULT_R
   const h = (...s: string[]) => out.push(...s, '')
   if (project.question) h(project.question)
   h(`Analysis report, generated ${generatedAt.toISOString().slice(0, 10)}. Reviewer: ${project.coder}.`)
+  if (anonymised(project)) h(`*${ANON_NOTE}*`)
   if (project.method) h(project.method)
   h(`**${statusLine(d)}**`)
 
@@ -408,7 +414,7 @@ export function reportMarkdown(project: Project, opts: ReportOptions = DEFAULT_R
     h('## Codebook')
     for (const g of project.groups) h(`### ${g.name}`, table(['Code', 'Definition', 'Include', 'Exclude', 'Anchor'], codesInGroup(project, g.id).map((c) => [tidy(c.name), c.definition, c.include, c.exclude, c.anchor])))
   }
-  return out.join('\n').replace(/\n{3,}/g, '\n\n')
+  return forExport(project, out.join('\n').replace(/\n{3,}/g, '\n\n'))
 }
 
 // ---------------------------------------------------------------------------
@@ -434,5 +440,5 @@ export function claimsCSV(project: Project) {
       cl.issues.join('; '), acc.find((c) => c.memo)?.memo ?? '', quotable(project, s, cl.start, cl.end), cl.start, cl.end,
     ])
   }
-  return '﻿' + toCSV(rows)
+  return '﻿' + forExport(project, toCSV(rows))
 }

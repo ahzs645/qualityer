@@ -4,6 +4,7 @@ import { Download } from 'lucide-react'
 import type { Project, ReviewAction } from '../../lib/types'
 import { download, formatTime, indexBy, quotable, slug, timeAt, toCSV } from '../../lib/model'
 import { summariseDecisions } from '../../lib/claims'
+import { forExport } from '../../lib/names'
 import { useProject } from '../../lib/store'
 import { Badge, Button, Empty, Panel, Select, Stat, pct } from '../../components/ui'
 
@@ -27,7 +28,7 @@ export function decisionLogCSV(project: Project) {
       e.ai ? 'yes' : '', e.confidence ?? '', e.priorReviewer ?? '', e.note ?? '', quotable(project, s, e.start, e.end), e.start, e.end,
     ])
   }
-  return '﻿' + toCSV(rows)
+  return '﻿' + forExport(project, toCSV(rows))
 }
 
 export function DecisionLog() {

@@ -299,6 +299,28 @@ export interface WordingCheck {
   model?: string
 }
 
+export type NameKind = 'person' | 'organisation' | 'place' | 'other'
+
+/**
+ * A name that occurs in the transcripts: a person, organisation, place or
+ * anything else that could identify someone. All its spellings (short forms,
+ * misheard machine transcriptions) are listed so every mention is found, and
+ * `replacement` stands in for it in quotes and exports when anonymising.
+ */
+export interface NameEntry {
+  id: ID
+  name: string
+  variants: string[]
+  kind: NameKind
+  /** e.g. "[R01]", "[Colleague 1]", "[a health authority]". */
+  replacement: string
+  /** Replace this name in reports and exports when the study is anonymised. */
+  mask: boolean
+  /** Match capitals exactly, so "Gray" is masked and "gray" is not. */
+  caseSensitive: boolean
+  note: string
+}
+
 export interface Project {
   id: ID
   name: string
@@ -326,6 +348,12 @@ export interface Project {
   reviewLog: ReviewEvent[]
   restricted: Restriction[]
   wordingChecks: WordingCheck[]
+  /** Names register: people, organisations and places found in the transcripts. */
+  names: NameEntry[]
+  /** Candidates ruled out as names, so they are not suggested again. */
+  notNames: string[]
+  /** Replace masked names in reports and exports (quotes, source names, summaries, memos). */
+  anonymise: boolean
   importNotes: string[]
 }
 

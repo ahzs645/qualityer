@@ -5,6 +5,7 @@ import type { Case, Coding, FrameworkCell, Theme } from '../lib/types'
 import { update, useProject } from '../lib/store'
 import { addMissingCases, removeEmptyCases, renameCase } from '../lib/actions'
 import { download, excerpt, formatTime, indexBy, orderedCodes, quotable, slug, timeAt, toCSV, uid } from '../lib/model'
+import { forExport } from '../lib/names'
 import { Badge, Button, Empty, IconButton, Input, PageHeader, Panel, Select, Swatch, Textarea, cx } from '../components/ui'
 
 export const Route = createFileRoute('/p/$projectId/framework')({ component: Framework })
@@ -36,7 +37,7 @@ function Framework() {
         return [cell?.summary ?? '', ...pinned].filter(Boolean).join('\n')
       })])
     }
-    download(`${slug(project.name)}-framework.csv`, '﻿' + toCSV(rows), 'text/csv')
+    download(`${slug(project.name)}-framework.csv`, '﻿' + forExport(project, toCSV(rows)), 'text/csv')
   }
 
   const selCase = sel && project.cases.find((c) => c.id === sel.caseId)

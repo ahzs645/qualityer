@@ -1,4 +1,4 @@
-import type { Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, Project, Source, WordingCheck } from './types'
+import type { Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, NameEntry, Project, Source, WordingCheck } from './types'
 import { applySpeakerTrack, joinSegments, splitSegments, type SpeakerInterval } from './listen'
 import { PALETTE, editSource, findCorrections, now, segmentsOf, uid } from './model'
 import { snapshot, store, update } from './store'
@@ -481,4 +481,34 @@ export async function importSpeakerTrack(sourceId: string, track: SpeakerInterva
     }),
   }))
   return result
+}
+
+// Names ----------------------------------------------------------------------
+
+export function addName(entry: Omit<NameEntry, 'id'>): string {
+  const id = uid()
+  update(`add name ${entry.name}`, (p) => ({ ...p, names: [...(p.names ?? []), { ...entry, id }], notNames: (p.notNames ?? []).filter((n) => n.toLowerCase() !== entry.name.toLowerCase()) }))
+  return id
+}
+
+export function updateName(id: string, change: Partial<NameEntry>) {
+  update('edit name', (p) => ({ ...p, names: p.names.map((e) => (e.id === id ? { ...e, ...change } : e)) }))
+}
+
+/** Adds a spelling to a registered name (a short form, or how the transcript misheard it). */
+export function addNameVariant(id: string, spelling: string) {
+  update(`add spelling ${spelling}`, (p) => ({ ...p, names: p.names.map((e) => (e.id === id && !e.variants.includes(spelling) && e.name !== spelling ? { ...e, variants: [...e.variants, spelling] } : e)) }))
+}
+
+export function removeName(id: string) {
+  update('remove name', (p) => ({ ...p, names: p.names.filter((e) => e.id !== id) }))
+}
+
+/** Rules a suggestion out, so it is not suggested again. */
+export function dismissName(text: string) {
+  update(`not a name: ${text}`, (p) => ({ ...p, notNames: [...new Set([...(p.notNames ?? []), text])] }))
+}
+
+export function setAnonymise(on: boolean) {
+  update(on ? 'anonymise exports' : 'stop anonymising exports', (p) => ({ ...p, anonymise: on }))
 }

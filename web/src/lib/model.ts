@@ -26,7 +26,7 @@ export function emptyProject(name = 'Untitled study'): Project {
     id: uid(), name, question: '', method: '', createdAt: t, updatedAt: t, coder: 'Researcher',
     sources: [], groups: [], codes: [], codings: [], rules: [], guide: [], coverage: [], memos: [],
     cases: [], themes: [], cells: [], glossary: [], extractionFields: ['Figure', 'Unit', 'Basis'],
-    extractions: [], candidates: [], aiRuns: [], reviewLog: [], restricted: [], wordingChecks: [], importNotes: [],
+    extractions: [], candidates: [], aiRuns: [], reviewLog: [], restricted: [], wordingChecks: [], names: [], notNames: [], anonymise: false, importNotes: [],
   }
 }
 

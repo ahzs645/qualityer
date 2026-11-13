@@ -4,6 +4,7 @@ import { Download, Star, X } from 'lucide-react'
 import type { Coding } from '../lib/types'
 import { useProject } from '../lib/store'
 import { coders, download, formatTime, indexBy, orderedCodes, quotable, segmentsOf, slug, speakerOf, timeAt, toCSV } from '../lib/model'
+import { forExport } from '../lib/names'
 import { Badge, Button, Empty, Input, PageHeader, Select, Swatch, cx } from '../components/ui'
 
 interface Search { codes?: string; sources?: string; mode?: 'any' | 'all'; attr?: string; coder?: string; key?: boolean; q?: string }
@@ -83,7 +84,7 @@ function Retrieve() {
         h.codings.some((c) => c.important) ? 'yes' : '', quotable(project, src, h.start, h.end), String(h.start), String(h.end),
       ])
     }
-    download(`${slug(project.name)}-excerpts.csv`, '﻿' + toCSV(rows), 'text/csv')
+    download(`${slug(project.name)}-excerpts.csv`, '﻿' + forExport(project, toCSV(rows)), 'text/csv')
   }
 
   return (

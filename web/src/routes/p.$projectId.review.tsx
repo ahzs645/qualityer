@@ -8,15 +8,16 @@ import { addCode, applyCodes, applyGlossary, setExtraction, updateCandidate } fr
 import { Suggestions } from '../features/review/Suggestions'
 import { DecisionLog } from '../features/review/DecisionLog'
 import { Listen } from '../features/review/Listen'
+import { Names } from '../features/review/Names'
 import { AudioBar } from '../features/code/AudioBar'
 import { hasPlayer, playRange, usePlayer } from '../lib/player'
 import { Badge, Button, Empty, IconButton, Input, PageHeader, Panel, Select, Swatch, Tabs, Textarea, cx } from '../components/ui'
 
-type Tab = 'rules' | 'suggestions' | 'log' | 'listen' | 'transcript' | 'candidates' | 'agreement'
+type Tab = 'rules' | 'suggestions' | 'log' | 'listen' | 'transcript' | 'names' | 'candidates' | 'agreement'
 
 export const Route = createFileRoute('/p/$projectId/review')({
   validateSearch: (s: Record<string, unknown>): { tab?: Tab } => ({
-    tab: ['rules', 'suggestions', 'log', 'listen', 'transcript', 'candidates', 'agreement'].includes(s.tab as string) ? (s.tab as Tab) : undefined,
+    tab: ['rules', 'suggestions', 'log', 'listen', 'transcript', 'names', 'candidates', 'agreement'].includes(s.tab as string) ? (s.tab as Tab) : undefined,
   }),
   component: Review,
 })
@@ -38,6 +39,7 @@ function Review() {
         { value: 'log', label: 'Decision log' },
         { value: 'listen', label: 'Listen' },
         { value: 'transcript', label: 'Transcript corrections' },
+        { value: 'names', label: <>Names {project.anonymise && <Badge tone="good">masked</Badge>}</> },
         { value: 'candidates', label: <>Candidate codes {open > 0 && <Badge tone="warn">{open}</Badge>}</> },
         { value: 'agreement', label: 'Agreement' },
       ]} />
@@ -47,6 +49,7 @@ function Review() {
         {tab === 'log' && <DecisionLog />}
         {tab === 'listen' && <Listen />}
         {tab === 'transcript' && <TranscriptQA />}
+        {tab === 'names' && <Names />}
         {tab === 'candidates' && <Candidates />}
         {tab === 'agreement' && <Agreement />}
       </div>

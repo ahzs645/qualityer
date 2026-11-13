@@ -10,6 +10,9 @@ import {
 import { Badge, Button, IconButton, Input, Select, Swatch, Textarea } from '../../components/ui'
 import { playRange } from '../../lib/player'
 import { setRestricted } from '../../lib/review'
+import { MASK_BY_DEFAULT, findNames, guessKind, nextReplacement } from '../../lib/names'
+import type { NameKind } from '../../lib/types'
+import { addName, addNameVariant } from '../../lib/actions'
 
 interface SpanProps {
   project: Project
@@ -215,6 +218,8 @@ export function SpanInspector({ project, source, span, onClose, onCode }: SpanPr
         </section>
       )}
 
+      <NamesHere project={project} text={text} />
+
       <section>
         <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold"><Lightbulb size={14} /> Candidate code</h3>
         <p className="mb-2 text-xs text-muted">Doesn't fit the codebook? Log it for the reconciliation meeting instead of creating a code mid-interview.</p>
@@ -227,3 +232,42 @@ export function SpanInspector({ project, source, span, onClose, onCode }: SpanPr
   )
 }
 
+
+/**
+ * Names in the selected passage: those already registered, with their stand-ins,
+ * and, for a short selection, a way to add it as a name or as another spelling of one.
+ */
+function NamesHere({ project, text }: { project: Project; text: string }) {
+  const hits = useMemo(() => findNames(text, project.names ?? []), [text, project.names])
+  const trimmed = text.trim().replace(/[.,;:!?]+$/, '')
+  const short = trimmed.length >= 2 && trimmed.length <= 60 && !trimmed.includes('\n')
+  const known = (project.names ?? []).some((e) => [e.name, ...e.variants].some((v) => v.toLowerCase() === trimmed.toLowerCase()))
+  const [kind, setKind] = useState<NameKind>(() => guessKind(trimmed))
+  const [into, setInto] = useState('')
+  if (!hits.length && (!short || known)) return null
+  const masked = [...new Map(hits.map((h) => [h.entry.id, h.entry])).values()]
+  return (
+    <section>
+      <h3 className="mb-1 text-sm font-semibold">Names</h3>
+      {masked.length > 0 && (
+        <ul className="mb-2 space-y-0.5 text-xs text-muted">
+          {masked.map((e) => <li key={e.id}><span className="font-medium text-ink">{e.name}</span> → {e.mask ? <span className="font-mono">{e.replacement}</span> : 'not masked'}</li>)}
+        </ul>
+      )}
+      {short && !known && (
+        <div className="flex flex-wrap gap-1.5">
+          <Select value={kind} onChange={(e) => setKind(e.target.value as NameKind)} className="h-7 text-xs" aria-label="Kind of name">
+            <option value="person">Person</option><option value="organisation">Organisation</option><option value="place">Place</option><option value="other">Other</option>
+          </Select>
+          <Button size="sm" onClick={() => addName({ name: trimmed, variants: [], kind, replacement: nextReplacement(project, kind), mask: MASK_BY_DEFAULT[kind], caseSensitive: true, note: 'added from a passage' })}>Add “{trimmed}” to names</Button>
+          {(project.names ?? []).length > 0 && (
+            <Select value={into} onChange={(e) => { if (e.target.value) { addNameVariant(e.target.value, trimmed); setInto('') } }} className="h-7 max-w-48 text-xs" aria-label="Add as a spelling of">
+              <option value="">or a spelling of…</option>
+              {project.names.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </Select>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}

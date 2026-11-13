@@ -252,6 +252,40 @@ This pass took the study as exported after the fifth pass and added two more cal
 - **Interview guide.** In all four interviews, the guide's vantage and risk questions were not asked. The script used in the two new interviews has ten questions, including one on impact that the study's 14-question guide does not have.
 - **Known limitation.** Coverage notes and memos that cite turn ids go out of date when turns are joined or split. Notes in this pass cite times instead.
 
+## Added in the seventh pass: a names register and anonymised exports
+
+Review → **Names** finds the people, organisations and places the interviews mention, keeps every spelling of each together, and masks them in what leaves the app.
+
+- **Suggestions** (`web/src/lib/names.ts`):
+  - **Sources:** people named in source titles and speaker lists first, then runs of capitalised words, such as "Dr. Jo Ames" or "University of Northern British Columbia".
+  - **Each mention counts once**, for the longest name that covers it, so "Prince" is not counted inside "Prince George".
+  - **Ignored:** words that only start sentences; single words the transcripts mostly write in lower case (machine transcripts capitalise "Totally" or "Northern" mid-sentence); common abbreviations (PhD, CEO, RNA); initials and respondent IDs.
+  - **Kind:** each suggestion comes with a guessed kind (person, organisation, place, other) and its mentions per interview.
+  - **Stand-ins:** a respondent named in a source title is suggested with their ID as the stand-in.
+- **Register:**
+  - **Fields:** each name has other spellings (short forms, misheard forms), a kind, a stand-in (`[R01]`, `[Person 3]`, or any phrase such as `[a senior university research leader]`), a mask switch and a match-capitals switch, so "Moss" is found and "moss" is not.
+  - **Counts:** mentions per interview show who and what the study keeps coming back to. Each row opens on every mention, with a link into the transcript.
+  - **Defaults:** people and unclassified names are masked by default. Organisations and places are left for the analyst to decide, and so are public figures.
+  - **From the transcript:** a name can also be added from a selected passage in the Code view, where the inspector lists the names in the passage with their stand-ins.
+- **Matching:**
+  - Whole words, longest spelling first, either apostrophe, any run of spaces.
+  - A spelling with a title ("Dr. Lena Ortiz") also matches without it, so a surname is not left behind next to a masked first name.
+- **Anonymise:**
+  - **One switch** masks names in the report (HTML and Markdown), the claims table, the decision log, and the Retrieve and Framework CSV files. That covers quotes, source and case names, summaries and memos, and the report says that names are anonymised.
+  - **Not masked:** the app and the whole-study file keep real names.
+  - **Preview:** the Names tab shows one coded passage before and after masking, which is where a name the scan missed shows up.
+
+### On the study (no names given here)
+
+- **Register:** the scan of four machine-transcribed interviews put most of the people named in them at the top of the list. 34 names were registered: respondents as their IDs, the interview team as `[Interviewer]`, other named individuals as `[Person n]`, and five public figures left unmasked.
+- **Leak check:** none of the masked names or spellings remained in the anonymised report or claims table.
+- **What reading the preview caught:**
+  - a misheard name the scan had not paired with anyone;
+  - a first name entered as "other", so not masked: hence "other" is now masked by default;
+  - a surname left after a masked first name: hence the title-optional matching above;
+  - a job title in a source name that identifies the respondent as surely as a name: registered as a phrase with its own stand-in.
+- **Still to check by hand:** roles and departments in source names (as in the last point) and small-population details can identify someone without any name.
+
 ## Still not ported
 
 - **Speech-to-text and diarisation inside the app.** Transcribe with Whisper / WhisperX / noScribe and import the JSON. `services/transcription` is unchanged.

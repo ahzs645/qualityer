@@ -38,6 +38,8 @@ src/
   features/explore/  interview map, cases by domain, AI-against-person comparison
   lib/refi.ts        REFI-QDA .qdpx import/export
   lib/bundle.ts      whole study with recordings (.zip) export/import
+  lib/names.ts       names register: suggestions, matching, masking in exports
+  features/review/Names.tsx  Review → Names
   lib/documents.ts   Word/ODT/PDF/HTML/RTF text extraction
   lib/demo.ts        synthetic demo study
 ```

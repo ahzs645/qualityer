@@ -13,5 +13,8 @@ export function migrate(input: Partial<Project> & { id: string }): Project {
   p.codes = (p.codes ?? []).map((c: Partial<Code>) => ({
     definition: '', include: '', exclude: '', anchor: '', parentId: null, groupId: null, ...c,
   }) as Code)
+  p.names = p.names ?? []
+  p.notNames = p.notNames ?? []
+  p.anonymise = p.anonymise ?? false
   return p
 }
