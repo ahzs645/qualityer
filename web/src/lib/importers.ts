@@ -14,37 +14,82 @@ export { codePointToUtf16 }
 // ---------------------------------------------------------------------------
 // Plain transcripts
 
-/** Parses SRT / WebVTT cues into a transcript with timestamped turns. */
+const subtitleTime = (s: string) => {
+  const m = /(?:(\d+):)?(\d+):(\d+)[.,](\d+)/.exec(s)
+  return m ? Number(m[1] ?? 0) * 3600 + Number(m[2]) * 60 + Number(m[3]) + Number('0.' + m[4]) : null
+}
+
+/**
+ * Parses SRT / WebVTT cues into a transcript with timestamped turns.
+ *
+ * Every cue keeps its timing: each word gets a start time, exact when the cue
+ * carries WebVTT inline timestamps (`<00:01:02.500>word`), otherwise spread
+ * across the cue's duration. Machine captions often come as one cue every few
+ * words, so without this a three-minute answer would have a single timestamp
+ * and nothing inside it could be played or followed.
+ *
+ * Consecutive cues from one speaker form a turn. Long monologues are broken
+ * into paragraphs at a pause, and unlabelled captions are grouped into
+ * paragraphs, so a turn stays readable and codable (as for Whisper JSON).
+ */
 export function parseSubtitles(raw: string) {
   const cues = raw.replace(/\r/g, '').split(/\n\s*\n/)
   const segments: Segment[] = []
   let text = ''
-  const ts = (s: string) => {
-    const m = /(?:(\d+):)?(\d+):(\d+)[.,](\d+)/.exec(s)
-    return m ? Number(m[1] ?? 0) * 3600 + Number(m[2]) * 60 + Number(m[3]) + Number('0.' + m[4]) : null
-  }
+  let lastEnd: number | null = null
   for (const cue of cues) {
     const lines = cue.split('\n').filter((l) => l.trim() && l.trim() !== 'WEBVTT')
     const timeIdx = lines.findIndex((l) => l.includes('-->'))
     if (timeIdx < 0) continue
     let body = lines.slice(timeIdx + 1).join(' ').trim()
     if (!body) continue
+    const [from, to] = lines[timeIdx].split('-->')
+    const t0 = subtitleTime(from)
+    const t1 = subtitleTime(to)
     let speaker = ''
-    const v = /^<v\s+([^>]+)>/.exec(body)
+    const v = /^<v(?:\.[\w.-]+)?\s+([^>]+)>/.exec(body)
     const colon = /^([A-Z][\w .'-]{0,30}):\s+/.exec(body)
-    if (v) { speaker = v[1].trim(); body = body.replace(/^<v[^>]+>/, '') }
+    if (v) { speaker = v[1].trim(); body = body.slice(v[0].length) }
     else if (colon) { speaker = colon[1]; body = body.slice(colon[0].length) }
-    body = body.replace(/<[^>]+>/g, '')
+
+    // Split the cue into words, keeping any inline timestamp that precedes one.
+    const parts: { word: string; at: number | null }[] = []
+    let pending: number | null = null
+    for (const tok of body.split(/(<\d[\d:.,]*>)|\s+/)) {
+      if (!tok) continue
+      if (/^<\d/.test(tok)) { pending = subtitleTime(tok); continue }
+      const word = tok.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').trim()
+      if (!word) continue
+      parts.push({ word, at: pending })
+      pending = null
+    }
+    if (!parts.length) continue
+    body = parts.map((p) => p.word).join(' ')
+
     const prev = segments[segments.length - 1]
-    if (prev && prev.speaker === speaker && speaker) {
-      text += ' ' + body
-      prev.end = text.length
-    } else {
+    const pause = t0 != null && lastEnd != null ? t0 - lastEnd : 0
+    lastEnd = t1 ?? t0 ?? lastEnd
+    const length = prev ? text.length - prev.start : 0
+    const cap = speaker ? 1200 : 700
+    const join = prev && prev.speaker === speaker && length + body.length <= cap && !(pause > 2 && (!speaker || length >= 400))
+    let start: number
+    if (join) { text += ' '; start = text.length; prev.end = start + body.length }
+    else {
       if (text) text += '\n\n'
-      segments.push({ start: text.length, end: text.length + body.length, speaker, time: ts(lines[timeIdx].split('-->')[0]) })
-      text += body
+      start = text.length
+      segments.push({ start, end: start + body.length, speaker, time: t0, words: [] })
+    }
+    text += body
+    const seg = segments[segments.length - 1]
+    let o = start
+    for (const p of parts) {
+      const share = (o - start) / Math.max(1, body.length)
+      const at = p.at ?? (t0 != null ? t0 + (t1 != null && t1 > t0 ? (t1 - t0) * share : 0) : null)
+      if (at != null) seg.words!.push([o, Math.round(at * 1000) / 1000])
+      o += p.word.length + 1
     }
   }
+  for (const s of segments) if (!s.words?.length) delete s.words
   return { text, segments }
 }
 

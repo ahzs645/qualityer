@@ -1,5 +1,5 @@
 import type { Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, Project, Source, WordingCheck } from './types'
-import { applySpeakerTrack, splitSegments, type SpeakerInterval } from './listen'
+import { applySpeakerTrack, joinSegments, splitSegments, type SpeakerInterval } from './listen'
 import { PALETTE, editSource, findCorrections, now, segmentsOf, uid } from './model'
 import { snapshot, store, update } from './store'
 import { recodeCoding, reviewEvent } from './review'
@@ -130,6 +130,23 @@ export function removeSource(id: string) {
   })
 }
 
+/** Moves a source up or down the list; every screen and the report follow this order. */
+export function moveSource(id: string, by: -1 | 1) {
+  update('reorder sources', (p) => {
+    const i = p.sources.findIndex((s) => s.id === id)
+    const j = i + by
+    if (i < 0 || j < 0 || j >= p.sources.length) return p
+    const sources = [...p.sources]
+    ;[sources[i], sources[j]] = [sources[j], sources[i]]
+    return { ...p, sources }
+  })
+}
+
+/** Orders sources by name, numerically, so "R10" comes after "R9". */
+export function sortSourcesByName() {
+  update('sort sources by name', (p) => ({ ...p, sources: [...p.sources].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })) }))
+}
+
 export function markReadTo(sourceId: string, offset: number) {
   update('mark read', (p) => ({
     ...p,
@@ -138,16 +155,22 @@ export function markReadTo(sourceId: string, offset: number) {
 }
 
 /** Applies glossary corrections to the given sources, moving all anchors. Snapshots first. */
-export async function applyGlossary(sourceIds: string[]) {
+/**
+ * Applies the correction glossary to the given sources. `skip` holds matches a
+ * person ruled out in the preview, as "sourceId:offset" keys; they are left as
+ * they are.
+ */
+export async function applyGlossary(sourceIds: string[], skip: ReadonlySet<string> = new Set()) {
   const p = store.state.project
   if (!p) return 0
-  const total = sourceIds.reduce((n, id) => n + findCorrections(p.sources.find((s) => s.id === id)?.text ?? '', p.glossary).length, 0)
+  const chosen = (id: string, text: string, glossary: typeof p.glossary) => findCorrections(text, glossary).filter((e) => !skip.has(`${id}:${e.start}`))
+  const total = sourceIds.reduce((n, id) => n + chosen(id, p.sources.find((s) => s.id === id)?.text ?? '', p.glossary).length, 0)
   if (!total) return 0
   await snapshot(`Before applying ${total} transcript corrections`)
   update(`apply ${total} corrections`, (proj) =>
     sourceIds.reduce((acc, id) => {
       const s = acc.sources.find((x) => x.id === id)
-      return s ? editSource(acc, id, findCorrections(s.text, acc.glossary)) : acc
+      return s ? editSource(acc, id, chosen(id, s.text, acc.glossary)) : acc
     }, proj),
   )
   return total
@@ -378,6 +401,21 @@ export function splitTurn(sourceId: string, span: { start: number; end: number }
     if (!s || !segments) return p
     const speakers = s.speakers.some((x) => x.raw === speaker) ? s.speakers : [...s.speakers, { raw: speaker, name: speaker, role: 'unknown' as const }]
     return { ...p, sources: p.sources.map((x) => (x.id === sourceId ? { ...x, segments, speakers } : x)) }
+  })
+}
+
+/**
+ * Joins a turn onto the one before it (and the one after, when that is the
+ * same speaker again), so a sentence the transcript cut in two is one turn.
+ * Codings and other anchors move with the text.
+ */
+export function joinTurn(sourceId: string, index: number) {
+  update('join turns', (p) => {
+    const s = p.sources.find((x) => x.id === sourceId)
+    const joined = s && joinSegments(s, index)
+    if (!s || !joined) return p
+    const withSegments = { ...p, sources: p.sources.map((x) => (x.id === sourceId ? { ...x, segments: joined.segments } : x)) }
+    return editSource(withSegments, sourceId, joined.edits)
   })
 }
 

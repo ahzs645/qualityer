@@ -176,3 +176,76 @@ export function splitSegments(source: Source, start: number, end: number, speake
   const parts = [piece(seg.start, start, seg.speaker), piece(start, end, speaker), piece(end, seg.end, seg.speaker)].filter((p): p is Segment => !!p)
   return [...segs.slice(0, i), ...parts, ...segs.slice(i + 1)]
 }
+
+// Joining turns ---------------------------------------------------------------
+
+const BACKCHANNEL = /^(ok(ay)?|mm+-?hmm+|m+-?hm+|uh-?huh|yeah|yep|yes|no|right|sure|great|hmm+|alright|oh|wow|cool|interesting|fantastic|perfect|exactly|thanks?|thank you|so|um+|uh+)$/i
+
+/** True when a short turn is only listening noises ("Okay.", "Mm-hmm."), which are genuine interjections. */
+export function isBackchannel(text: string) {
+  const ws = text.toLowerCase().replace(/[.,!?…]+/g, ' ').split(/\s+/).filter(Boolean)
+  return ws.length > 0 && ws.every((w) => BACKCHANNEL.test(w))
+}
+
+/**
+ * Joins turn `index` onto the turn before it, giving it that turn's speaker.
+ * When the turn after has the same speaker as the one before, it is joined too:
+ * a diarisation fragment ("…a location" / "where" / "people can…") becomes one
+ * sentence again. Returns the merged segments, still in the old offsets, and
+ * the text edits that replace each paragraph break with a space; apply both
+ * with `editSource` so that codings and other anchors move with the text.
+ */
+export function joinSegments(source: Source, index: number): { segments: Segment[]; edits: { start: number; end: number; text: string }[] } | null {
+  const segs = source.segments
+  if (!segs?.length || index <= 0 || index >= segs.length) return null
+  const prev = segs[index - 1]
+  const next = segs[index + 1]
+  const last = next && next.speaker === prev.speaker && segs[index].speaker !== prev.speaker ? index + 1 : index
+  const parts = segs.slice(index - 1, last + 1)
+  const merged: Segment = {
+    start: prev.start,
+    end: parts[parts.length - 1].end,
+    speaker: prev.speaker,
+    time: prev.time ?? parts.find((p) => p.time != null)?.time ?? null,
+  }
+  const words = parts.flatMap((p) => p.words ?? [])
+  const uncertain = parts.flatMap((p) => p.uncertain ?? [])
+  if (words.length) merged.words = words
+  if (uncertain.length) merged.uncertain = uncertain
+  const edits = parts.slice(1).map((p, i) => ({ start: parts[i].end, end: p.start, text: ' ' })).filter((e) => source.text.slice(e.start, e.end) !== ' ')
+  return { segments: [...segs.slice(0, index - 1), merged, ...segs.slice(last + 1)], edits }
+}
+
+export interface BrokenTurn {
+  /** Index of the fragment turn. */
+  index: number
+  /** Speaker the fragment probably belongs to (the speaker on both sides). */
+  speaker: string
+  text: string
+  before: string
+  after: string
+}
+
+/**
+ * Short turns that probably belong to the speaker on either side: a machine
+ * transcript cut a sentence and gave a word or two to someone else. Listening
+ * noises are left alone. A fragment is suspect when the sentence before it is
+ * unfinished, or the fragment or the turn after it starts in lower case.
+ */
+export function brokenTurns(source: Source): BrokenTurn[] {
+  const segs = segmentsOf(source)
+  const out: BrokenTurn[] = []
+  const text = (g: Segment) => source.text.slice(g.start, g.end).trim()
+  for (let i = 1; i < segs.length - 1; i++) {
+    const [a, b, c] = [segs[i - 1], segs[i], segs[i + 1]]
+    if (!a.speaker || a.speaker !== c.speaker || b.speaker === a.speaker) continue
+    if (out[out.length - 1]?.index === i - 1) continue
+    const tb = text(b)
+    if (tb.split(/\s+/).length > 4 || isBackchannel(tb)) continue
+    const ta = text(a), tc = text(c)
+    const unfinished = !/[.?!…]["”')]?$/.test(ta)
+    const lower = (s: string) => /^[a-z]/.test(s)
+    if (unfinished || lower(tb) || lower(tc)) out.push({ index: i, speaker: a.speaker, text: tb, before: ta.slice(-80), after: tc.slice(0, 80) })
+  }
+  return out
+}

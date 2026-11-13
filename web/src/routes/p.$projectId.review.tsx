@@ -1,13 +1,15 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Plus, Trash2 } from 'lucide-react'
-import type { Candidate, Correction } from '../lib/types'
+import { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, CheckCircle2, Play, Plus, Trash2 } from 'lucide-react'
+import type { Candidate, Correction, Project, Source } from '../lib/types'
 import { update, useProject } from '../lib/store'
-import { agreement, checkRules, coders, describeRule, excerpt, findCorrections, formatTime, indexBy, pendingSuggestions, timeAt, uid } from '../lib/model'
+import { agreement, checkRules, coders, describeRule, excerpt, findCorrections, formatTime, indexBy, pendingSuggestions, timeAt, timeRange, uid } from '../lib/model'
 import { addCode, applyCodes, applyGlossary, setExtraction, updateCandidate } from '../lib/actions'
 import { Suggestions } from '../features/review/Suggestions'
 import { DecisionLog } from '../features/review/DecisionLog'
 import { Listen } from '../features/review/Listen'
+import { AudioBar } from '../features/code/AudioBar'
+import { hasPlayer, playRange, usePlayer } from '../lib/player'
 import { Badge, Button, Empty, IconButton, Input, PageHeader, Panel, Select, Swatch, Tabs, Textarea, cx } from '../components/ui'
 
 type Tab = 'rules' | 'suggestions' | 'log' | 'listen' | 'transcript' | 'candidates' | 'agreement'
@@ -119,14 +121,32 @@ function Rules({ violations }: { violations: ReturnType<typeof checkRules> }) {
   )
 }
 
+const NO_CODINGS: never[] = []
+const NO_CODES = new Map()
+
+/** Loads a source's recording under the preview and plays one match, with a few seconds either side. */
+function HearMatch({ project, source, at }: { project: Project; source: Source; at: { start: number; end: number; n: number } }) {
+  const ready = usePlayer((s) => s.ready)
+  useEffect(() => {
+    if (!ready || !hasPlayer()) return
+    const r = timeRange(source, at.start, at.end)
+    if (r) playRange(Math.max(0, r[0] - 2), r[1] + 2)
+  }, [ready, at.n, at.start, at.end, source])
+  return <div className="border-t border-line"><AudioBar projectId={project.id} source={source} codings={NO_CODINGS} codes={NO_CODES} focusCodeId={null} /></div>
+}
+
 function TranscriptQA() {
   const project = useProject()
   const [find, setFind] = useState('')
   const [replace, setReplace] = useState('')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<string | null>(null)
+  const [skip, setSkip] = useState<Set<string>>(() => new Set())
+  const [hear, setHear] = useState<{ sourceId: string; start: number; end: number; n: number } | null>(null)
+  const hearSource = hear ? project.sources.find((s) => s.id === hear.sourceId) : undefined
   const perSource = useMemo(() => project.sources.map((s) => ({ s, hits: findCorrections(s.text, project.glossary) })), [project.sources, project.glossary])
   const total = perSource.reduce((n, x) => n + x.hits.length, 0)
+  const skipped = perSource.reduce((n, x) => n + x.hits.filter((h) => skip.has(`${x.s.id}:${h.start}`)).length, 0)
   const setCorr = (id: string, change: Partial<Correction>) => update('edit correction', (p) => ({ ...p, glossary: p.glossary.map((g) => (g.id === id ? { ...g, ...change } : g)) }))
   const uncertain = project.sources.map((s) => ({ s, n: (s.segments ?? []).reduce((k, g) => k + (g.uncertain?.length ?? 0), 0) })).filter((x) => x.n)
 
@@ -170,25 +190,38 @@ function TranscriptQA() {
         </Panel>
 
         {total > 0 && (
-          <Panel title={`Preview · ${total} changes`} actions={
-            <Button size="sm" variant="primary" disabled={busy} onClick={async () => {
+          <Panel title={`Preview · ${total - skipped} of ${total} changes`} actions={
+            <Button size="sm" variant="primary" disabled={busy || total === skipped} onClick={async () => {
               setBusy(true)
-              const n = await applyGlossary(project.sources.map((s) => s.id))
-              setBusy(false)
-              setDone(`Applied ${n} corrections. A snapshot was saved first; undo also works.`)
-            }}>Apply all</Button>
+              const n = await applyGlossary(project.sources.map((s) => s.id), skip)
+              setBusy(false); setSkip(new Set()); setHear(null)
+              setDone(`Applied ${n} corrections${skipped ? `, left ${skipped} as they were` : ''}. A snapshot was saved first; undo also works.`)
+            }}>{skipped ? `Apply ${total - skipped}` : 'Apply all'}</Button>
           } bodyClass="p-0">
-            <ul className="max-h-96 divide-y divide-line overflow-y-auto scroll-thin">
-              {perSource.flatMap(({ s, hits }) => hits.slice(0, 40).map((h) => (
-                <li key={`${s.id}:${h.start}`} className="px-4 py-2 text-sm">
-                  <span className="text-xs text-muted">{s.name} · </span>
-                  <span className="font-serif text-muted">…{s.text.slice(Math.max(0, h.start - 50), h.start)}</span>
-                  <del className="bg-bad-soft text-bad">{s.text.slice(h.start, h.end)}</del>
-                  <ins className="bg-good-soft text-good no-underline">{h.text}</ins>
-                  <span className="font-serif text-muted">{s.text.slice(h.end, h.end + 50)}…</span>
-                </li>
-              )))}
+            <p className="border-b border-line px-4 py-2 text-xs text-muted">Untick a match to leave it as it is. Where a name is uncertain, play the moment it is spoken first.</p>
+            <ul className="max-h-[28rem] divide-y divide-line overflow-y-auto scroll-thin">
+              {perSource.flatMap(({ s, hits }) => hits.map((h) => {
+                const key = `${s.id}:${h.start}`
+                const off = skip.has(key)
+                return (
+                  <li key={key} className={cx('flex items-start gap-2 px-4 py-2 text-sm', off && 'opacity-50')}>
+                    <input type="checkbox" className="mt-1" checked={!off} aria-label={`Apply this correction in ${s.name}`}
+                      onChange={() => setSkip((x) => { const n = new Set(x); if (n.has(key)) n.delete(key); else n.add(key); return n })} />
+                    <span className="min-w-0 flex-1">
+                      <span className="text-xs text-muted">{s.name} · </span>
+                      <span className="font-serif text-muted">…{s.text.slice(Math.max(0, h.start - 50), h.start)}</span>
+                      <del className="bg-bad-soft text-bad">{s.text.slice(h.start, h.end)}</del>
+                      {!off && <ins className="bg-good-soft text-good no-underline">{h.text}</ins>}
+                      <span className="font-serif text-muted">{s.text.slice(h.end, h.end + 50)}…</span>
+                    </span>
+                    {s.media && timeAt(s, h.start) != null && (
+                      <IconButton label="Play where this is spoken" onClick={() => setHear({ sourceId: s.id, start: h.start, end: h.end, n: Date.now() })}><Play size={13} /></IconButton>
+                    )}
+                  </li>
+                )
+              }))}
             </ul>
+            {hearSource && <HearMatch project={project} source={hearSource} at={hear!} />}
           </Panel>
         )}
         {done && <p className="rounded-md bg-good-soft px-3 py-2 text-sm text-good">{done}</p>}

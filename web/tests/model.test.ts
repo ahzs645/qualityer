@@ -131,6 +131,30 @@ describe('imports', () => {
     expect(segments[1].time).toBe(4.5)
   })
 
+  it('keeps every VTT cue time as word timings', () => {
+    const vtt = 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n<v Speaker 2>the hub\n\n00:00:03.000 --> 00:00:05.000\n<v Speaker 2>should be here\n\n00:00:06.000 --> 00:00:07.000\n<v Speaker 1>why?'
+    const { text, segments } = parseSubtitles(vtt)
+    expect(segments.length).toBe(2)
+    expect(text.slice(segments[0].start, segments[0].end)).toBe('the hub should be here')
+    const words = segments[0].words!
+    expect(words.map(([o]) => text.slice(o).split(/\s/)[0])).toEqual(['the', 'hub', 'should', 'be', 'here'])
+    expect(words[0][1]).toBe(1)
+    expect(words[2][1]).toBe(3)
+    expect(words[3][1]).toBeGreaterThan(3)
+    expect(words[3][1]).toBeLessThan(5)
+  })
+
+  it('uses VTT inline timestamps and breaks a long monologue at a pause', () => {
+    const inline = parseSubtitles('WEBVTT\n\n00:00:10.000 --> 00:00:12.000\n<v Ann><00:00:10.000>one <00:00:11.500>two')
+    expect(inline.segments[0].words!.map(([, t]) => t)).toEqual([10, 11.5])
+    const long = 'x'.repeat(450)
+    const pause = parseSubtitles(`00:00:01.000 --> 00:00:02.000\n<v Ann>${long}\n\n00:00:09.000 --> 00:00:10.000\n<v Ann>after a pause\n\n00:00:10.500 --> 00:00:11.000\n<v Ann>no pause`)
+    expect(pause.segments.length).toBe(2)
+    expect(pause.segments.map((s) => s.speaker)).toEqual(['Ann', 'Ann'])
+    expect(pause.text.slice(pause.segments[1].start, pause.segments[1].end)).toBe('after a pause no pause')
+    expect(pause.segments[1].time).toBe(9)
+  })
+
   it('marks low-probability Whisper words', () => {
     const { text, segments } = parseWhisperJSON({ segments: [{ text: ' Smyth is here', start: 1, speaker: 'S1', words: [{ word: ' Smyth', probability: 0.2 }, { word: ' is', probability: 0.99 }] }] })
     const [a, b] = segments[0].uncertain![0]

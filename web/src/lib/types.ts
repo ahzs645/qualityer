@@ -99,6 +99,12 @@ export interface AiRun {
    * Its unreviewed suggestions stay out of the review queue and the counts.
    */
   comparisonOnly?: boolean
+  /**
+   * Fingerprint of each source's turns (how many, and who speaks each) when
+   * the pass was prepared. Windows and turn ids are positional, so answers to a
+   * hand-off can only be read against the same turns.
+   */
+  turnsHash?: string
   /** `grades` passes grade existing claims (evidence, stance) and find no new ones. */
   kind?: 'coding' | 'grades'
   /** Grade passes: prompt claim id → the claim's passage in the source. */

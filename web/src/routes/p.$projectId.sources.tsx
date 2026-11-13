@@ -1,12 +1,12 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useMemo, useRef, useState } from 'react'
-import { AudioLines, ClipboardPaste, FileText, FileUp, Plus, Trash2 } from 'lucide-react'
+import { ArrowDownAZ, AudioLines, ChevronDown, ChevronUp, ClipboardPaste, FileText, FileUp, Plus, Trash2 } from 'lucide-react'
 import { useProject } from '../lib/store'
 import { formatTime, newSource, rawSpeakers, segmentsOf, sourceProgress } from '../lib/model'
 import { storeRecording } from '../lib/player'
 import { deleteMedia } from '../lib/storage'
 import { sourceFromFile } from '../lib/importers'
-import { addSources, removeSource, updateSource } from '../lib/actions'
+import { addSources, moveSource, removeSource, sortSourcesByName, updateSource } from '../lib/actions'
 import { Badge, Button, Dialog, Empty, Field, IconButton, Input, PageHeader, Panel, Textarea, pct } from '../components/ui'
 
 export const Route = createFileRoute('/p/$projectId/sources')({ component: Sources })
@@ -80,15 +80,21 @@ function Sources() {
         </Panel>
       ) : (
         <div className="space-y-5">
-          <Panel title="Transcripts" bodyClass="">
+          <Panel title="Transcripts" bodyClass="" actions={project.sources.length > 1 && (
+            <Button size="sm" variant="ghost" icon={<ArrowDownAZ size={14} />} onClick={sortSourcesByName}>Sort by name</Button>
+          )}>
             <ul className="divide-y divide-line">
-              {project.sources.map((s) => {
+              {project.sources.map((s, index) => {
                 const pr = sourceProgress(project, s)
                 const turns = segmentsOf(s).length
                 const speakers = rawSpeakers(s).length
                 const uncertain = (s.segments ?? []).reduce((n, g) => n + (g.uncertain?.length ?? 0), 0)
                 return (
                   <li key={s.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                    <div className="-ml-2 flex flex-col">
+                      <IconButton label={`Move ${s.name} up`} disabled={index === 0} onClick={() => moveSource(s.id, -1)} className="h-5"><ChevronUp size={14} /></IconButton>
+                      <IconButton label={`Move ${s.name} down`} disabled={index === project.sources.length - 1} onClick={() => moveSource(s.id, 1)} className="h-5"><ChevronDown size={14} /></IconButton>
+                    </div>
                     <div className="min-w-0 flex-1">
                       <input
                         defaultValue={s.name}

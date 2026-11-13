@@ -1,8 +1,10 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { AlertTriangle, ChevronDown, CheckCircle2, CornerDownRight, Pencil, Plus } from 'lucide-react'
+import { AlertTriangle, ChevronDown, CheckCircle2, CornerDownRight, Pencil, Play, Plus } from 'lucide-react'
 import type { CoverageStatus, Project, Source, SourceStatus, Speaker } from '../../lib/types'
-import { checkRules, excerpt, formatTime, rawSpeakers, segmentsOf } from '../../lib/model'
-import { setCoverage, updateSource } from '../../lib/actions'
+import { checkRules, excerpt, formatTime, rawSpeakers, segmentsOf, speakerOf, timeAt } from '../../lib/model'
+import { joinTurn, setCoverage, updateSource } from '../../lib/actions'
+import { brokenTurns } from '../../lib/listen'
+import { hasPlayer, seek } from '../../lib/player'
 import { Badge, Input, Progress, cx, pct } from '../../components/ui'
 import { CodeCard } from './CodeCard'
 import { COVERAGE_LABEL, COVERAGE_ORDER, COVERAGE_STYLE } from '../guide/coverage'
@@ -102,7 +104,7 @@ export function SourceInspector({ project, source, focusCodeId, onJump }: { proj
 
       {project.guide.length > 0 && <GuideSection project={project} source={source} onJump={onJump} />}
 
-      <SpeakersSection source={source} />
+      <SpeakersSection source={source} onJump={onJump} />
 
       <AttributesSection source={source} />
     </div>
@@ -112,28 +114,41 @@ export function SourceInspector({ project, source, focusCodeId, onJump }: { proj
 function GuideSection({ project, source, onJump }: { project: Project; source: Source; onJump: (o: { start: number; end: number }) => void }) {
   const marks = project.guide.map((q) => ({ q, mark: project.coverage.find((c) => c.sourceId === source.id && c.questionId === q.id) }))
   const done = marks.filter((m) => m.mark && m.mark.status !== 'unmarked').length
+  const [noteFor, setNoteFor] = useState<string | null>(null)
   return (
     <Section id="guide" title="Interview guide" aside={<span className="text-xs tabular-nums text-muted">{done}/{marks.length} marked</span>}>
       <ul className="space-y-1">
         {marks.map(({ q, mark }) => {
           const status: CoverageStatus = mark?.status ?? 'unmarked'
+          const editing = noteFor === q.id
           return (
-            <li key={q.id} className="flex items-center gap-2">
-              <span className="w-7 shrink-0 font-mono text-[11px] text-faint">{q.key}</span>
-              <span className="min-w-0 flex-1 truncate text-[13px]" title={q.prompt || q.title}>{q.title}</span>
-              {mark?.start != null && (
-                <button type="button" title="Jump to the answer" onClick={() => onJump({ start: mark.start!, end: mark.end ?? mark.start! })} className="rounded p-0.5 text-faint hover:bg-sunken hover:text-accent">
-                  <CornerDownRight size={13} />
+            <li key={q.id}>
+              <div className="group flex items-center gap-2">
+                <span className="w-7 shrink-0 font-mono text-[11px] text-faint">{q.key}</span>
+                <span className="min-w-0 flex-1 truncate text-[13px]" title={q.prompt || q.title}>{q.title}</span>
+                <button type="button" title={mark?.note ? 'Edit the note' : 'Add a note: what was asked, or why not'} aria-label={`Note on ${q.key}`} onClick={() => setNoteFor(editing ? null : q.id)}
+                  className={cx('rounded p-0.5 hover:bg-sunken hover:text-accent', mark?.note ? 'text-muted' : 'text-faint opacity-0 group-hover:opacity-100 focus:opacity-100')}>
+                  <Pencil size={12} />
                 </button>
-              )}
-              <select
-                value={status}
-                onChange={(e) => setCoverage(source.id, q.id, { status: e.target.value as CoverageStatus })}
-                className={cx('h-6 w-[6.5rem] shrink-0 cursor-pointer appearance-none rounded px-2 text-[11px] font-medium', COVERAGE_STYLE[status])}
-                aria-label={`Coverage of ${q.key}`}
-              >
-                {COVERAGE_ORDER.map((o) => <option key={o} value={o}>{COVERAGE_LABEL[o]}</option>)}
-              </select>
+                {mark?.start != null && (
+                  <button type="button" title="Jump to the answer" onClick={() => onJump({ start: mark.start!, end: mark.end ?? mark.start! })} className="rounded p-0.5 text-faint hover:bg-sunken hover:text-accent">
+                    <CornerDownRight size={13} />
+                  </button>
+                )}
+                <select
+                  value={status}
+                  onChange={(e) => setCoverage(source.id, q.id, { status: e.target.value as CoverageStatus })}
+                  className={cx('h-6 w-[6.5rem] shrink-0 cursor-pointer appearance-none rounded px-2 text-[11px] font-medium', COVERAGE_STYLE[status])}
+                  aria-label={`Coverage of ${q.key}`}
+                >
+                  {COVERAGE_ORDER.map((o) => <option key={o} value={o}>{COVERAGE_LABEL[o]}</option>)}
+                </select>
+              </div>
+              {editing ? (
+                <CoverageNote initial={mark?.note ?? ''} label={`Note on ${q.key} in ${source.name}`} onDone={(note) => { if (note !== (mark?.note ?? '')) setCoverage(source.id, q.id, { note }); setNoteFor(null) }} />
+              ) : mark?.note ? (
+                <p className="mb-1 ml-9 line-clamp-2 text-[11px] text-muted" title={mark.note}>{mark.note}</p>
+              ) : null}
             </li>
           )
         })}
@@ -142,8 +157,24 @@ function GuideSection({ project, source, onJump }: { project: Project; source: S
   )
 }
 
-function SpeakersSection({ source }: { source: Source }) {
+/** A coverage note: what was asked, how it was answered, or why it was not asked. Enter or leaving the field saves. */
+export function CoverageNote({ initial, label, onDone }: { initial: string; label: string; onDone: (note: string) => void }) {
+  const [v, setV] = useState(initial)
+  return (
+    <textarea
+      autoFocus rows={2} value={v} aria-label={label}
+      placeholder="e.g. Not asked: interviewer read out the respondent's role"
+      onChange={(e) => setV(e.target.value)}
+      onBlur={() => onDone(v.trim())}
+      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onDone(v.trim()) } if (e.key === 'Escape') onDone(initial) }}
+      className="mt-1 mb-1.5 ml-9 block w-[calc(100%-2.25rem)] rounded-md border border-line-strong bg-surface px-2 py-1 text-[12px]"
+    />
+  )
+}
+
+function SpeakersSection({ source, onJump }: { source: Source; onJump: (o: { start: number; end: number }) => void }) {
   const raws = rawSpeakers(source)
+  const broken = useMemo(() => (source.segments?.length ? brokenTurns(source) : []), [source])
   const stats = useMemo(() => {
     const m = new Map<string, { turns: number; chars: number }>()
     let total = 0
@@ -208,7 +239,55 @@ function SpeakersSection({ source }: { source: Source }) {
           )
         })}
       </ul>
+      {broken.length > 0 && <BrokenTurns source={source} broken={broken} onJump={onJump} />}
     </Section>
+  )
+}
+
+/** Sentences the machine transcript cut in two, giving a word or two to another speaker. */
+function BrokenTurns({ source, broken, onJump }: { source: Source; broken: ReturnType<typeof brokenTurns>; onJump: (o: { start: number; end: number }) => void }) {
+  const [open, setOpen] = useState(false)
+  const segs = segmentsOf(source)
+  const name = (raw: string) => speakerOf(source, raw)?.name || raw
+  return (
+    <div className="mt-3 rounded-lg border border-warn/40 bg-warn-soft/40 p-2.5">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full items-center gap-1.5 text-left text-xs font-medium">
+        <AlertTriangle size={13} className="shrink-0 text-warn" />
+        <span className="flex-1">{broken.length} {broken.length === 1 ? 'sentence looks' : 'sentences look'} cut by another speaker</span>
+        <ChevronDown size={13} className={cx('text-faint transition-transform', !open && '-rotate-90')} />
+      </button>
+      {open && (
+        <>
+          <p className="mt-1.5 text-[11px] text-muted">A word or two given to someone else in the middle of a sentence. Joining gives it back, so the sentence is one turn and can be quoted whole. Listen first if unsure.</p>
+          <ul className="mt-2 space-y-2">
+            {broken.map((b) => {
+              const seg = segs[b.index]
+              return (
+                <li key={b.index} className="rounded-md bg-surface p-2 text-[12px]">
+                  <button type="button" onClick={() => onJump({ start: seg.start, end: seg.end })} className="block w-full text-left font-serif text-muted hover:text-ink">
+                    …{b.before} <mark className="rounded bg-warn-soft px-0.5 text-ink">{b.text}</mark> {b.after}…
+                  </button>
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <span className="flex-1 truncate text-[11px] text-faint">{name(seg.speaker)} → {name(b.speaker)}</span>
+                    {hasPlayer() && (
+                      <button type="button" aria-label="Play this point" className="rounded p-1 text-muted hover:bg-sunken hover:text-ink"
+                        onClick={() => { const t = timeAt(source, seg.start); if (t != null) seek(Math.max(0, t - 3), true) }}>
+                        <Play size={12} />
+                      </button>
+                    )}
+                    <button type="button" onClick={() => joinTurn(source.id, b.index)} className="rounded border border-line-strong px-2 py-0.5 text-[11px] font-medium hover:bg-sunken">Join</button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+          <button type="button" onClick={() => { for (const b of [...broken].reverse()) joinTurn(source.id, b.index) }}
+            className="mt-2 w-full rounded border border-line-strong px-2 py-1 text-[11px] font-medium hover:bg-sunken">
+            Join all {broken.length}
+          </button>
+        </>
+      )}
+    </div>
   )
 }
 

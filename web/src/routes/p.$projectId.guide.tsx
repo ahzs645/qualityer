@@ -7,6 +7,7 @@ import { groupOf, indexBy, orderedCodes, uid } from '../lib/model'
 import { parseGuideLines, parseGuideMarkdown } from '../lib/importers'
 import { setCoverage } from '../lib/actions'
 import { Badge, Button, Empty, IconButton, Input, PageHeader, Panel, Select, Swatch, Tabs, Textarea, cx } from '../components/ui'
+import { CoverageNote } from '../features/code/SourceInspector'
 import { COVERAGE_LABEL, COVERAGE_ORDER, COVERAGE_STYLE } from '../features/guide/coverage'
 
 export const Route = createFileRoute('/p/$projectId/guide')({ component: Guide })
@@ -96,6 +97,7 @@ function Coverage({ onEditGuide }: { onEditGuide: () => void }) {
 
 function SectionRows({ module, qs, evidence }: { module: string; qs: GuideQuestion[]; evidence: (s: string, q: GuideQuestion) => number }) {
   const project = useProject()
+  const [editing, setEditing] = useState<string | null>(null)
   return (
     <>
       <tr className="bg-sunken/70">
@@ -129,7 +131,14 @@ function SectionRows({ module, qs, evidence }: { module: string; qs: GuideQuesti
                     </select>
                     {ev > 0 && <span className="size-1.5 shrink-0 rounded-full bg-accent" title={`${ev} codings with linked codes`} />}
                   </div>
-                  {mark?.note && <div className="mt-0.5 line-clamp-1 text-[11px] text-muted" title={mark.note}>{mark.note}</div>}
+                  {editing === `${s.id}:${q.id}` ? (
+                    <CoverageNote initial={mark?.note ?? ''} label={`Note on ${q.key} in ${s.name}`} onDone={(note) => { if (note !== (mark?.note ?? '')) setCoverage(s.id, q.id, { note }); setEditing(null) }} />
+                  ) : (
+                    <button type="button" onClick={() => setEditing(`${s.id}:${q.id}`)} title={mark?.note || 'Add a note'} aria-label={`Note on ${q.key} in ${s.name}`}
+                      className={cx('mt-0.5 line-clamp-1 w-full rounded text-left text-[11px] hover:bg-sunken', mark?.note ? 'text-muted' : 'text-transparent hover:text-faint focus:text-faint')}>
+                      {mark?.note || '+ note'}
+                    </button>
+                  )}
                 </td>
               )
             })}

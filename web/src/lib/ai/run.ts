@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
-import type { AiRun, Coding, Project } from '../types'
-import { indexBy, now, uid } from '../model'
+import type { AiRun, Coding, Project, Source } from '../types'
+import { indexBy, now, segmentsOf, uid } from '../model'
 import { flush, snapshot, store, update } from '../store'
 import {
   DEFAULT_OPTIONS, SUGGESTION_JSON_SCHEMA, SuggestionSchema, codeKeys, examplesFrom, hash, selectCodes,
@@ -89,8 +89,14 @@ function prepare(project: Project, scope: RunScope, provider: Provider, model: s
     sourceIds: scope.sourceIds, codeIds: codes.map((c) => c.id), windows: windows.length, completed: 0, failed: [],
     suggestions: 0, repaired: 0, rejected: [], notes: '', codeKeys: Object.fromEntries(toId),
     options: { ...scope.options, effort },
+    turnsHash: turnsHash(sources),
   }
   return { codes, system, windows, run, toId }
+}
+
+/** Turn ids (T0001…) and windows are positional: joining, splitting or reassigning a turn changes them. */
+export function turnsHash(sources: Source[]) {
+  return hash(sources.map((s) => `${s.id}:${segmentsOf(s).map((g) => g.speaker).join('|')}`).join('\n'))
 }
 
 /** Unique per pass, so passes can be compared with humans (and each other) separately. */
@@ -181,6 +187,10 @@ export async function importAgentResponses(data: AgentResponses) {
   if (!project) throw new Error('No project open')
   const run = project.aiRuns.find((r) => r.id === data.runId)
   if (!run) throw new Error('These responses belong to a hand-off that is not in this project.')
+  if (run.turnsHash) {
+    const now = turnsHash(run.sourceIds.map((id) => project.sources.find((s) => s.id === id)).filter((s): s is Source => !!s))
+    if (now !== run.turnsHash) throw new Error('Turns in these transcripts were joined, split or given to another speaker after this prompt pack was downloaded, so turn ids in the answers no longer point to the same text. Download a new prompt pack and have it answered again.')
+  }
   const toId = new Map(Object.entries(run.codeKeys))
   const sources = indexBy(project.sources)
   const byId = new Map<string, Window>()

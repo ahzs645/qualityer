@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { emptyProject, newSource, uid } from '../src/lib/model'
+import { editSource, emptyProject, newSource, uid } from '../src/lib/model'
 import { gradeExamples, gradeTargets, gradeUser, prepareGrades, verifyGrades, DEFAULT_GRADE } from '../src/lib/ai/grade'
-import { applySpeakerTrack, listenQueue, parseRTTM, splitSegments, wordAgreement, wordingChecks } from '../src/lib/listen'
+import { applySpeakerTrack, brokenTurns, isBackchannel, joinSegments, listenQueue, parseRTTM, splitSegments, wordAgreement, wordingChecks } from '../src/lib/listen'
 import { systemPrompt, userMessage, windowsFor, codeKeys } from '../src/lib/ai/pipeline'
 import type { Coding, Project, Segment } from '../src/lib/types'
 
@@ -134,5 +134,53 @@ describe('listening', () => {
     const laid = applySpeakerTrack(s, track)
     expect(laid.segments.map((g) => [g.speaker, text.slice(g.start, g.end)])).toEqual([['S_INT', 'So what exists now?'], ['S_RESP', 'We have a lab and a freezer. Good.']])
     expect([laid.splits, laid.changed]).toEqual([1, 2])
+  })
+})
+
+describe('joining turns', () => {
+  const text = 'It is a location\n\nwhere\n\npeople can meet.\n\nOkay.\n\nGood.'
+  const seg = (a: string, sp: string, time: number) => {
+    const start = text.indexOf(a)
+    return { start, end: start + a.length, speaker: sp, time, words: [[start, time]] as [number, number][] }
+  }
+  const source = {
+    ...newSource('S', text),
+    segments: [seg('It is a location', 'R', 1), seg('where', 'I', 3), seg('people can meet.', 'R', 4), seg('Okay.', 'I', 6), seg('Good.', 'R', 7)],
+  }
+
+  it('finds a fragment between two turns of the same speaker, but not a backchannel', () => {
+    const found = brokenTurns(source)
+    expect(found.map((b) => b.index)).toEqual([1])
+    expect(found[0].speaker).toBe('R')
+    expect(isBackchannel('Mm-hmm. Okay.')).toBe(true)
+    expect(isBackchannel('data.')).toBe(false)
+  })
+
+  it('joins the fragment and the turn after it, moving codings with the text', () => {
+    const coding = { id: 'c', sourceId: source.id, codeId: 'x', start: text.indexOf('people'), end: text.indexOf('meet.') + 5, coder: 'A', memo: '', important: false, status: 'accepted' as const, createdAt: '' }
+    const p = { ...emptyProject('P'), sources: [source], codings: [coding] }
+    const joined = joinSegments(source, 1)!
+    const out = editSource({ ...p, sources: [{ ...source, segments: joined.segments }] }, source.id, joined.edits)
+    const s = out.sources[0]
+    expect(s.text).toBe('It is a location where people can meet.\n\nOkay.\n\nGood.')
+    expect(s.segments!.length).toBe(3)
+    expect(s.text.slice(s.segments![0].start, s.segments![0].end)).toBe('It is a location where people can meet.')
+    expect(s.segments![0].words!.map(([o]) => s.text.slice(o).split(' ')[0])).toEqual(['It', 'where', 'people'])
+    const c = out.codings[0]
+    expect(s.text.slice(c.start, c.end)).toBe('people can meet.')
+  })
+})
+
+describe('hand-off turn fingerprint', () => {
+  it('changes when turns are joined but not when text is corrected', async () => {
+    const { turnsHash } = await import('../src/lib/ai/run')
+    const text = 'One here\n\nwhere\n\npeople go.'
+    const at = (a: string, sp: string) => ({ start: text.indexOf(a), end: text.indexOf(a) + a.length, speaker: sp, time: null })
+    const s = { ...newSource('S', text), segments: [at('One here', 'R'), at('where', 'I'), at('people go.', 'R')] }
+    const before = turnsHash([s])
+    const corrected = editSource({ ...emptyProject('P'), sources: [s] }, s.id, [{ start: 0, end: 3, text: 'Uno' }]).sources[0]
+    expect(turnsHash([corrected])).toBe(before)
+    const j = joinSegments(s, 1)!
+    expect(turnsHash([{ ...s, segments: j.segments }])).not.toBe(before)
   })
 })

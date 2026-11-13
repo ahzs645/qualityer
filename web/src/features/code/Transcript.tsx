@@ -3,7 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { BookmarkCheck } from 'lucide-react'
 import type { Code, Coding, Segment, Source } from '../../lib/types'
 import { formatTime, rawSpeakers, segmentsOf, speakerOf } from '../../lib/model'
-import { setTurnSpeaker } from '../../lib/actions'
+import { joinTurn, setTurnSpeaker } from '../../lib/actions'
 import { cx } from '../../components/ui'
 
 export interface TranscriptHandle {
@@ -328,6 +328,13 @@ function SpeakerMenu({ source, index, raw, label, muted }: { source: Source; ind
               </button>
             )
           })}
+          {index > 0 && !!source.segments?.length && (
+            <button type="button" role="menuitem" onClick={() => { joinTurn(source.id, index); setOpen(false) }}
+              title="For a sentence the transcript cut in two: this turn becomes part of the one before, and so does the next turn if it is that speaker again"
+              className="mt-1 flex w-full rounded border-t border-line px-2 py-1 text-left text-[13px] hover:bg-sunken">
+              Join with the turn before
+            </button>
+          )}
           <form className="mt-1 flex gap-1 border-t border-line p-1" onSubmit={(e) => { e.preventDefault(); if (custom.trim()) { setTurnSpeaker(source.id, index, custom.trim()); setOpen(false); setCustom('') } }}>
             <input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="New speaker" className="h-7 min-w-0 flex-1 rounded border border-line-strong bg-surface px-1.5 text-xs" />
           </form>
