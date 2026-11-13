@@ -33,7 +33,9 @@ src/
   lib/listen.ts      transcription comparison, listening order, turn splitting, RTTM speaker tracks
   lib/ai/grade.ts    grade pass: evidence grade and stance on existing claims, with a held-out test
   lib/profile.ts     cases by domain, with evidence-grade and stance mix
-  lib/report.ts      study report (HTML, Markdown) and the claims table
+  lib/report.ts      study report (HTML with tabs, Markdown), recipes, the claims table
+  lib/report-pdf.ts  the report as a PDF (pdfmake, loaded on demand)
+  lib/ai/ask.ts      Ask across interviews: one question per interview, checked evidence, versions
   features/review/   claim-by-claim AI review, decision log
   features/explore/  interview map, cases by domain, AI-against-person comparison
   lib/refi.ts        REFI-QDA .qdpx import/export

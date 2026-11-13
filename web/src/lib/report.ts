@@ -4,6 +4,7 @@ import {
 } from './model'
 import { CLAIM_STATE_LABEL, buildClaims, choiceGroups, confidenceBand, summariseDecisions } from './claims'
 import { comparablePasses, compare, humanBaseline } from './compare'
+import { turnsOf } from './ai/pipeline'
 import { forExport } from './names'
 import { buildProfile, cellKey, type ProfileCell } from './profile'
 
@@ -15,6 +16,7 @@ export const REPORT_SECTIONS = [
   ['glance', 'At a glance'],
   ['sources', 'Sources'],
   ['coverage', 'Interview guide coverage'],
+  ['perspectives', 'Participant perspectives'],
   ['framework', 'Framework matrix'],
   ['profile', 'Cases by domain'],
   ['codes', 'Code counts'],
@@ -25,8 +27,59 @@ export const REPORT_SECTIONS = [
   ['codebook', 'Codebook'],
 ] as const
 export type SectionId = (typeof REPORT_SECTIONS)[number][0]
-export type ReportOptions = Record<SectionId, boolean>
-export const DEFAULT_REPORT: ReportOptions = { glance: true, sources: true, coverage: true, framework: true, profile: true, codes: true, figures: true, ai: true, open: true, memos: true, codebook: false }
+export type Recipe = 'summary' | 'standard' | 'full'
+export type ReportOptions = Record<SectionId, boolean> & {
+  recipe: Recipe
+  /** The Ask question whose answers make the "Participant perspectives" section; null takes the latest answered one. */
+  askId: string | null
+  /** Pinned quotes shown per framework cell. */
+  quotesPerCell: number
+  /** Evidence-grade and stance bars beside framework cells and in tables. */
+  bars: boolean
+  /** Sections as tabs (printing still shows them all). */
+  tabs: boolean
+}
+
+const on = (...ids: SectionId[]) => Object.fromEntries(REPORT_SECTIONS.map(([id]) => [id, ids.includes(id)])) as Record<SectionId, boolean>
+
+/**
+ * Three ways to read the same study. The summary is for partners and funders:
+ * what people said, one line per theme, one quote each. The standard report is
+ * the analysis. The full audit adds the working record behind it.
+ */
+export const RECIPES: Record<Recipe, { label: string; description: string; options: Omit<ReportOptions, 'askId'> }> = {
+  summary: {
+    label: 'Summary', description: 'For partners: who was interviewed, what each said, the main findings by theme with one quote, and what is still open.',
+    options: { ...on('glance', 'perspectives', 'framework', 'open'), recipe: 'summary', quotesPerCell: 1, bars: false, tabs: false },
+  },
+  standard: {
+    label: 'Standard', description: 'The analysis: interviews and coverage, perspectives, the framework with its pinned evidence, cases by domain and flagged figures.',
+    options: { ...on('glance', 'sources', 'coverage', 'perspectives', 'framework', 'profile', 'figures', 'open'), recipe: 'standard', quotesPerCell: 3, bars: true, tabs: true },
+  },
+  full: {
+    label: 'Full audit', description: 'Everything, including code counts, the AI audit trail, memos and the codebook.',
+    options: { ...on(...REPORT_SECTIONS.map(([id]) => id)), recipe: 'full', quotesPerCell: 99, bars: true, tabs: true },
+  },
+}
+export const recipeOptions = (r: Recipe, askId: string | null = null): ReportOptions => ({ ...RECIPES[r].options, askId })
+export const DEFAULT_REPORT: ReportOptions = recipeOptions('standard')
+
+/** The answers to one Ask question, for the "Participant perspectives" section. */
+export function perspectives(project: Project, askId: string | null) {
+  const answered = (id: string) => project.askAnswers.some((a) => a.promptId === id)
+  const prompt = (askId ? project.asks.find((a) => a.id === askId && answered(a.id)) : null)
+    ?? [...project.asks].filter((a) => answered(a.id)).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+  if (!prompt) return null
+  const rows = project.sources.map((s) => {
+    const a = project.askAnswers.find((x) => x.promptId === prompt.id && x.sourceId === s.id)
+    if (!a) return null
+    // The overall label, when the question asked for one ("Overall: supportive with conditions…").
+    const label = /^\s*(?:\*\*)?overall(?: stance)?:?(?:\*\*)?\s*([^.\n]+?)(?:\.|\n|$)/i.exec(a.text)?.[1]?.replace(/\*\*/g, '').trim() ?? null
+    const quotes = a.evidence.filter((e) => e.start != null && e.end != null).map((e) => ({ text: quotable(project, s, e.start!, e.end!), time: formatTime(timeAt(s, e.start!)) }))
+    return { source: s, answer: a, label: label && label.length <= 60 ? label : null, quotes }
+  }).filter((r): r is NonNullable<typeof r> => !!r)
+  return { prompt, rows, models: [...new Set(rows.map((r) => r.answer.model))] }
+}
 
 const COVERAGE_TEXT: Record<CoverageStatus, string> = { unmarked: 'Not marked', answered: 'Answered', partial: 'Partly', 'no-view': 'Asked, no view', 'not-asked': 'Not asked' }
 const EVIDENCE = ['#083f3c', '#176f69', '#2f9c92', '#6fc2b8']
@@ -152,6 +205,35 @@ function runUse(d: Data, runId: string, comparisonOnly: boolean) {
 const anonymised = (p: Project) => p.anonymise && (p.names ?? []).some((e) => e.mask)
 const ANON_NOTE = 'Names are anonymised: people and other masked names in quotes, titles, summaries and memos are replaced by stand-ins such as [R01] or [Person 1].'
 
+/** Tag colour for an overall label such as "supportive with conditions". */
+const labelTone = (label: string) => /oppos|scepti|skepti/i.test(label) ? 'not-asked' : /mixed|cautio/i.test(label) ? 'partial' : /enthusias/i.test(label) ? 'answered' : 'no-view'
+
+/** The case (or respondent ID) a source belongs to. */
+const caseOf = (project: Project, sourceId: string) => project.cases.find((k) => k.sourceIds.includes(sourceId))?.name ?? project.sources.find((x) => x.id === sourceId)?.name.split(' — ')[0] ?? ''
+
+/** The first sentences of a summary, marked when cut. */
+export function firstSentences(text: string, n: number) {
+  const parts = text.replace(/\s*\(Drafted by[^)]*\)\s*$/i, '').match(/[^.!?]+[.!?]+["”')]*\s*/g)
+  if (!parts || parts.length <= n) return text
+  return parts.slice(0, n).join('').trim() + ' …'
+}
+
+/** An AI answer as HTML: bullet runs become lists, **bold**, and turn ids [T0042] become times. */
+function answerHTML(text: string, turnTimes: Map<string, number | null>) {
+  const inline = (t: string) => esc(t).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\[(T\d{4})(?:[,–-]\s*T?\d{4})*\]/g, (_, id) => { const tm = turnTimes.get(id); return tm != null ? `<small>(${formatTime(tm)})</small>` : '' })
+  const out: string[] = []
+  let list: string[] = []
+  const flush = () => { if (list.length) out.push(`<ul>${list.map((l) => `<li>${inline(l)}</li>`).join('')}</ul>`); list = [] }
+  for (const line of text.split('\n')) {
+    const m = /^\s*(?:[-*•]|\d+[.)])\s+(.*)$/.exec(line)
+    if (m) { list.push(m[1]); continue }
+    flush()
+    if (line.trim()) out.push(`<p>${inline(line.trim())}</p>`)
+  }
+  flush()
+  return out.join('')
+}
+
 const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const para = (s: string) => esc(s).replace(/\n{2,}/g, '</p><p>').replace(/\n/g, '<br>')
 
@@ -197,29 +279,43 @@ blockquote small{font-family:system-ui,sans-serif}
 .tag.answered{background:#e3f2e6;color:#1f5c2d}.tag.partial{background:#fbf0d9;color:#6b4700}.tag.not-asked{background:#fbe7e2;color:#8f2f1d}.tag.no-view{background:#e2f0ee;color:#1f6f6b}
 .memo{white-space:pre-wrap;border:1px solid var(--line);border-radius:8px;padding:.7rem .9rem;margin:.6rem 0;font-size:.9rem}
 ul{padding-left:1.2rem;margin:.4rem 0}
-@media print{main{padding:0;max-width:none}h2{break-after:avoid}.cell,tr,blockquote,.memo{break-inside:avoid}body{font-size:11pt}}
+.rows .row{border-top:1px solid var(--line);padding:.5rem 0;display:grid;grid-template-columns:6rem 1fr;gap:.2rem 1rem}
+.rows .row h4{margin:.1rem 0;font-size:.9rem}.rows .row>*:not(h4){grid-column:2}
+.tabr{position:absolute;opacity:0;pointer-events:none}
+nav.tabs{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;gap:.1rem;margin:1.6rem 0 0;border-bottom:1px solid var(--line);background:#fff}
+nav.tabs label{padding:.55rem .8rem;margin-bottom:-1px;border-bottom:2px solid transparent;color:var(--muted);font-size:.9rem;cursor:pointer}
+nav.tabs label:hover{color:var(--ink)}
+.panel{display:none}.panel>h2:first-child{border-top:0;margin-top:1.2rem;padding-top:0}
+details summary{cursor:pointer;margin:.4rem 0}
+@media print{main{padding:0;max-width:none}h2{break-after:avoid}.cell,tr,blockquote,.memo,.row{break-inside:avoid}body{font-size:11pt}nav.tabs{display:none}.panel{display:block!important}.panel>h2:first-child{border-top:1px solid var(--line)}details{display:block}details>*{display:block}}
 `
 
 export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPORT, generatedAt = new Date()): string {
   const d = reportData(project)
-  const out: string[] = []
-  const h = (s: string) => out.push(s)
+  const head: string[] = []
+  const sections: { id: string; label: string; body: string[] }[] = []
+  let cur = head
+  const h = (s: string) => cur.push(s)
+  /** Starts a section; with tabs on, each section is a tab. */
+  const begin = (id: string, label: string) => { const sec = { id, label, body: [] as string[] }; sections.push(sec); cur = sec.body }
   const caseNames = project.cases.map((k) => k.name)
+  const persp = opts.perspectives ? perspectives(project, opts.askId) : null
 
   h(`<h1>${esc(project.name)}</h1>`)
   if (project.question) h(`<p class="lede">${esc(project.question)}</p>`)
   h(`<p class="meta">Analysis report · generated ${esc(generatedAt.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }))} · reviewer ${esc(project.coder)}</p>`)
   if (anonymised(project)) h(`<p class="note">${esc(ANON_NOTE)}</p>`)
-  if (project.method) h(`<p class="meta">${esc(project.method)}</p>`)
+  if (project.method && opts.recipe !== 'summary') h(`<p class="meta">${esc(project.method)}</p>`)
   h(`<p class="status">${esc(statusLine(d))}</p>`)
 
   if (opts.glance) {
     h(`<div class="tiles">${[
       [project.sources.length, 'interviews'], [d.codedClaims, 'coded claims'], [`${d.usedCodes} of ${project.codes.length}`, 'codes used'],
-      [d.aiClaims ? pc(d.aiChecked / d.aiClaims) : '—', 'of AI-drafted claims checked by a person'], [d.violations.length, 'rule issues open'], [d.pending.length, 'suggestions undecided'],
+      [d.aiClaims ? pc(d.aiChecked / d.aiClaims) : '—', 'of AI-drafted claims checked by the reviewer'], [d.violations.length, 'rule issues open'], [d.pending.length, 'suggestions undecided'],
     ].map(([v, l]) => `<div class="tile"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('')}</div>`)
   }
 
+  if (opts.sources || (opts.coverage && d.coverage.length)) begin('interviews', 'Interviews')
   if (opts.sources) {
     h('<h2>Sources</h2><div class="scroll"><table><thead><tr><th>Interview</th><th class="n">Length</th><th class="n">Words</th><th class="n">Coded claims</th><th class="n">AI-drafted</th><th class="n">Checked by the reviewer</th><th>Guide questions not asked</th></tr></thead><tbody>')
     for (const r of d.sourceRows) {
@@ -238,22 +334,38 @@ export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPOR
 
   const legend = () => h(`<div class="legend">${d.profile.choice.map((g) => `<span><b>${esc(g.name)}</b></span>` + project.codes.filter((c) => c.groupId === g.id).map((c, i, all) => `<span><i style="background:${mixColor(g.kind, i, all.length)}"></i>${esc(tidy(c.name))}</span>`).join('')).join('')}</div>`)
 
+  if (persp && persp.rows.length) {
+    begin('perspectives', 'Perspectives')
+    h(`<h2>Participant perspectives</h2><p class="note">The same question was put to each interview separately${persp.prompt.version > 1 ? ` (version ${persp.prompt.version})` : ''}: ${opts.recipe === 'summary' ? `<b>${esc(persp.prompt.title)}</b>.` : `“${esc(persp.prompt.text)}”`} Answers were drafted by ${esc(persp.models.join(', '))} from each full transcript; every quote was checked against the transcript. Read them as a guide to the interviews, not a substitute.</p>`)
+    h('<div class="cells">')
+    for (const r of persp.rows) {
+      const turns = new Map(turnsOf(r.source).map((t) => [t.id, t.time]))
+      h(`<div class="cell"><h4>${esc(caseOf(project, r.source.id))}${r.label ? ` <span class="tag ${labelTone(r.label)}">${esc(r.label)}</span>` : ''}</h4>${answerHTML(r.label ? r.answer.text.replace(/^\s*(?:\*\*)?overall(?: stance)?:?(?:\*\*)?\s*[^.\n]+?(?:\.|\n|$)\s*/i, '') : r.answer.text, turns)}${opts.recipe === 'full' && r.quotes.length ? `<details><summary><small>${r.quotes.length} quotes checked against the transcript</small></summary>${r.quotes.map((q) => `<blockquote>“${esc(q.text)}”<br><small>${esc(q.time)}</small></blockquote>`).join('')}</details>` : ''}</div>`)
+    }
+    h('</div>')
+  }
+
   if (opts.framework && d.framework.length) {
-    h('<h2>Framework matrix</h2><p class="note">One summary per case and theme, with the quotes pinned as its evidence. The bars show how that case\'s claims in the domain were graded.</p>')
-    legend()
+    begin('framework', 'Framework')
+    const brief = opts.recipe === 'summary'
+    h(`<h2>${brief ? 'Findings by theme' : 'Framework matrix'}</h2><p class="note">${brief ? 'For each theme, what each interview said, with one quote.' : 'One summary per case and theme, with the quotes pinned as its evidence.'}${opts.bars ? ' The bars show how that case\'s claims in the domain were graded.' : ''}</p>`)
+    if (opts.bars) legend()
     for (const t of d.framework) {
       h(`<h3>${esc(t.theme.title)}</h3>`)
       if (t.theme.interpretation) h(`<p>${para(t.theme.interpretation)}</p>`)
       const group = project.groups.find((g) => g.name === t.theme.title)
-      h('<div class="cells">')
+      h(brief ? '<div class="rows">' : '<div class="cells">')
       for (const c of t.cells) {
-        h(`<div class="cell"><h4>${esc(c.case.name)}</h4>${group ? mixBar(d.profile.cells.get(cellKey(c.case.id, group.id))) : ''}<p>${c.summary ? para(c.summary) : '<small>No summary written.</small>'}</p>${c.quotes.map((q) => `<blockquote>“${esc(q.text)}”<br><small>${esc([q.time, q.code].filter(Boolean).join(' · '))}</small></blockquote>`).join('')}</div>`)
+        const summary = brief ? firstSentences(c.summary, 2) : c.summary
+        const quotes = c.quotes.slice(0, opts.quotesPerCell)
+        h(`<div class="${brief ? 'row' : 'cell'}"><h4>${esc(c.case.name)}</h4>${opts.bars && group ? mixBar(d.profile.cells.get(cellKey(c.case.id, group.id))) : ''}<p>${summary ? para(summary) : '<small>No summary written.</small>'}</p>${quotes.map((q) => `<blockquote>“${esc(q.text)}”<br><small>${esc(brief ? q.time : [q.time, q.code].filter(Boolean).join(' · '))}</small></blockquote>`).join('')}${c.quotes.length > quotes.length ? `<small>${c.quotes.length - quotes.length} more pinned quote${c.quotes.length - quotes.length === 1 ? '' : 's'} in the full report.</small>` : ''}</div>`)
       }
       h('</div>')
     }
   }
 
   if (opts.profile && d.profile.rows.length) {
+    begin('profile', 'Cases by domain')
     h('<h2>Cases by domain</h2><p class="note">Coded claims per domain, with the evidence grades and stances they carry. Counts describe the coding, not how common a view is.</p>')
     legend()
     h(`<div class="scroll"><table><thead><tr><th>Domain</th>${caseNames.map((n) => `<th>${esc(n)}</th>`).join('')}</tr></thead><tbody>`)
@@ -264,6 +376,7 @@ export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPOR
   }
 
   if (opts.codes && d.codeCounts.length) {
+    begin('codes', 'Code counts')
     h(`<h2>Code counts</h2><p class="note">Number of claims carrying each code, per case. Codes never applied are left out.</p><div class="scroll"><table><thead><tr><th>Code</th>${caseNames.map((n) => `<th class="n">${esc(n)}</th>`).join('')}</tr></thead><tbody>`)
     for (const g of d.codeCounts) {
       h(`<tr><th colspan="${caseNames.length + 1}">${esc(g.group.name)}</th></tr>`)
@@ -273,12 +386,14 @@ export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPOR
   }
 
   if (opts.figures && d.figures.length) {
+    begin('figures', 'Figures')
     h(`<h2>Flagged figures</h2><p class="note">Figures and costable facts flagged while coding, with the extraction row recorded for each. Respondent figures are recall unless the basis says otherwise.</p><div class="scroll"><table><thead><tr><th>Flag</th><th>Source</th>${project.extractionFields.map((f) => `<th>${esc(f)}</th>`).join('')}<th>Passage</th></tr></thead><tbody>`)
     for (const f of d.figures) h(`<tr><td>${esc(f.code)}</td><td>${esc(f.source)} ${esc(f.time)}</td>${f.values.map((v) => `<td>${esc(v) || '<small>missing</small>'}</td>`).join('')}<td>“${esc(f.quote)}”</td></tr>`)
     h('</tbody></table></div>')
   }
 
   if (opts.ai && (project.aiRuns.length || d.reviews.length)) {
+    begin('ai', 'AI & review')
     h('<h2>AI assistance and review</h2>')
     if (project.aiRuns.length) {
       h('<div class="scroll"><table><thead><tr><th>Pass</th><th>Source</th><th>Model</th><th class="n">Suggestions</th><th>Quotes</th><th>Use</th></tr></thead><tbody>')
@@ -322,22 +437,37 @@ export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPOR
     if (project.restricted.length) items.push(`${project.restricted.length} passage${project.restricted.length === 1 ? ' is' : 's are'} marked off the record; ${project.restricted.length === 1 ? 'its' : 'their'} wording is withheld from this report and from quote exports.`)
     const open = project.candidates.filter((c) => c.status === 'open')
     if (open.length) items.push(`${open.length} candidate code${open.length === 1 ? '' : 's'} await a decision: ${esc(open.map((c) => c.name).join('; '))}.`)
+    begin('open', 'Open items')
     h(`<h2>Open items</h2>${items.length ? `<ul>${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : '<p>Nothing outstanding.</p>'}`)
   }
 
   if (opts.memos && project.memos.length) {
+    begin('memos', 'Memos')
     h('<h2>Memos and journal</h2>')
     for (const m of project.memos) h(`<h3>${esc(m.title)}</h3><p class="meta">${m.kind === 'journal' ? 'Journal' : 'Memo'} · ${esc(m.author)} · ${esc(new Date(m.updatedAt).toLocaleDateString())}</p><div class="memo">${esc(m.body)}</div>`)
   }
 
   if (opts.codebook && project.codes.length) {
+    begin('codebook', 'Codebook')
     h('<h2>Codebook</h2>')
     for (const g of project.groups) {
       h(`<h3>${esc(g.name)}</h3><div class="scroll"><table><thead><tr><th>Code</th><th>Definition</th><th>Include</th><th>Exclude</th><th>Anchor</th></tr></thead><tbody>${codesInGroup(project, g.id).map((c) => `<tr><td>${esc(tidy(c.name))}</td><td>${esc(c.definition)}</td><td>${esc(c.include)}</td><td>${esc(c.exclude)}</td><td><i>${esc(c.anchor)}</i></td></tr>`).join('')}</tbody></table></div>`)
     }
   }
 
-  return forExport(project, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(project.name)} — analysis report</title><style>${CSS}</style></head><body><main>${out.join('\n')}</main></body></html>`, { html: true })
+  // Tabs without scripts: one radio per section, labels as the tab bar, and a CSS rule per tab.
+  // An "All" tab shows everything; printing always does.
+  const tabbed = opts.tabs && sections.length > 1
+  const body = tabbed
+    ? [
+      `<input type="radio" name="tab" id="tab-all" class="tabr">`,
+      ...sections.map((sec, i) => `<input type="radio" name="tab" id="tab-${sec.id}" class="tabr"${i === 0 ? ' checked' : ''}>`),
+      `<nav class="tabs" aria-label="Report sections">${sections.map((sec) => `<label for="tab-${sec.id}">${esc(sec.label)}</label>`).join('')}<label for="tab-all">All</label></nav>`,
+      `<div class="panels">${sections.map((sec) => `<section class="panel" id="p-${sec.id}">${sec.body.join('\n')}</section>`).join('')}</div>`,
+      `<style>${sections.map((sec) => `#tab-${sec.id}:checked~.panels #p-${sec.id}{display:block}#tab-${sec.id}:checked~.tabs label[for=tab-${sec.id}]{color:var(--ink);border-color:var(--accent);font-weight:600}#tab-${sec.id}:focus-visible~.tabs label[for=tab-${sec.id}]`).join(',')}{outline:2px solid var(--accent);outline-offset:-2px}#tab-all:checked~.panels .panel{display:block}#tab-all:checked~.tabs label[for=tab-all]{color:var(--ink);border-color:var(--accent);font-weight:600}</style>`,
+    ].join('\n')
+    : sections.map((sec) => sec.body.join('\n')).join('\n')
+  return forExport(project, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(project.name)} — ${opts.recipe === 'summary' ? 'summary' : 'analysis report'}</title><style>${CSS}</style></head><body><main>${head.join('\n')}${body}</main></body></html>`, { html: true })
 }
 
 // ---------------------------------------------------------------------------
@@ -354,20 +484,30 @@ export function reportMarkdown(project: Project, opts: ReportOptions = DEFAULT_R
   if (project.question) h(project.question)
   h(`Analysis report, generated ${generatedAt.toISOString().slice(0, 10)}. Reviewer: ${project.coder}.`)
   if (anonymised(project)) h(`*${ANON_NOTE}*`)
-  if (project.method) h(project.method)
+  if (project.method && opts.recipe !== 'summary') h(project.method)
   h(`**${statusLine(d)}**`)
 
   if (opts.glance) h(`${project.sources.length} interviews · ${d.codedClaims} coded claims · ${d.usedCodes} of ${project.codes.length} codes used · ${d.violations.length} rule issues open · ${d.pending.length} suggestions undecided.`)
   if (opts.sources) h('## Sources', table(['Interview', 'Length', 'Words', 'Coded claims', 'AI-drafted', 'Checked by the reviewer', 'Not asked'], d.sourceRows.map((r) => [r.source.name, formatTime(r.duration), r.words, r.claims, r.aiDrafted, r.aiDrafted ? `${r.checked} (${pc(r.checked / r.aiDrafted)})` : 'all', r.notAsked.join(', ') || '—'])))
   if (opts.coverage && d.coverage.length) h('## Interview guide coverage', table(['Question', ...project.sources.map((s) => s.name.split(' — ')[0])], d.coverage.map((row) => [`${row.question.key} ${row.question.title}`, ...row.marks.map((m) => `${COVERAGE_TEXT[m.status]}${m.note ? `: ${m.note}` : ''}`)])))
+  const persp = opts.perspectives ? perspectives(project, opts.askId) : null
+  if (persp && persp.rows.length) {
+    h('## Participant perspectives', `_The same question was put to each interview separately: ${opts.recipe === 'summary' ? `**${persp.prompt.title}**.` : `“${persp.prompt.text}”`} Answers drafted by ${persp.models.join(', ')} from each full transcript; quotes checked against the transcript._`)
+    for (const r of persp.rows) {
+      const times = new Map(turnsOf(r.source).map((t) => [t.id, t.time]))
+      h(`### ${caseOf(project, r.source.id)}`, r.answer.text.replace(/\[(T\d{4})(?:[,–-]\s*T?\d{4})*\]/g, (_, id) => { const tm = times.get(id); return tm != null ? `(${formatTime(tm)})` : '' }))
+    }
+  }
   if (opts.framework && d.framework.length) {
-    h('## Framework matrix')
+    const brief = opts.recipe === 'summary'
+    h(brief ? '## Findings by theme' : '## Framework matrix')
     for (const t of d.framework) {
       h(`### ${t.theme.title}`)
       if (t.theme.interpretation) h(t.theme.interpretation)
       for (const c of t.cells) {
-        h(`**${c.case.name}.** ${c.summary || '_No summary written._'}`)
-        if (c.quotes.length) h(c.quotes.map((q) => `> “${q.text}” (${[q.time, q.code].filter(Boolean).join(' · ')})`).join('\n>\n'))
+        h(`**${c.case.name}.** ${(brief ? firstSentences(c.summary, 2) : c.summary) || '_No summary written._'}`)
+        const quotes = c.quotes.slice(0, opts.quotesPerCell)
+        if (quotes.length) h(quotes.map((q) => `> “${q.text}” (${(brief ? [q.time] : [q.time, q.code]).filter(Boolean).join(' · ')})`).join('\n>\n'))
       }
     }
   }

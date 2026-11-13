@@ -3,7 +3,7 @@ import { checkRules, editSource, emptyProject, newSource, pendingSuggestions, qu
 import { buildClaims, choiceGroups, codeKey, stepEdge, summariseDecisions } from '../src/lib/claims'
 import { compare } from '../src/lib/compare'
 import { buildProfile, cellKey } from '../src/lib/profile'
-import { claimsCSV, reportHTML, reportMarkdown } from '../src/lib/report'
+import { claimsCSV, firstSentences, recipeOptions, reportHTML, reportMarkdown } from '../src/lib/report'
 import { adoptClaim, chooseInGroup, confirmClaim, recodeCoding, rejectClaim, respanClaim, setComparisonOnly, setRestricted } from '../src/lib/review'
 import { acceptSuggestions, rejectSuggestions } from '../src/lib/actions'
 import { store } from '../src/lib/store'
@@ -250,8 +250,37 @@ describe('report calibration', () => {
     const human = (createdAt: string): Coding => ({ id: uid(), sourceId: s.id, codeId: 'lab', start: lab[0], end: lab[1], coder: 'Analyst', memo: '', important: false, status: 'accepted', createdAt })
     // A code the reviewer added while reviewing the pass is not a standard to calibrate against.
     const after = { ...p, codings: [...p.codings, human('2026-02-01T00:00:00Z')] }
-    expect(reportMarkdown(after)).not.toContain('### Calibration on')
+    expect(reportMarkdown(after, recipeOptions('full'))).not.toContain('### Calibration on')
     const before = { ...p, codings: [...p.codings, human('2025-12-01T00:00:00Z')] }
-    expect(reportMarkdown(before)).toContain('### Calibration on R1')
+    expect(reportMarkdown(before, recipeOptions('full'))).toContain('### Calibration on R1')
+  })
+})
+
+describe('report recipes', () => {
+  it('builds a short summary with perspectives and a tabbed full report', () => {
+    const { p, s, lab } = study()
+    open(p)
+    confirmClaim(s.id, { start: lab[0], end: lab[1] })
+    const q = { id: 'q', title: 'Feelings', text: 'How do they feel?', version: 2, parentId: null, scope: 'all' as const, maskNames: false, createdAt: '2026-01-01', note: '' }
+    const cur = {
+      ...project(), asks: [q],
+      askAnswers: [{ id: 'a', promptId: 'q', sourceId: s.id, text: 'Overall: supportive with conditions. They want staff.\nHopes:\n- More staff', evidence: [{ turnId: 'T0002', quote: 'We have a small lab.', start: lab[0], end: lab[1], match: 'exact' as const }], notAddressed: false, model: 'test-model', at: '', rating: null, reviewNote: '' }],
+      themes: [{ id: 't', title: '01 Capacity', codeIds: ['lab'], interpretation: '' }],
+      cells: [{ caseId: 'case', themeId: 't', summary: 'One. Two. Three.', pinned: [project().codings[0].id] }],
+    }
+    const summary = reportHTML(cur, recipeOptions('summary'))
+    expect(summary).toContain('Participant perspectives')
+    expect(summary).toContain('<span class="tag no-view">supportive with conditions</span>')
+    expect(summary).toContain('<li>More staff</li>')
+    expect(summary).toContain('Findings by theme')
+    expect(summary).toContain('One. Two. …')
+    expect(summary).not.toContain('nav class="tabs"')
+    expect(summary).not.toContain('Code counts')
+    const full = reportHTML(cur, recipeOptions('full'))
+    expect(full).toContain('<nav class="tabs"')
+    expect(full).toContain('id="p-perspectives"')
+    expect(full).toContain('Code counts')
+    expect(reportMarkdown(cur, recipeOptions('summary'))).toContain('## Participant perspectives')
+    expect(firstSentences('A. B. C.', 5)).toBe('A. B. C.')
   })
 })

@@ -258,7 +258,7 @@ Review → **Names** finds the people, organisations and places the interviews m
 
 - **Suggestions** (`web/src/lib/names.ts`):
   - **Sources:** people named in source titles and speaker lists first, then runs of capitalised words, such as "Dr. Jo Ames" or "University of Northern British Columbia".
-  - **Each mention counts once**, for the longest name that covers it, so "Prince" is not counted inside "Prince George".
+  - **Each mention counts once**, for the longest name that covers it, so "Port" is not counted inside "Port Ellis".
   - **Ignored:** words that only start sentences; single words the transcripts mostly write in lower case (machine transcripts capitalise "Totally" or "Northern" mid-sentence); common abbreviations (PhD, CEO, RNA); initials and respondent IDs.
   - **Kind:** each suggestion comes with a guessed kind (person, organisation, place, other) and its mentions per interview.
   - **Stand-ins:** a respondent named in a source title is suggested with their ID as the stand-in.
@@ -285,6 +285,69 @@ Review → **Names** finds the people, organisations and places the interviews m
   - a surname left after a masked first name: hence the title-optional matching above;
   - a job title in a source name that identifies the respondent as surely as a name: registered as a phrase with its own stand-in.
 - **Still to check by hand:** roles and departments in source names (as in the last point) and small-population details can identify someone without any name.
+
+## Added in the eighth pass: asking every interview the same question, report recipes and a PDF
+
+### Ask across interviews
+
+**Ask across interviews** is a new screen (`web/src/routes/p.$projectId.ask.tsx`, `web/src/lib/ai/ask.ts`).
+
+- **One question, separate answers:** a question goes to each interview separately, with its whole transcript, and the answers come back side by side, one card per interview.
+- **Checked evidence:** every answer must cite verbatim evidence with turn ids. The browser checks each quote against the transcript, as it does for AI coding. A quote that is found links to its passage; one that is not found is struck through.
+- **Masked names:** names in the names register can be masked before anything leaves the browser. Evidence found in the masked text still links to the real passage.
+- **Versions:**
+  - Questions keep versions. A version with answers is fixed; *Refine* makes the next one, with a note on what changed and why.
+  - Answers can be rated *good*, *partly* or *off*, with a note.
+- **Prompt check:**
+  - **Wording:** it reads the question for missing instructions: evidence, what to do when the interview does not cover it, a length or format, labels to choose from for feelings, and several questions in one.
+  - **Answers:** it reads the answers for length, quotes not found and answers without evidence.
+  - **Notes:** it repeats the reviewer's notes. A new version shows what its parent's answers and notes showed.
+- **Runs:**
+  - Questions run on the Claude API, a local model, or the agent hand-off: download a question pack, have it answered, import the answers.
+  - *Try on one interview first* checks a question before running all of them.
+- **Gender:** the instructions tell the model to refer to the participant by ID or as "they", not to infer gender.
+- **In the report:** the answers to a chosen question become the report's *Participant perspectives* section.
+
+**On the study (aggregate numbers only).** A question about how each participant feels about the proposal was run through the hand-off, with one agent per interview, then refined once.
+
+| | v1 (template wording) | v2 (refined) |
+|---|---|---|
+| Length of answers | 454–656 words | 180–199 words |
+| Quotes found verbatim in the transcript | 110 of 110 | 39 of 39 |
+| Overall label | four different free phrasings | one label each, on a five-point scale |
+| Reviewer ratings | 2 good, 2 partly (both notes: no common scale; too long to line up) | — |
+
+The prompt check flagged three of the v1 problems before the run (no length, no "not discussed" rule, no request for evidence). The ratings and notes flagged the fourth, the missing common scale. The first version of the check ignored the parent's notes when a new version was being written. That was fixed.
+
+### Visualisations, checked against real data
+
+- **AI and you:** it offered passes over interviews no person had coded, and showed "precision 0.00" against the reviewer's own additions. It now offers only passes with a person's coding made before the pass ran. That rule is shared with the report in `lib/compare.ts`.
+- **Co-occurrence and network:**
+  - They plotted every used code: a 112-code grid of mostly empty cells, and a circle whose labels were clipped and overlapped.
+  - They also counted evidence grade and stance, which sit on every claim, so those codes "co-occurred" with everything.
+  - Both now leave out grade and stance unless that group is chosen, and show only codes that share a passage, choosing the most connected when there are too many. Network labels radiate along each dot's angle.
+- **Cases by domain:** it cut off the fourth interview. Its cells now use a fixed layout, and the group names appear in full only in the first row.
+- **Overview:** the "new codes per interview" bars had no labels. Each bar now has one.
+- **Words:** it was led by filler words ("probably", "whatever", "terms") and split names such as "Port Ellis". It now drops filler words and can show two-word phrases.
+
+### Report recipes, tabs and PDF
+
+- **Recipes** (`RECIPES` in `web/src/lib/report.ts`): *Summary*, *Standard* and *Full audit* set the sections, the number of quotes per framework cell, the grade bars and tabs.
+  - **Summary:** for partners. It has the perspectives, findings by theme cut to two sentences with one quote, and open items.
+  - **Standard:** the analysis.
+  - **Full audit:** adds code counts, the AI audit, memos and the codebook.
+  - **Fine-tuning:** sections and options can still be changed one by one.
+- **Tabs:** the HTML report puts each section on a tab, plus an *All* tab. The tabs are radio inputs and CSS, so the downloaded file needs no script and works in the sandboxed preview. Printing shows every section.
+- **PDF:** a PDF is built from the same data and recipe with pdfmake, loaded only on download (`web/src/lib/report-pdf.ts`). It has running headers and page numbers, and names are masked when the study is anonymised. On the study, the PDFs ran to 8 pages (summary), 19 (standard) and 41 (full audit).
+
+### What other tools have
+
+A survey of eleven commercial tools, with sources, is in [feature-gaps-2026-qda-survey.md](feature-gaps-2026-qda-survey.md). The gaps it ranks highest:
+
+1. a code × attribute cross-tab;
+2. AI-drafted framework cell summaries with checked citations;
+3. a pooled overview across Ask answers;
+4. links between passages.
 
 ## Still not ported
 

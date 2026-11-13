@@ -88,3 +88,10 @@ describe('refining from the previous version', () => {
     expect(advice.some((t) => t.startsWith("From v1's answers: 1 answer has no evidence"))).toBe(true)
   })
 })
+
+describe('ask instructions', () => {
+  it('asks for they/them rather than guessed pronouns', async () => {
+    const { askSystem } = await import('../src/lib/ai/ask')
+    expect(askSystem(emptyProject('X'))).toContain('do not infer gender')
+  })
+})

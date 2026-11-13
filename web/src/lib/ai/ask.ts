@@ -68,6 +68,7 @@ How to answer:
 - Cite turns in the answer like [T0042].
 - If the interview does not address the question, set not_addressed to true and say briefly what the interview covers instead. Never invent an answer.
 - Names may have been replaced with stand-ins in square brackets, such as [R01] or [Person 2]; keep them as they are.
+- Refer to the participant by their ID or as "they"; do not infer gender from a name or a voice.
 - Return JSON matching the schema: {"answer": string, "not_addressed": boolean, "evidence": [{"turn_id": string, "quote": string}]}.`
 
 /**

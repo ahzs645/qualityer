@@ -171,7 +171,7 @@ export function nameCandidates(project: Project, limit = 200): NameCandidate[] {
     if (/^R\d+$/.test(text) || NOT_NAME_ACRONYMS.has(text.toUpperCase().replace(/S$/, '')) || NOT_NAME_ACRONYMS.has(text.toUpperCase())) return false
     return true
   })
-  // Each mention counts for the longest suggestion that covers it, so "Prince" is not counted inside "Prince George".
+  // Each mention counts for the longest suggestion that covers it, so "Port" is not counted inside "Port Ellis".
   const probes: NameEntry[] = kept.map(([text]) => ({ id: text, name: text, variants: [], kind: 'other', replacement: '', mask: false, caseSensitive: true, note: '' }))
   const counts = new Map<string, Map<string, number>>()
   const samples = new Map<string, NameCandidate['sample']>()
