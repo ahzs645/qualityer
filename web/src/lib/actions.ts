@@ -1,4 +1,4 @@
-import type { Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, NameEntry, Project, Source, WordingCheck } from './types'
+import type { AskAnswer, AskPrompt, Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, NameEntry, Project, Source, WordingCheck } from './types'
 import { applySpeakerTrack, joinSegments, splitSegments, type SpeakerInterval } from './listen'
 import { PALETTE, editSource, findCorrections, now, segmentsOf, uid } from './model'
 import { snapshot, store, update } from './store'
@@ -511,4 +511,27 @@ export function dismissName(text: string) {
 
 export function setAnonymise(on: boolean) {
   update(on ? 'anonymise exports' : 'stop anonymising exports', (p) => ({ ...p, anonymise: on }))
+}
+
+// Ask across interviews -------------------------------------------------------
+
+export function saveAsk(prompt: AskPrompt) {
+  update(`save question ${prompt.title}`, (p) => ({ ...p, asks: p.asks.some((a) => a.id === prompt.id) ? p.asks.map((a) => (a.id === prompt.id ? prompt : a)) : [...p.asks, prompt] }))
+}
+
+export function removeAsk(id: string) {
+  update('remove question', (p) => ({ ...p, asks: p.asks.filter((a) => a.id !== id), askAnswers: p.askAnswers.filter((a) => a.promptId !== id) }))
+}
+
+/** Stores answers, replacing an earlier answer of the same question for the same interview. */
+export function saveAskAnswers(answers: AskAnswer[]) {
+  if (!answers.length) return
+  update(`store ${answers.length} answers`, (p) => {
+    const replaced = new Set(answers.map((a) => `${a.promptId}:${a.sourceId}`))
+    return { ...p, askAnswers: [...p.askAnswers.filter((a) => !replaced.has(`${a.promptId}:${a.sourceId}`)), ...answers] }
+  })
+}
+
+export function rateAnswer(id: string, change: Partial<Pick<AskAnswer, 'rating' | 'reviewNote'>>) {
+  update('rate answer', (p) => ({ ...p, askAnswers: p.askAnswers.map((a) => (a.id === id ? { ...a, ...change } : a)) }))
 }

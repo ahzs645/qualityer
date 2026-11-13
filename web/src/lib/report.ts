@@ -3,7 +3,7 @@ import {
   checkRules, codesInGroup, describeRule, findCorrections, formatTime, groupOf, indexBy, pendingSuggestions, quotable, segmentsOf, speakerOf, timeAt, toCSV,
 } from './model'
 import { CLAIM_STATE_LABEL, buildClaims, choiceGroups, confidenceBand, summariseDecisions } from './claims'
-import { compare } from './compare'
+import { comparablePasses, compare, humanBaseline } from './compare'
 import { forExport } from './names'
 import { buildProfile, cellKey, type ProfileCell } from './profile'
 
@@ -101,12 +101,9 @@ export function reportData(project: Project) {
     return { code: tidy(codes.get(c.codeId)?.name ?? ''), source: s?.name.split(' — ')[0] ?? '', time: s ? formatTime(timeAt(s, c.start)) : '', values: project.extractionFields.map((f) => row?.values[f] ?? ''), quote: quotable(project, s, c.start, c.end) }
   })
 
-  // A calibration needs a person's coding made before the pass ran. Codes a reviewer adds while reviewing
-  // the pass are not an independent standard, so a reviewed pass on an interview no one coded is not calibrated.
-  const humanBefore = (sid: string, r: AiRun) => project.codings.filter((c) => c.sourceId === sid && !c.origin && c.status === 'accepted' && c.createdAt < r.startedAt)
-  const calibrations = project.aiRuns.flatMap((r) => r.sourceIds.map((sid) => ({ r, sid }))).filter(({ r, sid }) =>
-    humanBefore(sid, r).some((c) => gOf(c.codeId)?.kind === 'substantive' || r.kind === 'grades') && project.codings.some((c) => c.origin?.runId === r.id && c.sourceId === sid),
-  ).map(({ r, sid }) => {
+  // A calibration needs a person's coding made before the pass ran (see humanBaseline).
+  const humanBefore = (sid: string, r: AiRun) => humanBaseline(project, sid, r)
+  const calibrations = comparablePasses(project).map(({ run: r, sourceId: sid }) => {
     const asked = r.claims ? new Set(Object.values(r.claims).map(([a, b]) => `${a}:${b}`)) : null
     const result = compare(project, humanBefore(sid, r).filter((c) => !asked || asked.has(`${c.start}:${c.end}`)), project.codings.filter((c) => c.sourceId === sid && c.origin?.runId === r.id), choices.map((c) => c.group.id))
     return { run: r, source: sources.get(sid)!, result }

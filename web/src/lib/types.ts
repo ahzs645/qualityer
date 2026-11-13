@@ -299,6 +299,48 @@ export interface WordingCheck {
   model?: string
 }
 
+/** A question asked of every interview ("Ask across interviews"). Refining makes a new version. */
+export interface AskPrompt {
+  id: ID
+  title: string
+  text: string
+  /** 1 for a new question, then 2, 3… for refinements; `parentId` is the version it was refined from. */
+  version: number
+  parentId: ID | null
+  /** Send the whole transcript, or only respondent turns (interviewer questions stay as context either way). */
+  scope: 'all' | 'respondent'
+  /** Replace masked names (Review → Names) before the transcript leaves the browser. */
+  maskNames: boolean
+  createdAt: string
+  /** What changed from the previous version, and why. */
+  note: string
+}
+
+export interface AskEvidence {
+  turnId: string
+  quote: string
+  /** Where the quote was found in the transcript; absent when it was not found. */
+  start?: number
+  end?: number
+  match: 'exact' | 'repaired' | 'not-found'
+}
+
+/** One interview's answer to a question. */
+export interface AskAnswer {
+  id: ID
+  promptId: ID
+  sourceId: ID
+  text: string
+  evidence: AskEvidence[]
+  /** The model said the interview does not address the question. */
+  notAddressed: boolean
+  model: string
+  at: string
+  /** The researcher's judgement of the answer, used when refining the question. */
+  rating: 'good' | 'partly' | 'off' | null
+  reviewNote: string
+}
+
 export type NameKind = 'person' | 'organisation' | 'place' | 'other'
 
 /**
@@ -348,6 +390,9 @@ export interface Project {
   reviewLog: ReviewEvent[]
   restricted: Restriction[]
   wordingChecks: WordingCheck[]
+  /** Questions asked of every interview, with their versions. */
+  asks: AskPrompt[]
+  askAnswers: AskAnswer[]
   /** Names register: people, organisations and places found in the transcripts. */
   names: NameEntry[]
   /** Candidates ruled out as names, so they are not suggested again. */

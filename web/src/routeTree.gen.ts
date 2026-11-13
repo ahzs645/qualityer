@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PProjectIdRouteImport } from './routes/p.$projectId'
 import { Route as PProjectIdIndexRouteImport } from './routes/p.$projectId.index'
+import { Route as PProjectIdAskRouteImport } from './routes/p.$projectId.ask'
 import { Route as PProjectIdAssistRouteImport } from './routes/p.$projectId.assist'
 import { Route as PProjectIdCodeRouteImport } from './routes/p.$projectId.code'
 import { Route as PProjectIdCodebookRouteImport } from './routes/p.$projectId.codebook'
@@ -38,6 +39,11 @@ const PProjectIdRoute = PProjectIdRouteImport.update({
 const PProjectIdIndexRoute = PProjectIdIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => PProjectIdRoute,
+} as any)
+const PProjectIdAskRoute = PProjectIdAskRouteImport.update({
+  id: '/ask',
+  path: '/ask',
   getParentRoute: () => PProjectIdRoute,
 } as any)
 const PProjectIdAssistRoute = PProjectIdAssistRouteImport.update({
@@ -104,6 +110,7 @@ const PProjectIdSourcesRoute = PProjectIdSourcesRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/p/$projectId': typeof PProjectIdRouteWithChildren
+  '/p/$projectId/ask': typeof PProjectIdAskRoute
   '/p/$projectId/assist': typeof PProjectIdAssistRoute
   '/p/$projectId/code': typeof PProjectIdCodeRoute
   '/p/$projectId/codebook': typeof PProjectIdCodebookRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/p/$projectId/ask': typeof PProjectIdAskRoute
   '/p/$projectId/assist': typeof PProjectIdAssistRoute
   '/p/$projectId/code': typeof PProjectIdCodeRoute
   '/p/$projectId/codebook': typeof PProjectIdCodebookRoute
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/p/$projectId': typeof PProjectIdRouteWithChildren
+  '/p/$projectId/ask': typeof PProjectIdAskRoute
   '/p/$projectId/assist': typeof PProjectIdAssistRoute
   '/p/$projectId/code': typeof PProjectIdCodeRoute
   '/p/$projectId/codebook': typeof PProjectIdCodebookRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/p/$projectId'
+    | '/p/$projectId/ask'
     | '/p/$projectId/assist'
     | '/p/$projectId/code'
     | '/p/$projectId/codebook'
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/p/$projectId/ask'
     | '/p/$projectId/assist'
     | '/p/$projectId/code'
     | '/p/$projectId/codebook'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/p/$projectId'
+    | '/p/$projectId/ask'
     | '/p/$projectId/assist'
     | '/p/$projectId/code'
     | '/p/$projectId/codebook'
@@ -231,6 +243,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/p/$projectId/'
       preLoaderRoute: typeof PProjectIdIndexRouteImport
+      parentRoute: typeof PProjectIdRoute
+    }
+    '/p/$projectId/ask': {
+      id: '/p/$projectId/ask'
+      path: '/ask'
+      fullPath: '/p/$projectId/ask'
+      preLoaderRoute: typeof PProjectIdAskRouteImport
       parentRoute: typeof PProjectIdRoute
     }
     '/p/$projectId/assist': {
@@ -321,6 +340,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface PProjectIdRouteChildren {
+  PProjectIdAskRoute: typeof PProjectIdAskRoute
   PProjectIdAssistRoute: typeof PProjectIdAssistRoute
   PProjectIdCodeRoute: typeof PProjectIdCodeRoute
   PProjectIdCodebookRoute: typeof PProjectIdCodebookRoute
@@ -337,6 +357,7 @@ interface PProjectIdRouteChildren {
 }
 
 const PProjectIdRouteChildren: PProjectIdRouteChildren = {
+  PProjectIdAskRoute: PProjectIdAskRoute,
   PProjectIdAssistRoute: PProjectIdAssistRoute,
   PProjectIdCodeRoute: PProjectIdCodeRoute,
   PProjectIdCodebookRoute: PProjectIdCodebookRoute,

@@ -27,7 +27,25 @@ export function cooccurrence(project: Project, sourceIds?: string[]) {
   return counts
 }
 
-const STOP = new Set(`a about above after again against all am an and any are as at be because been before being below between both but by can could did do does doing down during each few for from further had has have having he her here hers herself him himself his how i if in into is it its itself just know like me more most my myself no nor not now of off on once only or other our ours ourselves out over own same she should so some such than that the their theirs them themselves then there these they this those through to too under until up very was we were what when where which while who whom why will with would you your yours yourself yourselves um uh yeah okay ok mean sort kind really think going get got thing things lot also well right one two actually maybe something there's that's it's i'm we're they're don't can't you're i've we've gonna want say said see much way even still need make go`.split(/\s+/))
+const STOP = new Set(`a about above after again against all am an and any are as at be because been before being below between both but by can could did do does doing down during each few for from further had has have having he her here hers herself him himself his how i if in into is it its itself just know like me more most my myself no nor not now of off on once only or other our ours ourselves out over own same she should so some such than that the their theirs them themselves then there these they this those through to too under until up very was we were what when where which while who whom why will with would you your yours yourself yourselves um uh yeah okay ok mean sort kind really think going get got thing things lot also well right one two actually maybe something there's that's it's i'm we're they're don't can't you're i've we've gonna want say said see much way even still need make go
+probably might whatever terms part able good different first time could would should may must many lots little bit pretty quite basically obviously certainly definitely absolutely exactly sure yes come comes coming came take takes taking took put puts look looking looks give gives given use used using new old big small great every anything everything nothing someone somebody anyone anybody everyone everybody already always never often sometimes else around back another other others whether though although however because since etc point points case cases fact example examples part parts side sides type types level levels area areas`.split(/\s+/))
+
+/** Two-word phrases ("prince george", "lab space") in a set of passages, skipping pairs with a common word. */
+export function topPhrases(texts: string[], n = 25) {
+  const counts = new Map<string, number>()
+  for (const t of texts) {
+    for (const sentence of t.toLowerCase().split(/[.?!;:,()\n]+/)) {
+      const ws = (sentence.match(/[\p{L}][\p{L}'’-]{1,}/gu) ?? []).map((w) => w.replace(/[’']s$/, ''))
+      for (let i = 0; i + 1 < ws.length; i++) {
+        const [a, b] = [ws[i], ws[i + 1]]
+        if (STOP.has(a) || STOP.has(b) || a.length < 3 || b.length < 3 || a === b) continue
+        const k = `${a} ${b}`
+        counts.set(k, (counts.get(k) ?? 0) + 1)
+      }
+    }
+  }
+  return [...counts].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]).slice(0, n)
+}
 
 /** Most frequent content words in a set of passages, excluding a stop list. */
 export function topTerms(texts: string[], n = 25) {

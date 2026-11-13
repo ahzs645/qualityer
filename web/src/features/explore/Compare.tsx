@@ -4,7 +4,7 @@ import type { Coding, Project } from '../../lib/types'
 import { formatTime, groupOf, indexBy, quotable, timeAt } from '../../lib/model'
 import { addToClaim, adoptClaim } from '../../lib/review'
 import { choiceGroups, summariseDecisions } from '../../lib/claims'
-import { compare, type Confusion } from '../../lib/compare'
+import { comparablePasses, compare, humanBaseline, type Confusion } from '../../lib/compare'
 import { Badge, Button, Empty, Panel, Select, Stat, Swatch, cx, pct } from '../../components/ui'
 import { codeKey } from '../review/Claims'
 
@@ -16,9 +16,9 @@ const SERIES = { both: 'var(--viz-speaker-1)', ref: 'var(--viz-human)', other: '
  * person reviewed the AI's coding: what did they change?
  */
 export function Compare({ project }: { project: Project }) {
-  const pairs = useMemo(() => project.aiRuns.flatMap((r) => r.sourceIds
-    .filter((sid) => project.codings.some((c) => c.sourceId === sid && !c.origin && c.status === 'accepted') && project.codings.some((c) => c.origin?.runId === r.id && c.sourceId === sid))
-    .map((sid) => ({ run: r, sourceId: sid, key: `${r.id}|${sid}` }))), [project.aiRuns, project.codings])
+  // Only passes over an interview a person had already coded: comparing a pass with the codes its own
+  // reviewer added would show a meaningless "precision 0%".
+  const pairs = useMemo(() => comparablePasses(project).map((p) => ({ ...p, key: `${p.run.id}|${p.sourceId}` })), [project.aiRuns, project.codings])
   const [pick, setPick] = useState('')
   const cur = pairs.find((p) => p.key === pick) ?? pairs[0]
   const reviewed = project.sources.filter((s) => project.reviewLog.some((e) => e.sourceId === s.id && e.ai))
@@ -60,16 +60,18 @@ function Against({ project, runId, sourceId }: { project: Project; runId: string
   // The reference is one person's coding, so codes a reviewer adds later do not move the baseline.
   const people = useMemo(() => {
     const n = new Map<string, number>()
-    for (const c of project.codings) if (c.sourceId === sourceId && !c.origin && c.status === 'accepted') n.set(c.coder, (n.get(c.coder) ?? 0) + 1)
+    const run = project.aiRuns.find((r) => r.id === runId)
+    for (const c of run ? humanBaseline(project, sourceId, run) : []) n.set(c.coder, (n.get(c.coder) ?? 0) + 1)
     return [...n].sort((a, b) => b[1] - a[1]).map(([name]) => name)
-  }, [project.codings, sourceId])
+  }, [project.codings, project.aiRuns, sourceId, runId])
   const [who, setWho] = useState('')
   const person = people.includes(who) ? who : people[0] ?? ''
   const result = useMemo(() => {
     // A grade pass is scored only on the claims it was given.
     const given = project.aiRuns.find((r) => r.id === runId)?.claims
     const asked = given ? new Set(Object.values(given).map(([a, b]) => `${a}:${b}`)) : null
-    const ref = project.codings.filter((c) => c.sourceId === sourceId && !c.origin && c.status === 'accepted' && c.coder === person && (!asked || asked.has(`${c.start}:${c.end}`)))
+    const run = project.aiRuns.find((r) => r.id === runId)
+    const ref = (run ? humanBaseline(project, sourceId, run) : []).filter((c) => c.coder === person && (!asked || asked.has(`${c.start}:${c.end}`)))
     const other = project.codings.filter((c) => c.sourceId === sourceId && c.origin?.runId === runId)
     return compare(project, ref, other, choices.map((c) => c.group.id))
   }, [project, runId, sourceId, choices, person])

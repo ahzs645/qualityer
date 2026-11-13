@@ -1,4 +1,4 @@
-import type { Coding, GroupKind, Project } from './types'
+import type { AiRun, Coding, GroupKind, Project } from './types'
 import { groupOf, indexBy } from './model'
 
 // Passage-level comparison of two codings of the same source, typically a
@@ -105,4 +105,27 @@ export function compare(project: Project, ref: Coding[], other: Coding[], choice
     byKind, confusions, refOnly, otherOnly,
     byGroup: [...perGroup.values()].sort((a, b) => (order.get(a.groupId) ?? 99) - (order.get(b.groupId) ?? 99)),
   }
+}
+
+/**
+ * A person's coding of a source made before an AI pass ran: the only fair
+ * standard for that pass. Codes a reviewer adds while reviewing the pass are
+ * not independent of it.
+ */
+export function humanBaseline(project: Project, sourceId: string, run: AiRun) {
+  return project.codings.filter((c) => c.sourceId === sourceId && !c.origin && c.status === 'accepted' && c.createdAt < run.startedAt)
+}
+
+/** Passes that can be compared with a person's earlier coding of the same source. */
+export function comparablePasses(project: Project) {
+  const codes = new Map(project.codes.map((c) => [c.id, c]))
+  const groups = new Map(project.groups.map((g) => [g.id, g]))
+  const kind = (codeId: string) => {
+    let c = codes.get(codeId)
+    while (c && !c.groupId && c.parentId) c = codes.get(c.parentId)
+    return c?.groupId ? groups.get(c.groupId)?.kind : undefined
+  }
+  return project.aiRuns.flatMap((r) => r.sourceIds.map((sid) => ({ run: r, sourceId: sid })))
+    .filter(({ run, sourceId }) => humanBaseline(project, sourceId, run).some((c) => run.kind === 'grades' || kind(c.codeId) === 'substantive')
+      && project.codings.some((c) => c.origin?.runId === run.id && c.sourceId === sourceId))
 }

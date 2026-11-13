@@ -277,3 +277,54 @@ export async function importGradeResponses(data: GradeResponses) {
   update(`import ${found.length} AI grades`, (p) => ({ ...p, codings: [...p.codings, ...found], aiRuns: p.aiRuns.map((x) => (x.id === run.id ? next : x)) }))
   return next
 }
+
+// ---------------------------------------------------------------------------
+// Ask across interviews: one question per interview, with the same providers.
+
+export async function askWithModel(
+  project: Project, prompt: import('../types').AskPrompt, sourceIds: string[], settings: AiSettings,
+  onProgress: (done: number, total: number, failed: string[]) => void, signal: AbortSignal,
+) {
+  const { askSystem, askMessage, verifyAnswer, AskResponseSchema, ASK_JSON_SCHEMA } = await import('./ask')
+  const system = askSystem(project)
+  const answers: import('../types').AskAnswer[] = []
+  const failed: string[] = []
+  const sources = project.sources.filter((s) => sourceIds.includes(s.id))
+  let done = 0
+  for (const source of sources) {
+    if (signal.aborted) break
+    try {
+      const user = askMessage(project, source, prompt)
+      let raw: unknown
+      if (settings.provider === 'anthropic') {
+        const client = new Anthropic({ apiKey: settings.apiKey, dangerouslyAllowBrowser: true, maxRetries: 3 })
+        const msg = await client.beta.messages.parse({
+          model: settings.model, max_tokens: 8000,
+          ...(FALLBACK_MODELS.test(settings.model) ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
+          system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+          messages: [{ role: 'user', content: user }],
+          output_config: { effort: settings.effort, format: betaZodOutputFormat(AskResponseSchema) },
+        }, { signal })
+        if (msg.stop_reason === 'refusal') throw new Error('The model declined this interview.')
+        raw = msg.parsed_output
+      } else {
+        const res = await fetch(settings.baseUrl.replace(/\/$/, '') + '/chat/completions', {
+          method: 'POST', signal,
+          headers: { 'content-type': 'application/json', ...(settings.apiKey ? { authorization: `Bearer ${settings.apiKey}` } : {}) },
+          body: JSON.stringify({ model: settings.model, temperature: 0, messages: [{ role: 'system', content: system }, { role: 'user', content: user }], response_format: { type: 'json_schema', json_schema: { name: 'answer', strict: true, schema: ASK_JSON_SCHEMA } } }),
+        })
+        if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0, 200)}`)
+        const body = await res.json()
+        raw = JSON.parse(String(body.choices?.[0]?.message?.content ?? '').replace(/^```(?:json)?|```$/g, '').trim())
+      }
+      const parsed = AskResponseSchema.safeParse(raw)
+      if (!parsed.success) throw new Error('The answer did not match the expected format.')
+      answers.push(verifyAnswer(project, source, prompt, parsed.data, settings.model))
+    } catch (e) {
+      if (signal.aborted) break
+      failed.push(`${source.name}: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    onProgress(++done, sources.length, failed)
+  }
+  return { answers, failed }
+}

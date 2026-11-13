@@ -117,11 +117,12 @@ function Overview() {
 
           {sat.length > 0 && (
             <Panel title="New codes per interview">
-              <div className="flex h-28 items-end gap-2" role="img" aria-label="Bar chart of codes first used in each source">
+              <div className="flex h-32 items-end gap-2" role="img" aria-label="Bar chart of codes first used in each source">
                 {sat.map((s) => (
                   <div key={s.source.id} className="flex flex-1 flex-col items-center gap-1" title={`${s.source.name}: ${s.fresh} new, ${s.used} used`}>
                     <span className="text-xs tabular-nums text-muted">{s.fresh}</span>
                     <div className="w-full max-w-10 rounded-t bg-accent" style={{ height: `${(s.fresh / maxFresh) * 72 + 2}px` }} />
+                    <span className="max-w-full truncate text-[11px] text-muted">{s.source.attributes['Respondent ID']?.trim() || s.source.name.split(' — ')[0]}</span>
                   </div>
                 ))}
               </div>

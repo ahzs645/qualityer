@@ -74,7 +74,7 @@ export function codeKeys(codes: Code[]) {
   return { toKey, toId }
 }
 
-const xml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+export const xml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 export function systemPrompt(project: Project, codes: Code[], keys: Map<string, string>, examples: Map<string, string>) {
   const groups = indexBy(project.groups)
