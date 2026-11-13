@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { Download, Pin, Plus, Trash2, X } from 'lucide-react'
 import type { Case, Coding, FrameworkCell, Theme } from '../lib/types'
 import { update, useProject } from '../lib/store'
+import { addMissingCases, removeEmptyCases, renameCase } from '../lib/actions'
 import { download, excerpt, formatTime, indexBy, orderedCodes, quotable, slug, timeAt, toCSV, uid } from '../lib/model'
 import { Badge, Button, Empty, IconButton, Input, PageHeader, Panel, Select, Swatch, Textarea, cx } from '../components/ui'
 
@@ -41,6 +42,10 @@ function Framework() {
   const selCase = sel && project.cases.find((c) => c.id === sel.caseId)
   const selTheme = sel && project.themes.find((t) => t.id === sel.themeId)
 
+  const inCase = new Set(project.cases.flatMap((c) => c.sourceIds))
+  const caseless = project.cases.length ? project.sources.filter((s) => !inCase.has(s.id)) : []
+  const emptyCases = project.cases.filter((c) => !c.sourceIds.some((id) => project.sources.some((s) => s.id === id)))
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="px-4 pt-6 sm:px-6">
@@ -48,6 +53,16 @@ function Framework() {
           title="Framework matrix"
           actions={
             <>
+              {emptyCases.length > 0 && (
+                <Button icon={<Trash2 size={15} />} onClick={() => confirm(`Remove ${emptyCases.map((c) => `“${c.name}”`).join(', ')}? ${emptyCases.length === 1 ? 'This case has' : 'These cases have'} no sources left. You can undo this.`) && removeEmptyCases()}>
+                  Remove {emptyCases.length === 1 ? 'a case' : `${emptyCases.length} cases`} with no sources
+                </Button>
+              )}
+              {caseless.length > 0 && (
+                <Button variant="primary" icon={<Plus size={15} />} onClick={addMissingCases} title={caseless.map((s) => s.name).join('\n')}>
+                  Add {caseless.length === 1 ? 'a case' : `${caseless.length} cases`} for new sources
+                </Button>
+              )}
               <Button onClick={() => setEditThemes((v) => !v)}>{editThemes ? 'Done editing themes' : 'Edit themes'}</Button>
               <Button icon={<Download size={15} />} disabled={!project.themes.length} onClick={exportCSV}>CSV</Button>
             </>
@@ -80,7 +95,15 @@ function Framework() {
                 {project.cases.map((k) => (
                   <tr key={k.id}>
                     <th className="sticky left-0 z-10 border-r border-b border-line bg-surface px-4 py-3 text-left align-top">
-                      <div className="font-medium">{k.name}</div>
+                      <input
+                        key={k.name}
+                        defaultValue={k.name}
+                        onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== k.name && renameCase(k.id, e.target.value.trim())}
+                        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                        aria-label={`Case name: ${k.name}`}
+                        className="-mx-1 w-full rounded bg-transparent px-1 font-medium hover:bg-sunken focus:bg-sunken"
+                      />
+                      {!k.sourceIds.some((id) => project.sources.some((s) => s.id === id)) && <div className="mt-0.5 text-xs font-normal text-bad">No sources</div>}
                       <div className="mt-0.5 text-xs font-normal text-muted">{Object.entries(k.attributes).slice(0, 2).map(([a, v]) => `${a}: ${v}`).join(' · ')}</div>
                     </th>
                     {project.themes.map((t) => {

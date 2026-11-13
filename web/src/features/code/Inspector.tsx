@@ -206,7 +206,11 @@ export function SpanInspector({ project, source, span, onClose, onCode }: SpanPr
               <option value="">Choose…</option>
               {project.guide.map((q) => <option key={q.id} value={q.id}>{q.key} — {q.title}</option>)}
             </Select>
-            <Button size="sm" disabled={!question} onClick={() => { setCoverage(source.id, question, { status: 'answered', start: span.start, end: span.end }); setQuestion('') }}>Link</Button>
+            <Button size="sm" disabled={!question} onClick={() => {
+              // Linking an answer keeps a "partly" or "asked, no view" mark; it only marks unmarked or not-asked questions answered.
+              const was = project.coverage.find((c) => c.sourceId === source.id && c.questionId === question)?.status
+              setCoverage(source.id, question, { status: was === 'partial' || was === 'no-view' ? was : 'answered', start: span.start, end: span.end }); setQuestion('')
+            }}>Link</Button>
           </div>
         </section>
       )}

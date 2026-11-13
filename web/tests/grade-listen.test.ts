@@ -117,6 +117,10 @@ describe('listening', () => {
     expect(q.slice(0, 2).map((i) => src.text.slice(i.claim.start, i.claim.end))).toEqual([SENTENCES[0], SENTENCES[4]])
     expect(q[0].reasons).toEqual(['quoted as key evidence'])
     expect(wordingChecks(proj, src, [{ start: offs[1], end: offs[1] + 5, second: 'I saw' }])[0].agreement).toBe(1)
+    const noted = { ...proj, codings: proj.codings.map((c) => (c.start === offs[5] ? { ...c, memo: 'VERIFY: name of the staff member' } : c)) }
+    const v = listenQueue(noted, src.id)
+    expect(src.text.slice(v[0].claim.start, v[0].claim.end)).toBe(SENTENCES[5])
+    expect(v[0].reasons).toEqual(['reviewer asked to verify: name of the staff member'])
   })
 
   it('splits a turn around a passage and lays a speaker track over word timings', () => {
@@ -138,14 +142,14 @@ describe('listening', () => {
 })
 
 describe('joining turns', () => {
-  const text = 'It is a location\n\nwhere\n\npeople can meet.\n\nOkay.\n\nGood.'
+  const text = 'The clinic has a room\n\nwhere\n\npatients wait.\n\nOkay.\n\nGood.'
   const seg = (a: string, sp: string, time: number) => {
     const start = text.indexOf(a)
     return { start, end: start + a.length, speaker: sp, time, words: [[start, time]] as [number, number][] }
   }
   const source = {
     ...newSource('S', text),
-    segments: [seg('It is a location', 'R', 1), seg('where', 'I', 3), seg('people can meet.', 'R', 4), seg('Okay.', 'I', 6), seg('Good.', 'R', 7)],
+    segments: [seg('The clinic has a room', 'R', 1), seg('where', 'I', 3), seg('patients wait.', 'R', 4), seg('Okay.', 'I', 6), seg('Good.', 'R', 7)],
   }
 
   it('finds a fragment between two turns of the same speaker, but not a backchannel', () => {
@@ -154,20 +158,32 @@ describe('joining turns', () => {
     expect(found[0].speaker).toBe('R')
     expect(isBackchannel('Mm-hmm. Okay.')).toBe(true)
     expect(isBackchannel('data.')).toBe(false)
+    expect(found[0].kind).toBe('fragment')
+  })
+
+  it('finds a paragraph break inside one speaker\'s sentence', () => {
+    const t = 'We keep the samples in\n\na freezer down the hall.\n\nNext point.'
+    const at = (a: string) => ({ start: t.indexOf(a), end: t.indexOf(a) + a.length, speaker: 'R', time: null })
+    const s = { ...newSource('S', t), segments: [at('We keep the samples in'), at('a freezer down the hall.'), at('Next point.')] }
+    const found = brokenTurns(s)
+    expect(found.map((b) => [b.index, b.kind])).toEqual([[1, 'paragraph']])
+    const j = joinSegments(s, 1)!
+    const out = editSource({ ...emptyProject('P'), sources: [{ ...s, segments: j.segments }] }, s.id, j.edits).sources[0]
+    expect(out.text).toBe('We keep the samples in a freezer down the hall.\n\nNext point.')
   })
 
   it('joins the fragment and the turn after it, moving codings with the text', () => {
-    const coding = { id: 'c', sourceId: source.id, codeId: 'x', start: text.indexOf('people'), end: text.indexOf('meet.') + 5, coder: 'A', memo: '', important: false, status: 'accepted' as const, createdAt: '' }
+    const coding = { id: 'c', sourceId: source.id, codeId: 'x', start: text.indexOf('patients'), end: text.indexOf('wait.') + 5, coder: 'A', memo: '', important: false, status: 'accepted' as const, createdAt: '' }
     const p = { ...emptyProject('P'), sources: [source], codings: [coding] }
     const joined = joinSegments(source, 1)!
     const out = editSource({ ...p, sources: [{ ...source, segments: joined.segments }] }, source.id, joined.edits)
     const s = out.sources[0]
-    expect(s.text).toBe('It is a location where people can meet.\n\nOkay.\n\nGood.')
+    expect(s.text).toBe('The clinic has a room where patients wait.\n\nOkay.\n\nGood.')
     expect(s.segments!.length).toBe(3)
-    expect(s.text.slice(s.segments![0].start, s.segments![0].end)).toBe('It is a location where people can meet.')
-    expect(s.segments![0].words!.map(([o]) => s.text.slice(o).split(' ')[0])).toEqual(['It', 'where', 'people'])
+    expect(s.text.slice(s.segments![0].start, s.segments![0].end)).toBe('The clinic has a room where patients wait.')
+    expect(s.segments![0].words!.map(([o]) => s.text.slice(o).split(' ')[0])).toEqual(['The', 'where', 'patients'])
     const c = out.codings[0]
-    expect(s.text.slice(c.start, c.end)).toBe('people can meet.')
+    expect(s.text.slice(c.start, c.end)).toBe('patients wait.')
   })
 })
 

@@ -147,9 +147,12 @@ describe('imports', () => {
   it('uses VTT inline timestamps and breaks a long monologue at a pause', () => {
     const inline = parseSubtitles('WEBVTT\n\n00:00:10.000 --> 00:00:12.000\n<v Ann><00:00:10.000>one <00:00:11.500>two')
     expect(inline.segments[0].words!.map(([, t]) => t)).toEqual([10, 11.5])
-    const long = 'x'.repeat(450)
+    const long = 'x'.repeat(450) + '.'
     const pause = parseSubtitles(`00:00:01.000 --> 00:00:02.000\n<v Ann>${long}\n\n00:00:09.000 --> 00:00:10.000\n<v Ann>after a pause\n\n00:00:10.500 --> 00:00:11.000\n<v Ann>no pause`)
     expect(pause.segments.length).toBe(2)
+    // A pause inside a sentence is not a paragraph break.
+    const mid = parseSubtitles(`00:00:01.000 --> 00:00:02.000\n<v Ann>${'x'.repeat(450)} we keep the samples in\n\n00:00:09.000 --> 00:00:10.000\n<v Ann>a freezer down the hall.`)
+    expect(mid.segments.length).toBe(1)
     expect(pause.segments.map((s) => s.speaker)).toEqual(['Ann', 'Ann'])
     expect(pause.text.slice(pause.segments[1].start, pause.segments[1].end)).toBe('after a pause no pause')
     expect(pause.segments[1].time).toBe(9)
@@ -168,5 +171,23 @@ describe('imports', () => {
     expect(r.added).toBe(2)
     const child = r.project.codes.find((c) => c.name === 'Child')!
     expect(r.project.codes.find((c) => c.id === child.parentId)?.name).toBe('Parent code')
+  })
+})
+
+describe('study with recordings', () => {
+  it('reads recordings back from a study zip, keyed by source', async () => {
+    const { zipSync, strToU8 } = await import('fflate')
+    const { importProjectFile } = await import('../src/lib/importers')
+    const p = emptyProject('Zip')
+    const s = { ...newSource('R1', 'Hello.'), media: { name: 'r1.m4a', type: 'audio/mp4', size: 4, duration: 1 } }
+    p.sources = [s]
+    const zip = zipSync({ 'research-weave.json': strToU8(JSON.stringify(p)), [`media/${s.id}`]: new Uint8Array([1, 2, 3, 4]), [`media/${s.id}.peaks.json`]: strToU8('[0.5,1]') })
+    const out = await importProjectFile(new File([zip as BlobPart], 'zip.research-weave.zip'))
+    expect(out.project.sources[0].id).toBe(s.id)
+    expect(out.project.id).not.toBe(p.id)
+    const m = out.media![s.id]
+    expect(m.peaks).toEqual([0.5, 1])
+    expect(new Uint8Array(await m.blob.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 4]))
+    expect(m.blob.type).toBe('audio/mp4')
   })
 })

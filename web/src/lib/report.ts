@@ -1,4 +1,4 @@
-import type { CoverageStatus, GroupKind, Project } from './types'
+import type { AiRun, CoverageStatus, GroupKind, Project } from './types'
 import {
   checkRules, codesInGroup, describeRule, findCorrections, formatTime, groupOf, indexBy, pendingSuggestions, quotable, segmentsOf, speakerOf, timeAt, toCSV,
 } from './model'
@@ -100,11 +100,14 @@ export function reportData(project: Project) {
     return { code: tidy(codes.get(c.codeId)?.name ?? ''), source: s?.name.split(' — ')[0] ?? '', time: s ? formatTime(timeAt(s, c.start)) : '', values: project.extractionFields.map((f) => row?.values[f] ?? ''), quote: quotable(project, s, c.start, c.end) }
   })
 
+  // A calibration needs a person's coding made before the pass ran. Codes a reviewer adds while reviewing
+  // the pass are not an independent standard, so a reviewed pass on an interview no one coded is not calibrated.
+  const humanBefore = (sid: string, r: AiRun) => project.codings.filter((c) => c.sourceId === sid && !c.origin && c.status === 'accepted' && c.createdAt < r.startedAt)
   const calibrations = project.aiRuns.flatMap((r) => r.sourceIds.map((sid) => ({ r, sid }))).filter(({ r, sid }) =>
-    project.codings.some((c) => c.sourceId === sid && !c.origin && c.status === 'accepted') && project.codings.some((c) => c.origin?.runId === r.id && c.sourceId === sid),
+    humanBefore(sid, r).some((c) => gOf(c.codeId)?.kind === 'substantive' || r.kind === 'grades') && project.codings.some((c) => c.origin?.runId === r.id && c.sourceId === sid),
   ).map(({ r, sid }) => {
     const asked = r.claims ? new Set(Object.values(r.claims).map(([a, b]) => `${a}:${b}`)) : null
-    const result = compare(project, project.codings.filter((c) => c.sourceId === sid && !c.origin && c.status === 'accepted' && (!asked || asked.has(`${c.start}:${c.end}`))), project.codings.filter((c) => c.sourceId === sid && c.origin?.runId === r.id), choices.map((c) => c.group.id))
+    const result = compare(project, humanBefore(sid, r).filter((c) => !asked || asked.has(`${c.start}:${c.end}`)), project.codings.filter((c) => c.sourceId === sid && c.origin?.runId === r.id), choices.map((c) => c.group.id))
     return { run: r, source: sources.get(sid)!, result }
   })
 
@@ -216,7 +219,7 @@ export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPOR
   }
 
   if (opts.sources) {
-    h('<h2>Sources</h2><div class="scroll"><table><thead><tr><th>Interview</th><th class="n">Length</th><th class="n">Words</th><th class="n">Coded claims</th><th class="n">AI-drafted</th><th class="n">Checked by a person</th><th>Guide questions not asked</th></tr></thead><tbody>')
+    h('<h2>Sources</h2><div class="scroll"><table><thead><tr><th>Interview</th><th class="n">Length</th><th class="n">Words</th><th class="n">Coded claims</th><th class="n">AI-drafted</th><th class="n">Checked by the reviewer</th><th>Guide questions not asked</th></tr></thead><tbody>')
     for (const r of d.sourceRows) {
       h(`<tr><td><b>${esc(r.source.name)}</b>${r.restricted ? `<br><small>${r.restricted} off-the-record passage${r.restricted === 1 ? '' : 's'}: wording withheld</small>` : ''}</td><td class="n">${esc(formatTime(r.duration))}</td><td class="n">${r.words.toLocaleString()}</td><td class="n">${r.claims}</td><td class="n">${r.aiDrafted}</td><td class="n">${r.aiDrafted ? `${r.checked} (${pc(r.checked / r.aiDrafted)})` : 'all'}</td><td>${esc(r.notAsked.join(', ') || '—')}</td></tr>`)
     }
@@ -352,7 +355,7 @@ export function reportMarkdown(project: Project, opts: ReportOptions = DEFAULT_R
   h(`**${statusLine(d)}**`)
 
   if (opts.glance) h(`${project.sources.length} interviews · ${d.codedClaims} coded claims · ${d.usedCodes} of ${project.codes.length} codes used · ${d.violations.length} rule issues open · ${d.pending.length} suggestions undecided.`)
-  if (opts.sources) h('## Sources', table(['Interview', 'Length', 'Words', 'Coded claims', 'AI-drafted', 'Checked by a person', 'Not asked'], d.sourceRows.map((r) => [r.source.name, formatTime(r.duration), r.words, r.claims, r.aiDrafted, r.aiDrafted ? `${r.checked} (${pc(r.checked / r.aiDrafted)})` : 'all', r.notAsked.join(', ') || '—'])))
+  if (opts.sources) h('## Sources', table(['Interview', 'Length', 'Words', 'Coded claims', 'AI-drafted', 'Checked by the reviewer', 'Not asked'], d.sourceRows.map((r) => [r.source.name, formatTime(r.duration), r.words, r.claims, r.aiDrafted, r.aiDrafted ? `${r.checked} (${pc(r.checked / r.aiDrafted)})` : 'all', r.notAsked.join(', ') || '—'])))
   if (opts.coverage && d.coverage.length) h('## Interview guide coverage', table(['Question', ...project.sources.map((s) => s.name.split(' — ')[0])], d.coverage.map((row) => [`${row.question.key} ${row.question.title}`, ...row.marks.map((m) => `${COVERAGE_TEXT[m.status]}${m.note ? `: ${m.note}` : ''}`)])))
   if (opts.framework && d.framework.length) {
     h('## Framework matrix')

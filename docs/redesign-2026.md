@@ -216,6 +216,42 @@ Bugs this run uncovered, all fixed:
 - Passes shared one coder name.
 - The window count left out codes that inherit their group.
 
+## Added in the sixth pass: adding two interviews to a study in progress
+
+This pass took the study as exported after the fifth pass and added two more calibration interviews, each delivered as a machine-captioned WebVTT file and an `.m4a` recording, as a member of the team would: import, set up the source sheet, correct the transcript, run the AI hand-off, review every claim, mark guide coverage, extend the framework and produce the report. Every step was done in the app; each thing that could not be done, or went wrong, became a fix.
+
+**Transcripts and speakers**
+- **WebVTT timing.** The VTT importer kept one timestamp per turn and discarded every cue's time. These captions come a few words per cue, so a three-minute answer had one timestamp, and playback, *Follow audio* and passage playback could not find anything inside it. Each word now gets a time: exact from inline `<00:01:02.500>` tags, otherwise spread across its cue (about 10,000 word timings per interview, from none).
+- **Paragraphs.** Long answers are broken into paragraphs, as for Whisper JSON, but only where a sentence ends (or past twice the length cap). A first version broke at a fixed length and split 22 sentences across paragraphs, which meant those claims could not be quoted whole.
+- **Joining turns.** The speaker menu on every turn has *Join with the turn before*. When the next turn is the first speaker again, it is joined too, so "…the clinic has a room" / "where" / "patients wait" becomes one sentence. The source inspector lists sentences that look cut, either by a word or two given to another speaker or by a paragraph break mid-sentence, with *Play*, *Join* and *Join all*. Listening noises ("Okay.", "Mm-hmm.") are left alone. In the study, 28 joins moved none of the 3,093 codings off their text.
+- **Glossary preview.** Each match can be unticked, and each can be played from the recording before applying. Name corrections such as a philanthropist's or a chancellor's name are guesses until someone hears them.
+- **Reviewer notes.** A claim whose note says `VERIFY:` goes to the top of Review → Listen, with the note as the reason.
+
+**Sources, guide and framework**
+- **Source order.** Sources can be moved up or down, or sorted by name. The framework rows follow. Before, sources stayed in the order they were added.
+- **Coverage notes.** Notes ("Not asked: interviewer read out the respondent's role") can now be written and edited, in the source inspector and in the coverage matrix. Before, they could only come in through an import.
+- **Linking an answer.** Linking a passage to a question no longer turns a *Partly* mark into *Answered*.
+- **Cases follow sources.**
+  - Removing a source removed it from its case but left the case, an empty row in the framework and the report.
+  - Renaming a source left its case under the old file name.
+  - Both now follow the source. The framework can rename cases inline, remove cases with no sources, and add cases for sources that have none.
+- **Rules for any group.** Codebook → Groups & rules accepts a written rule for any non-substantive group, not only evidence and stance. The coding prompt already sends it.
+
+**AI hand-off and report**
+- **Changed turns.** Turn ids (`T0042`) and windows are positional. Answers to a prompt pack are now refused if turns were joined, split or reassigned after the pack was downloaded. Without this check they would be read against the wrong turns.
+- **Calibration in the report.** A pass is compared only with a person's coding made before the pass ran. Codes a reviewer adds while reviewing a pass were being treated as the human standard, which produced "precision 0%" sections for interviews no person had coded.
+- **"Checked by" column.** In the report's source table this column now reads *Checked by the reviewer*, because the reviewer is not always a person.
+- **Export with recordings.** Settings → *Whole study with recordings (.zip)* packs the study with every attached recording and its waveform. Importing the zip restores them. The JSON export leaves recordings behind in the browser they were attached in. Two recordings (138 MB) took about a second each way.
+
+### What the pass showed (aggregate numbers only)
+
+- **Agent hand-off.** 13 windows produced 1,070 suggestions on 318 claims. Every quote matched the transcript: 0 repaired, 0 rejected.
+- **Review.** Every claim was reviewed. 4 claims were rejected (fragments and repeats). Of the 1,070 codings, 96% were kept as proposed, 4 were given another code and 44 were removed. By the coder's confidence, high was kept 99% of the time, medium 98% and low 69%.
+- **Cost-benefit flags.** Most removals were flags: 16 of the 22 flagged numbers were illustrative, such as a guess offered as a guess, a figure inside a hypothetical, or general background. A rule saying so was added to the flag group. The other 6 got extraction rows.
+- **Caveat.** The reviewer in this pass was the same kind of model as the coder, so these figures describe the workflow, not the quality of the coding. Evidence grades and stances were checked for clear errors only. A person still has to review a sample of these interviews before they feed the cross-case analysis.
+- **Interview guide.** In all four interviews, the guide's vantage and risk questions were not asked. The script used in the two new interviews has ten questions, including one on impact that the study's 14-question guide does not have.
+- **Known limitation.** Coverage notes and memos that cite turn ids go out of date when turns are joined or split. Notes in this pass cite times instead.
+
 ## Still not ported
 
 - **Speech-to-text and diarisation inside the app.** Transcribe with Whisper / WhisperX / noScribe and import the JSON. `services/transcription` is unchanged.

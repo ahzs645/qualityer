@@ -13,6 +13,7 @@ export const Route = createFileRoute('/p/$projectId/settings')({ component: Sett
 
 function Settings() {
   const project = useProject()
+  const [zipping, setZipping] = useState<string | null>(null)
   const navigate = useNavigate()
   const [snaps, setSnaps] = useState<Omit<Snapshot, 'data'>[]>([])
   const [label, setLabel] = useState('')
@@ -94,12 +95,24 @@ function Settings() {
         <Panel title="Export">
           <div className="flex flex-wrap gap-2">
             <Button icon={<Download size={15} />} onClick={() => download(`${slug(project.name)}.research-weave.json`, JSON.stringify(project), 'application/json')}>Whole study (JSON)</Button>
+            {project.sources.some((s) => s.media) && (
+              <Button icon={<Download size={15} />} disabled={!!zipping} onClick={async () => {
+                setZipping('Packing the study and its recordings…')
+                try {
+                  const { exportStudyZip } = await import('../lib/bundle')
+                  const { bytes, recordings, missing } = await exportStudyZip(project)
+                  download(`${slug(project.name)}.research-weave.zip`, bytes as BlobPart, 'application/zip')
+                  setZipping(`${recordings} recording${recordings === 1 ? '' : 's'} included${missing.length ? `; not found in this browser: ${missing.join(', ')}` : ''}.`)
+                } catch (e) { setZipping(e instanceof Error ? e.message : String(e)) }
+              }} title="The study and every attached recording, to move to another browser or keep as a backup">Whole study with recordings (.zip)</Button>
+            )}
             <Button icon={<Download size={15} />} onClick={async () => {
               const { exportQDPX } = await import('../lib/refi')
               download(`${slug(project.name)}.qdpx`, exportQDPX(project) as BlobPart, 'application/zip')
             }} title="For NVivo, ATLAS.ti, MAXQDA, QualCoder and other REFI-QDA tools">REFI-QDA project (.qdpx)</Button>
           </div>
-          <p className="mt-2 text-xs text-muted">The JSON file re-imports into Research Weave on any browser. The .qdpx carries sources, codes, codings, cases, attributes and memos to other QDA software (recordings are not included). Codebook (CSV, REFI-QDA) is exported from the Codebook page, coded passages from Retrieve, and the matrix from Framework.</p>
+          {zipping && <p className="mt-2 text-xs text-accent">{zipping}</p>}
+          <p className="mt-2 text-xs text-muted">The JSON file re-imports into Research Weave on any browser, without recordings; the .zip carries the recordings too. The .qdpx carries sources, codes, codings, cases, attributes and memos to other QDA software (recordings are not included). Codebook (CSV, REFI-QDA) is exported from the Codebook page, coded passages from Retrieve, and the matrix from Framework.</p>
         </Panel>
 
         {project.importNotes.length > 0 && (

@@ -37,6 +37,7 @@ src/
   features/review/   claim-by-claim AI review, decision log
   features/explore/  interview map, cases by domain, AI-against-person comparison
   lib/refi.ts        REFI-QDA .qdpx import/export
+  lib/bundle.ts      whole study with recordings (.zip) export/import
   lib/documents.ts   Word/ODT/PDF/HTML/RTF text extraction
   lib/demo.ts        synthetic demo study
 ```

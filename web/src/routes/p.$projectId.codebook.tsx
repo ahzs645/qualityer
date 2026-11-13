@@ -258,8 +258,8 @@ function GroupsAndRules() {
                 {Object.entries(GROUP_KIND_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </Select>
               <IconButton label={`Delete group ${g.name}`} onClick={() => confirm(`Delete group “${g.name}”? Its codes are kept, ungrouped.`) && removeGroup(g.id)}><Trash2 size={14} /></IconButton>
-              {(g.kind === 'evidence' || g.kind === 'stance' || g.description) && (
-                <Textarea rows={3} defaultValue={g.description ?? ''} onBlur={(e) => e.target.value !== (g.description ?? '') && updateGroup(g.id, { description: e.target.value })} placeholder="How to choose between this group's codes: an ordered rule a coder works through. Sent to the AI with the codebook." className="basis-full text-[13px]" aria-label={`How to choose in ${g.name}`} />
+              {(g.kind !== 'substantive' || g.description) && (
+                <Textarea rows={g.description ? 3 : 1} defaultValue={g.description ?? ''} onBlur={(e) => e.target.value !== (g.description ?? '') && updateGroup(g.id, { description: e.target.value })} placeholder={g.kind === 'evidence' || g.kind === 'stance' ? "How to choose between this group's codes: an ordered rule a coder works through. Sent to the AI with the codebook." : "When to apply this group's codes, and when not: a rule a coder works through. Sent to the AI with the codebook."} className="basis-full text-[13px]" aria-label={`How to choose in ${g.name}`} />
               )}
             </li>
           ))}

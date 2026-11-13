@@ -220,3 +220,38 @@ describe('compare and profile', () => {
     expect(cell.unchecked).toBe(1)
   })
 })
+
+describe('cases follow their sources', () => {
+  it('renames a one-source case with its source, removes it with its source, and fills gaps', async () => {
+    const { addMissingCases, addSources, removeSource, updateSource } = await import('../src/lib/actions')
+    const p = emptyProject('Cases')
+    open(p)
+    const a = newSource('Dr. A interview', 'Text A.')
+    const b = newSource('Dr. B interview', 'Text B.')
+    addSources([a, b])
+    expect(project().cases.map((c) => c.name)).toEqual(['Dr. A interview', 'Dr. B interview'])
+    updateSource(a.id, { name: 'R03 — Professor (A)' })
+    expect(project().cases[0].name).toBe('R03 — Professor (A)')
+    removeSource(b.id)
+    expect(project().cases.map((c) => c.name)).toEqual(['R03 — Professor (A)'])
+    const c = { ...newSource('R05 — Someone', 'Text C.'), attributes: { 'Respondent ID': 'R05' } }
+    store.setState((st) => ({ ...st, project: { ...st.project!, sources: [...st.project!.sources, c] } }))
+    addMissingCases()
+    expect(project().cases.map((k) => k.name)).toEqual(['R03 — Professor (A)', 'R05'])
+    const { moveSource } = await import('../src/lib/actions')
+    moveSource(c.id, -1)
+    expect(project().cases.map((k) => k.name)).toEqual(['R05', 'R03 — Professor (A)'])
+  })
+})
+
+describe('report calibration', () => {
+  it('compares a pass only with human coding made before it ran', () => {
+    const { p, s, lab } = study()
+    const human = (createdAt: string): Coding => ({ id: uid(), sourceId: s.id, codeId: 'lab', start: lab[0], end: lab[1], coder: 'Analyst', memo: '', important: false, status: 'accepted', createdAt })
+    // A code the reviewer added while reviewing the pass is not a standard to calibrate against.
+    const after = { ...p, codings: [...p.codings, human('2026-02-01T00:00:00Z')] }
+    expect(reportMarkdown(after)).not.toContain('### Calibration on')
+    const before = { ...p, codings: [...p.codings, human('2025-12-01T00:00:00Z')] }
+    expect(reportMarkdown(before)).toContain('### Calibration on R1')
+  })
+})

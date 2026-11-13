@@ -110,7 +110,26 @@ export function addSources(sources: Source[]) {
 }
 
 export function updateSource(id: string, change: Partial<Source>, label = 'edit source') {
-  update(label, (p) => ({ ...p, sources: patch(p.sources, id, change) }))
+  update(label, (p) => {
+    const old = p.sources.find((s) => s.id === id)
+    // A case made for this source alone, still carrying its old name, follows a rename.
+    const cases = change.name && old && change.name !== old.name
+      ? p.cases.map((c) => (c.sourceIds.length === 1 && c.sourceIds[0] === id && c.name === old.name ? { ...c, name: change.name! } : c))
+      : p.cases
+    return { ...p, sources: patch(p.sources, id, change), cases }
+  })
+}
+
+export function renameCase(id: string, name: string) {
+  update('rename case', (p) => ({ ...p, cases: p.cases.map((c) => (c.id === id ? { ...c, name } : c)) }))
+}
+
+/** Removes cases that no longer hold any source, with their framework cells. */
+export function removeEmptyCases() {
+  update('remove empty cases', (p) => {
+    const empty = new Set(p.cases.filter((c) => c.sourceIds.length === 0 || c.sourceIds.every((id) => !p.sources.some((s) => s.id === id))).map((c) => c.id))
+    return { ...p, cases: p.cases.filter((c) => !empty.has(c.id)), cells: p.cells.filter((c) => !empty.has(c.caseId)) }
+  })
 }
 
 export function removeSource(id: string) {
@@ -125,12 +144,21 @@ export function removeSource(id: string) {
       restricted: p.restricted.filter((r) => r.sourceId !== id),
       wordingChecks: p.wordingChecks.filter((w) => w.sourceId !== id),
       memos: p.memos.map((m) => (m.sourceId === id ? { ...m, sourceId: null, start: null, end: null } : m)),
-      cases: p.cases.map((c) => ({ ...c, sourceIds: c.sourceIds.filter((s) => s !== id) })),
+      // A case that held only this source goes with it, with its framework cells.
+      cases: p.cases.filter((c) => !(c.sourceIds.length === 1 && c.sourceIds[0] === id)).map((c) => ({ ...c, sourceIds: c.sourceIds.filter((s) => s !== id) })),
+      cells: p.cells.filter((cell) => !p.cases.some((c) => c.id === cell.caseId && c.sourceIds.length === 1 && c.sourceIds[0] === id)),
     }
   })
 }
 
-/** Moves a source up or down the list; every screen and the report follow this order. */
+/** Puts cases in the order of their first source, so framework rows follow the source list. */
+function withCasesInSourceOrder(p: Project): Project {
+  const pos = new Map(p.sources.map((s, i) => [s.id, i]))
+  const first = (c: Project['cases'][number]) => Math.min(...c.sourceIds.map((id) => pos.get(id) ?? Infinity))
+  return { ...p, cases: p.cases.map((c, i) => ({ c, i })).sort((a, b) => first(a.c) - first(b.c) || a.i - b.i).map((x) => x.c) }
+}
+
+/** Moves a source up or down the list; every screen, the framework rows and the report follow this order. */
 export function moveSource(id: string, by: -1 | 1) {
   update('reorder sources', (p) => {
     const i = p.sources.findIndex((s) => s.id === id)
@@ -138,13 +166,31 @@ export function moveSource(id: string, by: -1 | 1) {
     if (i < 0 || j < 0 || j >= p.sources.length) return p
     const sources = [...p.sources]
     ;[sources[i], sources[j]] = [sources[j], sources[i]]
-    return { ...p, sources }
+    return withCasesInSourceOrder({ ...p, sources })
   })
 }
 
 /** Orders sources by name, numerically, so "R10" comes after "R9". */
 export function sortSourcesByName() {
-  update('sort sources by name', (p) => ({ ...p, sources: [...p.sources].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })) }))
+  update('sort sources by name', (p) => withCasesInSourceOrder({ ...p, sources: [...p.sources].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })) }))
+}
+
+/**
+ * Gives every source that is in no case a case of its own, named by its
+ * respondent ID (or the part of its name before " — "), so interviews added
+ * after the framework was set up get a row.
+ */
+export function addMissingCases() {
+  update('add cases for new sources', (p) => {
+    const covered = new Set(p.cases.flatMap((c) => c.sourceIds))
+    const fresh = p.sources.filter((s) => !covered.has(s.id)).map((s) => ({
+      id: uid(),
+      name: s.attributes['Respondent ID']?.trim() || s.name.split(' — ')[0].trim() || s.name,
+      sourceIds: [s.id],
+      attributes: { ...s.attributes },
+    }))
+    return fresh.length ? { ...p, cases: [...p.cases, ...fresh] } : p
+  })
 }
 
 export function markReadTo(sourceId: string, offset: number) {

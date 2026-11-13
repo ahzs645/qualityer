@@ -244,7 +244,7 @@ function SpeakersSection({ source, onJump }: { source: Source; onJump: (o: { sta
   )
 }
 
-/** Sentences the machine transcript cut in two, giving a word or two to another speaker. */
+/** Sentences the machine transcript cut in two: a word given to another speaker, or a paragraph break mid-sentence. */
 function BrokenTurns({ source, broken, onJump }: { source: Source; broken: ReturnType<typeof brokenTurns>; onJump: (o: { start: number; end: number }) => void }) {
   const [open, setOpen] = useState(false)
   const segs = segmentsOf(source)
@@ -253,22 +253,24 @@ function BrokenTurns({ source, broken, onJump }: { source: Source; broken: Retur
     <div className="mt-3 rounded-lg border border-warn/40 bg-warn-soft/40 p-2.5">
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full items-center gap-1.5 text-left text-xs font-medium">
         <AlertTriangle size={13} className="shrink-0 text-warn" />
-        <span className="flex-1">{broken.length} {broken.length === 1 ? 'sentence looks' : 'sentences look'} cut by another speaker</span>
+        <span className="flex-1">{broken.length} {broken.length === 1 ? 'sentence looks' : 'sentences look'} cut in two</span>
         <ChevronDown size={13} className={cx('text-faint transition-transform', !open && '-rotate-90')} />
       </button>
       {open && (
         <>
-          <p className="mt-1.5 text-[11px] text-muted">A word or two given to someone else in the middle of a sentence. Joining gives it back, so the sentence is one turn and can be quoted whole. Listen first if unsure.</p>
+          <p className="mt-1.5 text-[11px] text-muted">A word or two given to someone else mid-sentence, or a paragraph break inside one speaker's sentence. Joining makes the sentence one turn, so it can be quoted whole. Listen first if unsure.</p>
           <ul className="mt-2 space-y-2">
             {broken.map((b) => {
               const seg = segs[b.index]
               return (
                 <li key={b.index} className="rounded-md bg-surface p-2 text-[12px]">
                   <button type="button" onClick={() => onJump({ start: seg.start, end: seg.end })} className="block w-full text-left font-serif text-muted hover:text-ink">
-                    …{b.before} <mark className="rounded bg-warn-soft px-0.5 text-ink">{b.text}</mark> {b.after}…
+                    {b.kind === 'fragment'
+                      ? <>…{b.before} <mark className="rounded bg-warn-soft px-0.5 text-ink">{b.text}</mark> {b.after}…</>
+                      : <>…{b.before} <mark className="rounded bg-warn-soft px-0.5 text-ink">¶</mark> {b.after}…</>}
                   </button>
                   <div className="mt-1.5 flex items-center gap-1.5">
-                    <span className="flex-1 truncate text-[11px] text-faint">{name(seg.speaker)} → {name(b.speaker)}</span>
+                    <span className="flex-1 truncate text-[11px] text-faint">{b.kind === 'fragment' ? `${name(seg.speaker)} → ${name(b.speaker)}` : `${name(b.speaker)} · paragraph break mid-sentence`}</span>
                     {hasPlayer() && (
                       <button type="button" aria-label="Play this point" className="rounded p-1 text-muted hover:bg-sunken hover:text-ink"
                         onClick={() => { const t = timeAt(source, seg.start); if (t != null) seek(Math.max(0, t - 3), true) }}>

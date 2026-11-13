@@ -29,8 +29,9 @@ const subtitleTime = (s: string) => {
  * and nothing inside it could be played or followed.
  *
  * Consecutive cues from one speaker form a turn. Long monologues are broken
- * into paragraphs at a pause, and unlabelled captions are grouped into
- * paragraphs, so a turn stays readable and codable (as for Whisper JSON).
+ * into paragraphs at a pause or a length cap, but only where a sentence ends,
+ * and unlabelled captions are grouped into paragraphs, so a turn stays
+ * readable and codable (as for Whisper JSON).
  */
 export function parseSubtitles(raw: string) {
   const cues = raw.replace(/\r/g, '').split(/\n\s*\n/)
@@ -71,7 +72,11 @@ export function parseSubtitles(raw: string) {
     lastEnd = t1 ?? t0 ?? lastEnd
     const length = prev ? text.length - prev.start : 0
     const cap = speaker ? 1200 : 700
-    const join = prev && prev.speaker === speaker && length + body.length <= cap && !(pause > 2 && (!speaker || length >= 400))
+    // Break a long run of one speaker only where a sentence ends, so a claim is never split across two
+    // paragraphs; past twice the cap, break anyway.
+    const sentenceEnd = prev ? /[.?!…]["”')]?$/.test(text) : false
+    const wantBreak = length + body.length > cap || (pause > 2 && (!speaker || length >= 400))
+    const join = prev && prev.speaker === speaker && (!wantBreak || (!sentenceEnd && length + body.length <= cap * 2))
     let start: number
     if (join) { text += ' '; start = text.length; prev.end = start + body.length }
     else {
@@ -507,7 +512,7 @@ function isProject(x: unknown): x is Project {
 
 const SQLITE_MAGIC = 'SQLite format 3'
 
-export async function importProjectFile(file: File): Promise<{ project: Project; guide?: GuideQuestion[] }> {
+export async function importProjectFile(file: File): Promise<{ project: Project; guide?: GuideQuestion[]; media?: Record<string, import('./storage').StoredMedia> }> {
   const bytes = new Uint8Array(await file.arrayBuffer())
   const base = file.name.replace(/(\.qda)?\.(zip|json|qda|sqlite|db)$/i, '')
   const head = strFromU8(bytes.slice(0, 16))
@@ -535,7 +540,7 @@ export async function importProjectFile(file: File): Promise<{ project: Project;
 async function importZip(bytes: Uint8Array, base: string) {
   let files: Record<string, Uint8Array>
   try {
-    files = unzipSync(bytes, { filter: (f) => /(^|\/)(data\.qda|research-weave\.json|project\.json)$/.test(f.name) })
+    files = unzipSync(bytes, { filter: (f) => /(^|\/)(data\.qda|research-weave\.json|project\.json)$/.test(f.name) || /(^|\/)media\/[^/]+$/.test(f.name) })
   } catch {
     files = await recoverStreamedZip(bytes)
   }
@@ -548,7 +553,11 @@ async function importZip(bytes: Uint8Array, base: string) {
   const rw = Object.keys(files).find((n) => n.endsWith('research-weave.json') || n.endsWith('project.json'))
   if (rw) {
     const json = JSON.parse(strFromU8(files[rw]))
-    if (isProject(json)) return { project: { ...json, id: uid() } }
+    if (isProject(json)) {
+      // A study saved with its recordings: source ids are kept, so the recordings can be stored against them.
+      const media = (await import('./bundle')).recordingsFrom(files, json)
+      return { project: { ...json, id: uid() }, media }
+    }
     return { project: importLegacyState(json.state ?? json, base) }
   }
   throw new Error('No QualCoder project or Research Weave export was found in this archive.')

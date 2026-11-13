@@ -34,8 +34,12 @@ function Projects() {
     setBusy(`Reading ${file.name}…`)
     setError(null)
     try {
-      const { project } = await importProjectFile(file)
+      const { project, media } = await importProjectFile(file)
       await createProject(project)
+      if (media && Object.keys(media).length) {
+        setBusy(`Storing ${Object.keys(media).length} recordings…`)
+        await (await import('../lib/bundle')).storeRecordings(project.id, media)
+      }
       await open(project.id)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))

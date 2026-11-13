@@ -69,7 +69,7 @@ export interface ListenItem {
   reasons: string[]
 }
 
-/** Coded passages in the order worth listening to: quoted evidence first, then where transcriptions disagree. */
+/** Coded passages in the order worth listening to: passages a reviewer marked VERIFY, quoted evidence, then where transcriptions disagree. */
 export function listenQueue(project: Project, sourceId?: string): ListenItem[] {
   const pinned = new Set(project.cells.flatMap((c) => c.pinned))
   const checks = new Map(project.wordingChecks.map((c) => [`${c.sourceId}:${c.start}:${c.end}`, c]))
@@ -80,13 +80,16 @@ export function listenQueue(project: Project, sourceId?: string): ListenItem[] {
     const isPinned = accepted.some((x) => pinned.has(x.id) || x.important)
     const uncertain = (segs.get(claim.sourceId) ?? []).reduce((n, g) => n + (g.uncertain ?? []).filter(([a, b]) => a < claim.end && b > claim.start).length, 0)
     const reasons: string[] = []
+    // A reviewer's "VERIFY: …" note is a request to check the wording against the recording.
+    const verify = accepted.map((x) => /\bVERIFY\b:?\s*([^\n]*)/i.exec(x.memo ?? '')?.[1]?.trim()).find((v) => v != null)
+    if (verify != null) reasons.push(verify ? `reviewer asked to verify: ${verify}` : 'reviewer asked to verify')
     if (isPinned) reasons.push('quoted as key evidence')
     if (check && check.agreement < 0.85) reasons.push(`transcriptions agree on ${Math.round(check.agreement * 100)}% of words`)
     if (uncertain) reasons.push(`${uncertain} low-confidence word${uncertain === 1 ? '' : 's'}`)
     return {
       claim, check, pinned: isPinned, uncertain, reasons,
       verified: accepted.every((x) => !!x.verifiedAt),
-      risk: (isPinned ? 3 : 0) + (check ? (1 - check.agreement) * 6 : 0) + Math.min(2, uncertain * 0.5),
+      risk: (verify != null ? 4 : 0) + (isPinned ? 3 : 0) + (check ? (1 - check.agreement) * 6 : 0) + Math.min(2, uncertain * 0.5),
     }
   }).sort((a, b) => Number(a.verified) - Number(b.verified) || b.risk - a.risk || a.claim.start - b.claim.start)
 }
@@ -217,35 +220,43 @@ export function joinSegments(source: Source, index: number): { segments: Segment
 }
 
 export interface BrokenTurn {
-  /** Index of the fragment turn. */
+  /** Index of the turn to join onto the one before it. */
   index: number
-  /** Speaker the fragment probably belongs to (the speaker on both sides). */
+  /** `fragment`: a word or two given to another speaker. `paragraph`: one speaker's sentence split across two paragraphs. */
+  kind: 'fragment' | 'paragraph'
+  /** Speaker the joined text belongs to. */
   speaker: string
   text: string
   before: string
   after: string
 }
 
+const SENTENCE_END = /[.?!…]["”')]?$/
+
 /**
- * Short turns that probably belong to the speaker on either side: a machine
- * transcript cut a sentence and gave a word or two to someone else. Listening
- * noises are left alone. A fragment is suspect when the sentence before it is
- * unfinished, or the fragment or the turn after it starts in lower case.
+ * Places where a machine transcript cut a sentence in two. A fragment is a
+ * short turn between two turns of the same other speaker, when the sentence
+ * before it is unfinished, or it or the turn after starts in lower case;
+ * listening noises are left alone. A paragraph break is one inside a single
+ * speaker's sentence. Joining either keeps the sentence quotable as a whole.
  */
 export function brokenTurns(source: Source): BrokenTurn[] {
   const segs = segmentsOf(source)
   const out: BrokenTurn[] = []
   const text = (g: Segment) => source.text.slice(g.start, g.end).trim()
-  for (let i = 1; i < segs.length - 1; i++) {
+  const lower = (s: string) => /^[a-z]/.test(s)
+  for (let i = 1; i < segs.length; i++) {
     const [a, b, c] = [segs[i - 1], segs[i], segs[i + 1]]
-    if (!a.speaker || a.speaker !== c.speaker || b.speaker === a.speaker) continue
     if (out[out.length - 1]?.index === i - 1) continue
-    const tb = text(b)
+    const ta = text(a), tb = text(b)
+    if (a.speaker && a.speaker === b.speaker) {
+      if (!SENTENCE_END.test(ta)) out.push({ index: i, kind: 'paragraph', speaker: a.speaker, text: tb.split(/\s+/).slice(0, 6).join(' '), before: ta.slice(-80), after: tb.slice(0, 80) })
+      continue
+    }
+    if (!c || !a.speaker || a.speaker !== c.speaker) continue
     if (tb.split(/\s+/).length > 4 || isBackchannel(tb)) continue
-    const ta = text(a), tc = text(c)
-    const unfinished = !/[.?!…]["”')]?$/.test(ta)
-    const lower = (s: string) => /^[a-z]/.test(s)
-    if (unfinished || lower(tb) || lower(tc)) out.push({ index: i, speaker: a.speaker, text: tb, before: ta.slice(-80), after: tc.slice(0, 80) })
+    const tc = text(c)
+    if (!SENTENCE_END.test(ta) || lower(tb) || lower(tc)) out.push({ index: i, kind: 'fragment', speaker: a.speaker, text: tb, before: ta.slice(-80), after: tc.slice(0, 80) })
   }
   return out
 }
