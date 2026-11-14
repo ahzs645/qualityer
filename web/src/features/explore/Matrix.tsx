@@ -8,6 +8,7 @@ import { Caveat, useTip } from './Positions'
 import { choiceColor } from './colors'
 import { median } from '../../lib/positions'
 import type { Claim } from '../../lib/claims'
+import { firstSentences } from '../../lib/report'
 
 type Show = 'people' | 'stance' | 'evidence' | 'passages' | 'share'
 type Order = 'codebook' | 'pattern'
@@ -81,6 +82,13 @@ export function CodeMatrix({ project }: { project: Project }) {
   const gradeAt = new Map(gradeCodes.map((c, i) => [c.id, i]))
   const middleStance = (claims: Claim[]) => median(claims.flatMap((c) => c.codings.map((x) => stanceAt.get(x.codeId)).filter((i): i is number => i !== undefined)))
   const bestGrade = (claims: Claim[]) => { const g = claims.flatMap((c) => c.codings.map((x) => gradeAt.get(x.codeId)).filter((i): i is number => i !== undefined)); return g.length ? Math.min(...g) : null }
+  // The framework summary for a group row and one case, as MAXQDA's matrix shows the cell's written summary on hover.
+  const summaryFor = (row: MatrixRow, col: Column) => {
+    if (level !== 'group' || col.people.length !== 1) return ''
+    const theme = project.themes.find((t) => t.title === row.name)
+    const cell = theme && project.cells.find((c) => c.themeId === theme.id && c.caseId === col.people[0].id)
+    return cell?.summary ? firstSentences(cell.summary.replace(/\s*\((?:Drafted|Checked)[^)]*\)\s*$/i, ''), 2) : ''
+  }
   const short = (name: string) => name.trim().split(/\s{2,}/).join(' ')
   const fill = (t: number) => (t > 0 ? `color-mix(in oklab, var(--viz-seq) ${12 + t * 88}%, var(--surface))` : 'transparent')
   return (
@@ -153,6 +161,7 @@ export function CodeMatrix({ project }: { project: Project }) {
                         <div className="font-semibold">{label}</div>
                         {grouped && <div className="mt-1">Raised by {c.raised} of {c.of} {c.of === 1 ? 'person' : 'people'}</div>}
                         <div className="mt-1 text-muted">{c.passages} passage{c.passages === 1 ? '' : 's'} · {Math.round(c.share * 100)}% of {grouped ? 'the group' : 'their'} coded passages</div>
+                        {summaryFor(row, col) && <div className="mt-1.5 border-l-2 border-line-strong pl-2 text-ink">{summaryFor(row, col)}</div>}
                         {st !== null && <div className="mt-1">Middle stance: <b>{short(stanceCodes[Math.round(st)].name)}</b></div>}
                         {gr !== null && <div>Strongest evidence: <b>{short(gradeCodes[gr].name)}</b></div>}
                         {c.passages > 0 && <div className="mt-1 text-faint">Click to read them</div>}

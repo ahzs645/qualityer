@@ -300,10 +300,21 @@ export interface WordingCheck {
 }
 
 /** A question asked of every interview ("Ask across interviews"). Refining makes a new version. */
+/**
+ * Where a question lives. "topic" questions are about what the interview is
+ * about. "asides" questions isolate passages that sit outside it, such as
+ * remarks to the interviewer, comments on the questions, advice to the team or
+ * requests not to be quoted. They are kept apart from the topic analysis.
+ */
+export type AskArea = 'topic' | 'asides'
+
 export interface AskPrompt {
   id: ID
   title: string
   text: string
+  area: AskArea
+  /** Answers may hold passages the participant asked to keep off the record: reports give counts, never quotes. */
+  sensitive?: boolean
   /** 1 for a new question, then 2, 3… for refinements; `parentId` is the version it was refined from. */
   version: number
   parentId: ID | null

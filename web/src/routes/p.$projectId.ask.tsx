@@ -1,18 +1,19 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { Fragment, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Check, Download, FileUp, GitBranch, MessagesSquare, Play, Plus, Square, ThumbsDown, ThumbsUp, Trash2, Minus } from 'lucide-react'
-import type { AskAnswer, AskPrompt, Project, Source } from '../lib/types'
+import { Check, Download, FileUp, GitBranch, Layers, Lock, MessagesSquare, Play, Plus, Square, ThumbsDown, ThumbsUp, Trash2, Minus } from 'lucide-react'
+import type { AskAnswer, AskArea, AskPrompt, Project, Source } from '../lib/types'
 import { useProject } from '../lib/store'
 import { download, slug, toCSV } from '../lib/model'
-import { ASK_TEMPLATES, askPack, lineage, newPrompt, readAskResponses, refineAdvice, type AskResponses } from '../lib/ai/ask'
+import { ASIDE_TEMPLATES, ASK_SETS, ASK_TEMPLATES, askPack, askPackSet, lineage, newPrompt, readAnyAskResponses, refineAdvice, setPrompts, type AskResponses } from '../lib/ai/ask'
+import { asideItems } from '../lib/report'
 import { turnsOf } from '../lib/ai/pipeline'
 import { askWithModel, getAiSettings, saveAiSettings, type AiSettings, type Provider } from '../lib/ai/run'
-import { rateAnswer, removeAsk, saveAsk, saveAskAnswers } from '../lib/actions'
+import { rateAnswer, removeAsk, saveAsk, saveAskAnswers, saveAsks } from '../lib/actions'
 import { forExport } from '../lib/names'
 import { Badge, Button, Empty, IconButton, Input, PageHeader, Panel, Select, Textarea, cx } from '../components/ui'
 
 export const Route = createFileRoute('/p/$projectId/ask')({
-  validateSearch: (s: Record<string, unknown>): { q?: string } => ({ q: typeof s.q === 'string' ? s.q : undefined }),
+  validateSearch: (s: Record<string, unknown>): { q?: string; area?: AskArea } => ({ q: typeof s.q === 'string' ? s.q : undefined, area: s.area === 'asides' ? 'asides' : undefined }),
   component: Ask,
 })
 
@@ -20,28 +21,45 @@ const short = (s: Source) => s.attributes['Respondent ID']?.trim() || s.name.spl
 
 function Ask() {
   const project = useProject()
-  const { q } = Route.useSearch()
+  const { q, area: asked } = Route.useSearch()
   const navigate = Route.useNavigate()
-  const latest = [...project.asks].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
-  const current = project.asks.find((a) => a.id === q) ?? latest
-  const select = (id: string) => navigate({ search: { q: id } })
-  const roots = project.asks.filter((a) => !a.parentId || !project.asks.some((x) => x.id === a.parentId))
+  const picked = project.asks.find((a) => a.id === q)
+  const area: AskArea = asked ?? picked?.area ?? 'topic'
+  const inArea = project.asks.filter((a) => a.area === area)
+  const latest = [...inArea].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+  const board = area === 'asides' && (q === 'board' || !picked)
+  const current = picked && picked.area === area ? picked : board ? undefined : latest
+  const select = (id: string) => navigate({ search: { q: id, area: area === 'asides' ? 'asides' : undefined } })
+  const roots = inArea.filter((a) => !a.parentId || !inArea.some((x) => x.id === a.parentId))
+  const count = (x: AskArea) => project.asks.filter((a) => a.area === x && (!a.parentId || !project.asks.some((y) => y.id === a.parentId))).length
 
   return (
     <div className="mx-auto max-w-[96rem] px-4 py-6 sm:px-6">
       <PageHeader title="Ask across interviews" />
       <div className="grid gap-5 lg:grid-cols-[17rem_minmax(0,1fr)]">
         <aside className="space-y-3">
-          <NewQuestion project={project} onCreated={select} />
-          {roots.length > 0 && (
+          <div className="grid grid-cols-2 gap-0.5 rounded-md bg-sunken p-0.5 text-sm" role="tablist" aria-label="Area">
+            {([['topic', 'Topic'], ['asides', 'Asides']] as const).map(([v, l]) => (
+              <button key={v} type="button" role="tab" aria-selected={area === v} onClick={() => navigate({ search: { area: v === 'asides' ? 'asides' : undefined } })}
+                className={cx('rounded px-2 py-1.5', area === v ? 'bg-surface font-medium shadow-sm' : 'text-muted hover:text-ink')}>{l} <span className="text-xs text-faint">{count(v)}</span></button>
+            ))}
+          </div>
+          <p className="px-1 text-xs text-muted">{area === 'topic' ? 'Questions about what the interviews are about.' : 'Passages outside the topic questions: remarks to the interviewer, comments on the questions, advice, promises, off-the-record moments. Kept apart from the framework and charts.'}</p>
+          <NewQuestion key={area} project={project} area={area} onCreated={select} />
+          {(roots.length > 0 || area === 'asides') && (
             <Panel title="Questions" bodyClass="p-0">
               <ul className="divide-y divide-line">
+                {area === 'asides' && (
+                  <li className={cx('px-3 py-2', board && 'bg-accent-soft/50')}>
+                    <button type="button" className="flex w-full items-center gap-2 text-left text-sm font-medium hover:text-accent" onClick={() => select('board')}><Layers size={14} /> All asides, by participant</button>
+                  </li>
+                )}
                 {roots.map((r) => {
                   const versions = lineage(project.asks, r.id)
                   const on = versions.some((v) => v.id === current?.id)
                   return (
                     <li key={r.id} className={cx('px-3 py-2', on && 'bg-accent-soft/50')}>
-                      <button type="button" className="block w-full text-left text-sm font-medium hover:text-accent" onClick={() => select(versions[versions.length - 1].id)}>{versions[versions.length - 1].title}</button>
+                      <button type="button" className="flex w-full items-center gap-1.5 text-left text-sm font-medium hover:text-accent" onClick={() => select(versions[versions.length - 1].id)}>{versions[versions.length - 1].title}{r.sensitive && <Lock size={12} className="shrink-0 text-warn" aria-label="Sensitive: may hold off-the-record passages" />}</button>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {versions.map((v) => (
                           <button key={v.id} type="button" onClick={() => select(v.id)} className={cx('rounded px-1.5 py-0.5 text-[11px] font-medium', v.id === current?.id ? 'bg-accent text-accent-ink' : 'bg-sunken text-muted hover:text-ink')}>
@@ -57,7 +75,7 @@ function Ask() {
           )}
         </aside>
         <div className="min-w-0 space-y-5">
-          {current ? <Question key={current.id} project={project} prompt={current} onSelect={select} /> : (
+          {board ? <AsidesBoard project={project} onSelect={select} /> : current ? <Question key={current.id} project={project} prompt={current} onSelect={select} /> : (
             <Panel><Empty icon={<MessagesSquare size={28} />} title="Ask every interview the same question">
               Write a question, or start from a template on the left. Each interview is read on its own, the answers come back side by side with verbatim evidence checked against the transcript, and you can refine the question and compare versions.
             </Empty></Panel>
@@ -68,25 +86,40 @@ function Ask() {
   )
 }
 
-function NewQuestion({ project, onCreated }: { project: Project; onCreated: (id: string) => void }) {
-  const [open, setOpen] = useState(project.asks.length === 0)
+function NewQuestion({ project, area, onCreated }: { project: Project; area: AskArea; onCreated: (id: string) => void }) {
+  const inArea = project.asks.filter((a) => a.area === area)
+  const [open, setOpen] = useState(inArea.length === 0)
+  const templates = area === 'asides' ? ASIDE_TEMPLATES : ASK_TEMPLATES
+  const sets = ASK_SETS.filter((s) => s.area === area)
+  const addSet = (id: string) => {
+    const ps = setPrompts(project.asks, id, project.names.some((n) => n.mask))
+    saveAsks(ps)
+    if (ps.length && area === 'topic') onCreated(ps[0].id)
+    setOpen(false)
+  }
+  const setButtons = sets.map((s) => {
+    const missing = setPrompts(project.asks, s.id, true).length
+    return missing > 0 && <Button key={s.id} size="sm" className="w-full" icon={<Layers size={13} />} title={s.description} onClick={() => addSet(s.id)}>Add the standard set: {s.title} ({missing})</Button>
+  })
   const [title, setTitle] = useState('')
   const [text, setText] = useState('')
-  if (!open) return <Button className="w-full" icon={<Plus size={15} />} onClick={() => setOpen(true)}>New question</Button>
+  if (!open) return <div className="space-y-2"><Button className="w-full" icon={<Plus size={15} />} onClick={() => setOpen(true)}>New question</Button>{setButtons}</div>
   return (
     <Panel title="New question" bodyClass="space-y-2 p-3">
-      <Select value="" onChange={(e) => { const t = ASK_TEMPLATES[Number(e.target.value)]; if (t) { setTitle(t.title); setText(t.text) } }} aria-label="Start from a template" className="h-8 w-full text-xs">
+      {setButtons}
+      <Select value="" onChange={(e) => { const t = templates[Number(e.target.value)]; if (t) { setTitle(t.title); setText(t.text) } }} aria-label="Start from a template" className="h-8 w-full text-xs">
         <option value="">Start from a template…</option>
-        {ASK_TEMPLATES.map((t, i) => <option key={t.title} value={i}>{t.title}</option>)}
+        {templates.map((t, i) => <option key={t.title} value={i}>{t.title}</option>)}
       </Select>
       <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Short title" aria-label="Question title" className="h-8" />
       <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} placeholder="What do you want to know from each interview?" aria-label="Question" className="text-[13px]" />
       <div className="flex gap-2">
         <Button size="sm" variant="primary" disabled={!text.trim()} onClick={() => {
-          const p = newPrompt({ title: title.trim() || text.trim().slice(0, 60), text: text.trim(), maskNames: project.names.some((n) => n.mask) })
+          const t = templates.find((x) => x.title === title.trim() && x.text === text.trim())
+          const p = newPrompt({ title: title.trim() || text.trim().slice(0, 60), text: text.trim(), area, sensitive: t?.sensitive, maskNames: project.names.some((n) => n.mask) })
           saveAsk(p); setTitle(''); setText(''); setOpen(false); onCreated(p.id)
         }}>Create</Button>
-        {project.asks.length > 0 && <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>}
+        {inArea.length > 0 && <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>}
       </div>
     </Panel>
   )
@@ -103,7 +136,7 @@ function Question({ project, prompt, onSelect }: { project: Project; prompt: Ask
   const [draft, setDraft] = useState<string | null>(null)
 
   const refine = () => {
-    const next = newPrompt({ title: prompt.title, text: prompt.text, version: Math.max(...versions.map((v) => v.version)) + 1, parentId: prompt.id, scope: prompt.scope, maskNames: prompt.maskNames })
+    const next = newPrompt({ title: prompt.title, text: prompt.text, version: Math.max(...versions.map((v) => v.version)) + 1, parentId: prompt.id, scope: prompt.scope, area: prompt.area, sensitive: prompt.sensitive, maskNames: prompt.maskNames })
     saveAsk(next); onSelect(next.id)
   }
   const exportCSV = () => {
@@ -243,7 +276,7 @@ function RunPanel({ project, prompt, sourceIds, setSourceIds }: { project: Proje
               e.target.value = ''
               if (!f) return
               try {
-                const { answers, failed } = readAskResponses(project, JSON.parse(await f.text()) as AskResponses)
+                const { answers, failed } = readAnyAskResponses(project, JSON.parse(await f.text()) as AskResponses | AskResponses[])
                 saveAskAnswers(answers)
                 setMsg({ tone: failed.length ? 'bad' : 'good', text: `${answers.length} answers imported.${failed.length ? ` ${failed.length} could not be read.` : ''}` })
               } catch (err) { setMsg({ tone: 'bad', text: err instanceof Error ? err.message : String(err) }) }
@@ -336,5 +369,151 @@ function Prose({ text, source, turnAt, projectId }: { text: string; source: Sour
         ? <ul key={i} className="list-disc space-y-1 pl-5">{g.lines.map((l, j) => <li key={j}>{inline(l.replace(/^\s*([-*•]|\d+[.)])\s+/, ''), j)}</li>)}</ul>
         : <p key={i}>{inline(g.lines.join(' '), i)}</p>)}
     </div>
+  )
+}
+
+/**
+ * Every asides question at once: how many passages each found in each
+ * interview, then the passages themselves for one participant, so remarks to
+ * the interviewer, advice, promises and off-the-record requests can be read
+ * together and kept apart from the topic analysis.
+ */
+function AsidesBoard({ project, onSelect }: { project: Project; onSelect: (id: string) => void }) {
+  const asks = project.asks.filter((a) => a.area === 'asides')
+  // The latest version of each question.
+  const questions = asks.filter((a) => !asks.some((x) => x.parentId === a.id)).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+  const [who, setWho] = useState(project.sources[0]?.id ?? '')
+  const [settings, setSettings] = useState<AiSettings>(getAiSettings)
+  const [msg, setMsg] = useState<{ tone: 'good' | 'bad'; text: string } | null>(null)
+  const [progress, setProgress] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const answerOf = (promptId: string, sourceId: string) => project.askAnswers.find((a) => a.promptId === promptId && a.sourceId === sourceId)
+  const items = (a: AskAnswer | undefined) => (!a || a.notAddressed ? [] : asideItems(a.text))
+  const todo = questions.filter((q) => project.sources.some((s) => !answerOf(q.id, s.id)))
+  const ids = project.sources.map((s) => s.id)
+
+  if (!questions.length) {
+    return <Panel><Empty icon={<Layers size={28} />} title="Isolate what sits outside the topic">
+      Add the standard asides set on the left: remarks to the interviewer, comments on the questions, advice and referrals, off-the-record moments, promises, and the participant's own stake. Each question asks every interview for every instance, one quote per instance.
+    </Empty></Panel>
+  }
+
+  async function runAll() {
+    setMsg(null)
+    let stored = 0
+    const failed: string[] = []
+    try {
+      for (const [i, q] of todo.entries()) {
+        setProgress(`${i + 1} of ${todo.length} questions`)
+        const missing = ids.filter((id) => !answerOf(q.id, id))
+        const r = await askWithModel(project, q, missing, settings, () => {}, new AbortController().signal)
+        saveAskAnswers(r.answers); stored += r.answers.length; failed.push(...r.failed)
+      }
+      setMsg({ tone: failed.length ? 'bad' : 'good', text: `${stored} answers stored.${failed.length ? ` Failed: ${failed.join('; ')}` : ''}` })
+    } catch (e) { setMsg({ tone: 'bad', text: e instanceof Error ? e.message : String(e) }) }
+    finally { setProgress(null) }
+  }
+
+  const source = project.sources.find((s) => s.id === who)
+  return (
+    <>
+      <Panel title="Asides across interviews" bodyClass="space-y-3 p-4">
+        <p className="text-sm text-muted">Each cell counts the passages a question found in one interview. These answers stay out of the framework, the charts and the claim counts; the report gives them their own section, and questions marked <Lock size={11} className="inline text-warn" /> are reported as counts only.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[34rem] border-collapse text-sm">
+            <thead><tr className="border-b border-line text-left text-xs text-muted">
+              <th className="py-1.5 pr-3 font-medium">Question</th>
+              {project.sources.map((s) => <th key={s.id} className="w-20 px-2 py-1.5 text-center font-medium">{short(s)}</th>)}
+            </tr></thead>
+            <tbody>
+              {questions.map((q) => (
+                <tr key={q.id} className="border-b border-line/70 last:border-0">
+                  <td className="py-1.5 pr-3"><button type="button" className="flex items-center gap-1.5 text-left hover:text-accent" onClick={() => onSelect(q.id)}>{q.title}{q.version > 1 && <Badge>v{q.version}</Badge>}{q.sensitive && <Lock size={12} className="text-warn" aria-label="sensitive" />}</button></td>
+                  {project.sources.map((s) => {
+                    const a = answerOf(q.id, s.id)
+                    const n = items(a).length
+                    return (
+                      <td key={s.id} className="px-2 py-1 text-center">
+                        <button type="button" onClick={() => setWho(s.id)} disabled={!a}
+                          className={cx('h-6 w-full rounded-[3px] text-xs tabular-nums', who === s.id && 'ring-1 ring-accent', !a ? 'text-faint' : n ? 'font-medium text-ink' : 'text-muted')}
+                          style={{ background: n ? `color-mix(in oklab, var(--viz-seq) ${12 + Math.min(n, 8) * 9}%, var(--surface))` : undefined }}
+                          aria-label={`${q.title}, ${short(s)}: ${a ? `${n} passages` : 'not asked yet'}`}>{a ? n || 'none' : '—'}</button>
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
+          <Select value={settings.provider} onChange={(e) => { const n = { ...settings, provider: e.target.value as Provider }; saveAiSettings(n); setSettings(n) }} aria-label="How to run" className="h-8 text-sm">
+            <option value="agent">Agent hand-off</option>
+            <option value="anthropic">Claude API{settings.apiKey ? '' : ' (add a key under AI assist)'}</option>
+            <option value="openai">Local model</option>
+          </Select>
+          {settings.provider === 'agent' ? (
+            <>
+              <Button variant="primary" icon={<Download size={14} />} disabled={!todo.length} onClick={() => {
+                const pack = askPackSet(project, todo, ids)
+                download(`${slug(project.name)}-asides-pack.json`, JSON.stringify(pack, null, 1), 'application/json')
+                setMsg({ tone: 'good', text: `${todo.length} questions × ${ids.length} interviews downloaded as one pack. Import the answers when they are ready.` })
+              }}>Download pack for {todo.length} unanswered question{todo.length === 1 ? '' : 's'}</Button>
+              <Button icon={<FileUp size={14} />} onClick={() => fileRef.current?.click()}>Import answers</Button>
+              <input ref={fileRef} type="file" accept=".json" hidden onChange={async (e) => {
+                const f = e.target.files?.[0]
+                e.target.value = ''
+                if (!f) return
+                try {
+                  const { answers, failed } = readAnyAskResponses(project, JSON.parse(await f.text()) as AskResponses | AskResponses[])
+                  saveAskAnswers(answers)
+                  setMsg({ tone: failed.length ? 'bad' : 'good', text: `${answers.length} answers imported.${failed.length ? ` ${failed.length} could not be read.` : ''}` })
+                } catch (err) { setMsg({ tone: 'bad', text: err instanceof Error ? err.message : String(err) }) }
+              }} />
+            </>
+          ) : (
+            <Button variant="primary" icon={<Play size={14} />} disabled={!todo.length || !!progress || (settings.provider === 'anthropic' && !settings.apiKey)} onClick={runAll}>{progress ?? `Ask ${todo.length} unanswered question${todo.length === 1 ? '' : 's'}`}</Button>
+          )}
+        </div>
+        {msg && <p className={cx('rounded-md px-3 py-2 text-sm', msg.tone === 'good' ? 'bg-good-soft text-good' : 'bg-bad-soft text-bad')}>{msg.text}</p>}
+      </Panel>
+
+      {source && (
+        <Panel title={<span className="flex items-center gap-2">Asides in {short(source)}</span>} actions={
+          <Select value={who} onChange={(e) => setWho(e.target.value)} className="h-7 text-xs" aria-label="Participant">{project.sources.map((s) => <option key={s.id} value={s.id}>{short(s)}</option>)}</Select>
+        } bodyClass="divide-y divide-line">
+          {questions.map((q) => {
+            const a = answerOf(q.id, source.id)
+            const list = items(a)
+            return (
+              <section key={q.id} className="px-4 py-3">
+                <h3 className="flex items-center gap-1.5 text-sm font-semibold">{q.title}{q.sensitive && <Badge tone="warn">check before quoting</Badge>}<span className="ml-auto text-xs font-normal text-muted">{a ? `${list.length} passage${list.length === 1 ? '' : 's'}` : 'not asked yet'}</span></h3>
+                {list.length > 0 && (
+                  <ul className="mt-2 space-y-2">
+                    {list.map((it, i) => {
+                      const ev = a!.evidence.find((e) => it.turns.includes(e.turnId))
+                      return (
+                        <li key={i} className="text-sm">
+                          <p>{it.note}</p>
+                          {ev && (
+                            <p className="mt-1 flex gap-2 text-[13px]">
+                              {ev.start != null
+                                ? <Link to="/p/$projectId/code" params={{ projectId: project.id }} search={{ source: source.id, at: ev.start, end: ev.end }} className="w-12 shrink-0 font-mono text-[11px] text-accent hover:underline">{ev.turnId}</Link>
+                                : <span className="w-12 shrink-0 font-mono text-[11px] text-bad" title="Not found in the transcript">{ev.turnId}</span>}
+                              <span className={cx('font-serif text-muted', ev.match === 'not-found' && 'text-bad line-through')}>“{ev.quote}”</span>
+                            </p>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+                {a && !list.length && <p className="mt-1 text-xs text-faint">None found.</p>}
+              </section>
+            )
+          })}
+        </Panel>
+      )}
+    </>
   )
 }

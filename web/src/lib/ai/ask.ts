@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { AskAnswer, AskEvidence, AskPrompt, NameEntry, Project, Source } from '../types'
+import type { AskAnswer, AskEvidence, AskPrompt, NameEntry, Project, Source, AskArea } from '../types'
 import { formatTime, now, uid } from '../model'
 import { findNames } from '../names'
 import { locateQuote, turnsOf, xml, hash } from './pipeline'
@@ -38,7 +38,9 @@ export const ASK_JSON_SCHEMA = {
 } as const
 
 /** Starting points for common questions; a researcher edits them before running. */
-export const ASK_TEMPLATES: { title: string; text: string }[] = [
+export interface AskTemplate { title: string; text: string; sensitive?: boolean }
+
+export const ASK_TEMPLATES: AskTemplate[] = [
   {
     title: 'Feelings and views about the proposal',
     text: 'How does this participant feel about the proposal overall, and why? Describe their main hopes, worries and conditions, and say where they are enthusiastic, cautious or sceptical. Keep to what they said.',
@@ -56,6 +58,56 @@ export const ASK_TEMPLATES: { title: string; text: string }[] = [
     text: 'Summarise this interview in five bullet points a colleague could read in a minute: who is speaking (by role), their main points, and anything surprising.',
   },
 ]
+
+/**
+ * Questions that isolate passages outside the topic questions. Each asks for
+ * every instance, one bullet and one quote per instance, so the answers read as
+ * a list of passages rather than a summary.
+ */
+export const ASIDE_TEMPLATES: AskTemplate[] = [
+  {
+    title: 'Remarks to the interviewer',
+    text: "Find every place where the participant speaks to the interviewer rather than answering the question: asides, jokes, apologies, checking what a question means, asking for the interviewer's own view, comments on time or the recording, thanks or rapport. For each, say what the remark does: clarifies, pushes back, builds rapport, deflects, or signals discomfort.",
+  },
+  {
+    title: 'Comments on the questions and the study',
+    text: "Find every place where the participant comments on the interview questions, the study, or how the research is being done: a question that does not fit them, a premise they reject, a better question to ask, doubts about the study's purpose or who it is for. For each, say what they suggest instead, if anything.",
+  },
+  {
+    title: 'Advice and referrals for the team',
+    text: 'Find every piece of advice the participant gives the research or proposal team, every person or organisation they suggest talking to, and every document, data source or example they point to. Give each as its own item, and say whether the participant offered to make the connection.',
+  },
+  {
+    title: 'Off the record and sensitive moments',
+    text: "Find every place where the participant asks for something not to be quoted or attributed, says something is confidential or \"between us\", holds back because of who might read it, or mentions a sensitive relationship or conflict. For each, say exactly what they asked for, so the team can honour it.",
+    sensitive: true,
+  },
+  {
+    title: 'Promises and follow-ups',
+    text: 'Find every follow-up promised by either side: things the participant will send, people they will contact, things the interviewer will share or check, or a later conversation agreed. For each, say who promised what.',
+  },
+  {
+    title: 'Their own position and stake',
+    text: "Find every place where the participant describes their own position relative to the topic: their role or interest in the proposal, past involvement, a possible conflict of interest, or why their view may be partial. For each, say what it means for how the team should weigh this participant's other answers.",
+  },
+]
+
+/** Standard sets of questions, added in one step on the Ask screen. */
+export const ASK_SETS: { id: string; area: AskArea; title: string; description: string; templates: AskTemplate[] }[] = [
+  { id: 'core', area: 'topic', title: 'Core reading', description: 'Feelings about the proposal, the biggest barrier, disagreements and a five-point summary.', templates: ASK_TEMPLATES },
+  { id: 'asides', area: 'asides', title: 'Asides and the interview itself', description: 'Remarks to the interviewer, comments on the questions, advice and referrals, off-the-record moments, promises, and the participant\'s own stake.', templates: ASIDE_TEMPLATES },
+]
+
+/** Prompts for a set, leaving out any whose title the area already has. */
+export function setPrompts(asks: AskPrompt[], setId: string, maskNames: boolean): AskPrompt[] {
+  const set = ASK_SETS.find((s) => s.id === setId)
+  if (!set) return []
+  const have = new Set(asks.filter((a) => a.area === set.area).map((a) => a.title.trim().toLowerCase()))
+  return set.templates.filter((t) => !have.has(t.title.toLowerCase())).map((t, i) => newPrompt({ title: t.title, text: t.text, area: set.area, sensitive: t.sensitive, maskNames, createdAt: new Date(Date.now() + i).toISOString() }))
+}
+
+/** Added to every asides question, so each instance comes back as its own bullet and quote. */
+export const ASIDES_MODE = `This question isolates passages that sit outside the interview's topic questions. List every instance as its own bullet: what was said and what it does, with its turn citation like [T0042]. Quote every instance as evidence, one quote per instance. An instance may be in an interviewer turn when it is part of the exchange. Do not summarise the interview's topics. If there are no instances, set not_addressed to true.`
 
 const SYSTEM = (project: Project) => `You are helping a qualitative researcher read interview transcripts. You will be given ONE interview from a study and a question about it.
 
@@ -114,7 +166,7 @@ ${attrs ? `<respondent>\n${attrs}\n</respondent>\n` : ''}
 ${lines.join('\n')}
 </transcript>
 
-<question>
+${prompt.area === 'asides' ? `<mode>\n${ASIDES_MODE}\n</mode>\n\n` : ''}<question>
 ${xml(prompt.text.trim())}
 </question>`
 }
@@ -172,6 +224,23 @@ export function askPack(project: Project, prompt: AskPrompt, sourceIds: string[]
   }
 }
 
+/** Several questions in one hand-off file, for running a whole set at once. */
+export interface AskPackSet { format: 'research-weave-ask-pack-set'; version: 1; instructions: string; packs: AskPack[] }
+
+export function askPackSet(project: Project, prompts: AskPrompt[], sourceIds: string[]): AskPackSet {
+  return {
+    format: 'research-weave-ask-pack-set', version: 1,
+    instructions: 'Answer every pack as its own instructions say. Return a JSON array with one research-weave-ask-responses object per pack.',
+    packs: prompts.map((p) => askPack(project, p, sourceIds)),
+  }
+}
+
+/** Reads one responses object or an array of them (from a pack set). */
+export function readAnyAskResponses(project: Project, data: AskResponses | AskResponses[]) {
+  const all = (Array.isArray(data) ? data : [data]).map((d) => readAskResponses(project, d))
+  return { answers: all.flatMap((r) => r.answers), failed: all.flatMap((r) => r.failed) }
+}
+
 /** Reads hand-off answers; returns the verified answers and the ids that could not be read. */
 export function readAskResponses(project: Project, data: AskResponses): { answers: AskAnswer[]; failed: string[] } {
   const prompt = project.asks.find((a) => a.id === data.promptId)
@@ -225,7 +294,7 @@ export function refineAdvice(prompt: AskPrompt, answers: AskAnswer[]): Advice[] 
 }
 
 export function newPrompt(partial: Partial<AskPrompt> & { title: string; text: string }): AskPrompt {
-  return { id: uid(), version: 1, parentId: null, scope: 'all', maskNames: true, createdAt: now(), note: '', ...partial }
+  return { id: uid(), version: 1, parentId: null, scope: 'all', area: 'topic', maskNames: true, createdAt: now(), note: '', ...partial }
 }
 
 /** The chain of versions a question belongs to, oldest first. */

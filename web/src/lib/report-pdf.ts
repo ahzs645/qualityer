@@ -4,7 +4,7 @@ import { codesInGroup, download, formatTime } from './model'
 import { forExport } from './names'
 import { cellKey } from './profile'
 import { turnsOf } from './ai/pipeline'
-import { RECIPES, firstSentences, perspectives, reportData, reportStatus, type ReportOptions } from './report'
+import { RECIPES, asides, firstSentences, perspectives, reportData, reportStatus, type ReportOptions } from './report'
 
 // The report as a PDF document, from the same data and recipe as the HTML.
 // Built with pdfmake, loaded only when someone downloads a PDF.
@@ -76,6 +76,29 @@ export function reportPdfDefinition(project: Project, opts: ReportOptions, gener
       const name = project.cases.find((k) => k.sourceIds.includes(r.source.id))?.name ?? r.source.name.split(' — ')[0]
       content.push({ text: [{ text: t(name) }, r.label ? { text: `   ${t(r.label)}`, color: ACCENT, fontSize: 10 } : ''], style: 'h3' })
       prose(r.label ? r.answer.text.replace(/^\s*(?:\*\*)?overall(?: stance)?:?(?:\*\*)?\s*[^.\n]+?(?:\.|\n|$)\s*/i, '') : r.answer.text, new Map(turnsOf(r.source).map((x) => [x.id, x.time])))
+    }
+  }
+
+  const side = opts.asides ? asides(project) : []
+  if (side.length) {
+    h2('Asides and the interview itself')
+    note('Passages outside the topic questions, picked out by asking each interview separately and kept apart from the framework. Quotes checked against the transcript.')
+    const who = (id: string) => project.cases.find((k) => k.sourceIds.includes(id))?.name ?? project.sources.find((s) => s.id === id)?.name.split(' — ')[0] ?? ''
+    for (const q of side) {
+      h3(q.prompt.title)
+      if (q.sensitive) {
+        prose(q.rows.map((r) => `${who(r.source.id)}: ${r.items.length || 'none'}`).join(' · ') + '.')
+        note('Not quoted: a participant may have asked to keep these off the record. Check each on the Ask screen before quoting anything near it.')
+        continue
+      }
+      for (const r of q.rows) {
+        content.push({ text: t(who(r.source.id)), bold: true, style: 'body', margin: [0, 4, 0, 1] })
+        if (!r.items.length) content.push({ text: 'None found.', color: MUTED, style: 'body' })
+        for (const it of r.items) {
+          content.push({ text: `• ${t(it.note)}`, style: 'body', margin: [6, 1, 0, 1] })
+          if (it.quote && opts.recipe !== 'summary') quote(it.quote, it.time)
+        }
+      }
     }
   }
 

@@ -17,6 +17,7 @@ export const REPORT_SECTIONS = [
   ['sources', 'Sources'],
   ['coverage', 'Interview guide coverage'],
   ['perspectives', 'Participant perspectives'],
+  ['asides', 'Asides and the interview itself'],
   ['framework', 'Framework matrix'],
   ['profile', 'Cases by domain'],
   ['codes', 'Code counts'],
@@ -53,8 +54,8 @@ export const RECIPES: Record<Recipe, { label: string; description: string; optio
     options: { ...on('glance', 'perspectives', 'framework', 'open'), recipe: 'summary', quotesPerCell: 1, bars: false, tabs: false },
   },
   standard: {
-    label: 'Standard', description: 'The analysis: interviews and coverage, perspectives, the framework with its pinned evidence, cases by domain and flagged figures.',
-    options: { ...on('glance', 'sources', 'coverage', 'perspectives', 'framework', 'profile', 'figures', 'open'), recipe: 'standard', quotesPerCell: 3, bars: true, tabs: true },
+    label: 'Standard', description: 'The analysis: interviews and coverage, perspectives and asides, the framework with its pinned evidence, cases by domain and flagged figures.',
+    options: { ...on('glance', 'sources', 'coverage', 'perspectives', 'asides', 'framework', 'profile', 'figures', 'open'), recipe: 'standard', quotesPerCell: 3, bars: true, tabs: true },
   },
   full: {
     label: 'Full audit', description: 'Everything, including code counts, the AI audit trail, memos and the codebook.',
@@ -64,11 +65,47 @@ export const RECIPES: Record<Recipe, { label: string; description: string; optio
 export const recipeOptions = (r: Recipe, askId: string | null = null): ReportOptions => ({ ...RECIPES[r].options, askId })
 export const DEFAULT_REPORT: ReportOptions = recipeOptions('standard')
 
+/** One isolated passage from an asides answer: the model's note on it and the checked quote, when there is one. */
+export interface AsideItem { note: string; quote: string | null; time: string }
+
+/**
+ * The asides questions (Ask → Asides), each at its latest answered version,
+ * with one item per bullet of each interview's answer. Sensitive questions
+ * (off-the-record requests) keep their items out: reports give counts only.
+ */
+export function asides(project: Project) {
+  const answered = (id: string) => project.askAnswers.some((a) => a.promptId === id)
+  const roots = project.asks.filter((a) => a.area === 'asides' && (!a.parentId || !project.asks.some((x) => x.id === a.parentId)))
+  return roots.flatMap((root) => {
+    const chain = [root]
+    for (let next = project.asks.find((a) => a.parentId === root.id); next; next = project.asks.find((a) => a.parentId === next!.id)) chain.push(next)
+    const prompt = chain.filter((a) => answered(a.id)).pop()
+    if (!prompt) return []
+    const rows = project.sources.flatMap((s) => {
+      const a = project.askAnswers.find((x) => x.promptId === prompt.id && x.sourceId === s.id)
+      if (!a) return []
+      const items: AsideItem[] = a.notAddressed ? [] : asideItems(a.text).map(({ note, turns }) => {
+        const e = a.evidence.find((x) => turns.includes(x.turnId) && x.start != null && x.end != null)
+        return { note, quote: e ? quotable(project, s, e.start!, e.end!) : null, time: e ? formatTime(timeAt(s, e.start!)) : '' }
+      })
+      return [{ source: s, answer: a, items }]
+    })
+    return [{ prompt, sensitive: !!prompt.sensitive, rows }]
+  })
+}
+
+/** Bullets of an answer, each with the turns it cites; an answer without bullets is one item. */
+export function asideItems(text: string): { note: string; turns: string[] }[] {
+  const bullets = text.split('\n').map((l) => /^\s*(?:[-*•]|\d+[.)])\s+(.*)$/.exec(l)?.[1]).filter((l): l is string => !!l?.trim())
+  const lines = bullets.length ? bullets : [text]
+  return lines.map((l) => ({ note: l.replace(/\s*\[(T\d+)\]/g, '').replace(/\*\*/g, '').trim(), turns: [...l.matchAll(/\[(T\d+)\]/g)].map((m) => m[1]) })).filter((x) => x.note)
+}
+
 /** The answers to one Ask question, for the "Participant perspectives" section. */
 export function perspectives(project: Project, askId: string | null) {
   const answered = (id: string) => project.askAnswers.some((a) => a.promptId === id)
   const prompt = (askId ? project.asks.find((a) => a.id === askId && answered(a.id)) : null)
-    ?? [...project.asks].filter((a) => answered(a.id)).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+    ?? [...project.asks].filter((a) => a.area !== 'asides' && answered(a.id)).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
   if (!prompt) return null
   const rows = project.sources.map((s) => {
     const a = project.askAnswers.find((x) => x.promptId === prompt.id && x.sourceId === s.id)
@@ -380,6 +417,24 @@ export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPOR
     h('</div>')
   }
 
+  const side = opts.asides ? asides(project) : []
+  if (side.length) {
+    begin('asides', 'Asides')
+    h(`<h2>Asides and the interview itself</h2><p class="note">Passages outside the topic questions, picked out by asking each interview separately (Ask → Asides): remarks to the interviewer, comments on the questions, advice, promises and the participant's own stake. They are kept apart from the framework and the charts. Every quote was checked against the transcript.</p>`)
+    for (const q of side) {
+      h(`<h3>${esc(q.prompt.title)}</h3>`)
+      if (q.sensitive) {
+        h(`<p>${q.rows.map((r) => `${esc(caseOf(project, r.source.id))}: ${r.items.length ? `<b>${r.items.length}</b>` : 'none'}`).join(' · ')}.</p><p class="note">Not quoted here: these are passages a participant may have asked to keep off the record. Check each on the Ask screen and honour the request before quoting anything near it.</p>`)
+        continue
+      }
+      h('<div class="cells">')
+      for (const r of q.rows) {
+        h(`<div class="cell"><h4>${esc(caseOf(project, r.source.id))}</h4>${r.items.length ? `<ul>${r.items.map((it) => `<li>${esc(it.note)}${it.quote && opts.recipe !== 'summary' ? `<blockquote>“${esc(it.quote)}”${it.time ? `<br><small>${esc(it.time)}</small>` : ''}</blockquote>` : ''}</li>`).join('')}</ul>` : '<p><small>None found.</small></p>'}</div>`)
+      }
+      h('</div>')
+    }
+  }
+
   if (opts.framework && d.framework.length) {
     begin('framework', 'Framework')
     const brief = opts.recipe === 'summary'
@@ -534,6 +589,16 @@ export function reportMarkdown(project: Project, opts: ReportOptions = DEFAULT_R
       const times = new Map(turnsOf(r.source).map((t) => [t.id, t.time]))
       h(`### ${caseOf(project, r.source.id)}`, r.answer.text.replace(/\[(T\d{4})(?:[,–-]\s*T?\d{4})*\]/g, (_, id) => { const tm = times.get(id); return tm != null ? `(${formatTime(tm)})` : '' }))
     }
+  }
+  const sideMd = opts.asides ? asides(project) : []
+  for (const q of sideMd) {
+    if (q === sideMd[0]) h('## Asides and the interview itself', '_Passages outside the topic questions, picked out by asking each interview separately and kept apart from the framework. Quotes checked against the transcript._')
+    h(`### ${q.prompt.title}`)
+    if (q.sensitive) {
+      h(`${q.rows.map((r) => `${caseOf(project, r.source.id)}: ${r.items.length || 'none'}`).join(' · ')}.`, '_Not quoted: a participant may have asked to keep these off the record. Check each on the Ask screen before quoting anything near it._')
+      continue
+    }
+    for (const r of q.rows) h(`**${caseOf(project, r.source.id)}.**`, r.items.length ? r.items.map((it) => `- ${it.note}${it.quote ? `\n  > “${it.quote}”${it.time ? ` (${it.time})` : ''}` : ''}`).join('\n') : '_None found._')
   }
   if (opts.framework && d.framework.length) {
     const brief = opts.recipe === 'summary'

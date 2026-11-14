@@ -261,7 +261,7 @@ describe('report recipes', () => {
     const { p, s, lab } = study()
     open(p)
     confirmClaim(s.id, { start: lab[0], end: lab[1] })
-    const q = { id: 'q', title: 'Feelings', text: 'How do they feel?', version: 2, parentId: null, scope: 'all' as const, maskNames: false, createdAt: '2026-01-01', note: '' }
+    const q = { id: 'q', title: 'Feelings', text: 'How do they feel?', version: 2, parentId: null, scope: 'all' as const, area: 'topic' as const, maskNames: false, createdAt: '2026-01-01', note: '' }
     const cur = {
       ...project(), asks: [q],
       askAnswers: [{ id: 'a', promptId: 'q', sourceId: s.id, text: 'Overall: supportive with conditions. They want staff.\nHopes:\n- More staff', evidence: [{ turnId: 'T0002', quote: 'We have a small lab.', start: lab[0], end: lab[1], match: 'exact' as const }], notAddressed: false, model: 'test-model', at: '', rating: null, reviewNote: '' }],

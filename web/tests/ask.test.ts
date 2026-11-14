@@ -95,3 +95,44 @@ describe('ask instructions', () => {
     expect(askSystem(emptyProject('X'))).toContain('do not infer gender')
   })
 })
+
+describe('asides', () => {
+  it('adds the standard set once, marks the sensitive question, and asks for one item per instance', async () => {
+    const { setPrompts, ASIDE_TEMPLATES, askPackSet, readAnyAskResponses } = await import('../src/lib/ai/ask')
+    const p = study()
+    const added = setPrompts(p.asks, 'asides', true)
+    expect(added).toHaveLength(ASIDE_TEMPLATES.length)
+    expect(added.every((a) => a.area === 'asides')).toBe(true)
+    expect(added.filter((a) => a.sensitive).map((a) => a.title)).toEqual(['Off the record and sensitive moments'])
+    p.asks = [...added]
+    expect(setPrompts(p.asks, 'asides', true)).toEqual([])
+    expect(setPrompts(p.asks, 'core', true).length).toBeGreaterThan(0)
+    expect(askMessage(p, p.sources[0], added[0])).toContain('<mode>')
+    expect(askMessage(p, p.sources[0], newPrompt({ title: 't', text: 'q' }))).not.toContain('<mode>')
+    const set = askPackSet(p, added.slice(0, 2), [p.sources[0].id])
+    expect(set.packs).toHaveLength(2)
+    const back = readAnyAskResponses(p, set.packs.map((k) => ({ format: 'research-weave-ask-responses' as const, promptId: k.promptId, responses: [{ id: p.sources[0].id, answer: '- Asks what is meant [T0002]', not_addressed: false, evidence: [{ turn_id: 'T0002', quote: 'We need more space.' }] }] })))
+    expect(back.answers).toHaveLength(2)
+  })
+
+  it('reports asides in their own section, sensitive ones as counts only, and keeps them out of perspectives', async () => {
+    const { reportMarkdown, recipeOptions, asideItems, perspectives } = await import('../src/lib/report')
+    expect(asideItems('Intro.\n- One thing [T0002]\n- **Two** [T0003][T0004]')).toEqual([{ note: 'One thing', turns: ['T0002'] }, { note: 'Two', turns: ['T0003', 'T0004'] }])
+    const p = study()
+    const s = p.sources[0]
+    const start = s.text.indexOf('We need more space.')
+    const ev = [{ turnId: 'T0002', quote: 'We need more space.', start, end: start + 19, match: 'exact' as const }]
+    const open = newPrompt({ title: 'Advice and referrals for the team', text: 'x', area: 'asides' })
+    const shut = newPrompt({ title: 'Off the record and sensitive moments', text: 'y', area: 'asides', sensitive: true })
+    p.asks = [open, shut]
+    const ans = (promptId: string, text: string): AskAnswer => ({ id: promptId + 'a', promptId, sourceId: s.id, text, evidence: ev, notAddressed: false, model: 'm', at: '', rating: null, reviewNote: '' })
+    p.askAnswers = [ans(open.id, '- Suggests asking about space [T0002]'), ans(shut.id, '- Asked that this stay off the record [T0002]')]
+    const md = reportMarkdown(p, recipeOptions('standard'))
+    expect(md).toContain('## Asides and the interview itself')
+    expect(md).toContain('Suggests asking about space')
+    expect(md).toContain('“We need more space.”')
+    expect(md).not.toContain('Asked that this stay off the record')
+    expect(md).toContain('R1: 1.')
+    expect(perspectives(p, null)).toBeNull()
+  })
+})

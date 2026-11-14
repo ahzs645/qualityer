@@ -519,6 +519,11 @@ export function saveAsk(prompt: AskPrompt) {
   update(`save question ${prompt.title}`, (p) => ({ ...p, asks: p.asks.some((a) => a.id === prompt.id) ? p.asks.map((a) => (a.id === prompt.id ? prompt : a)) : [...p.asks, prompt] }))
 }
 
+export function saveAsks(prompts: AskPrompt[]) {
+  if (!prompts.length) return
+  update(`add ${prompts.length} questions`, (p) => ({ ...p, asks: [...p.asks, ...prompts] }))
+}
+
 export function removeAsk(id: string) {
   update('remove question', (p) => ({ ...p, asks: p.asks.filter((a) => a.id !== id), askAnswers: p.askAnswers.filter((a) => a.promptId !== id) }))
 }
