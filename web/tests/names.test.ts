@@ -110,3 +110,32 @@ describe('surnames', () => {
     expect(maskNames('Ames said so.', [jo])).toBe('[R01] said so.')
   })
 })
+
+describe('who is who', () => {
+  it('infers roles, links participants to their voices, and flags misleading stand-ins', async () => {
+    const { roleOf, nameIssues, participantLinks, standInFor } = await import('../src/lib/names')
+    const p = emptyProject('W')
+    const s = { ...newSource('R01 — Lab head', 'Jo Ames and Lee Park met Sam.'), attributes: { 'Respondent ID': 'R01' } }
+    s.speakers = [{ raw: 'Speaker 1', name: 'R01', role: 'respondent' as const }, { raw: 'Speaker 2', name: 'Lead interviewer', role: 'interviewer' as const }]
+    p.sources = [s]
+    const jo = entry('Jo Ames', { replacement: '[R01]' })
+    const lee = entry('Lee Park', { replacement: '[Interviewer]', speakers: [{ sourceId: s.id, raw: 'Speaker 2' }] })
+    const kim = entry('Kim Roe', { replacement: '[Interviewer]' })
+    const sam = entry('Sam', { replacement: '[Interviewer]', role: 'mentioned' })
+    p.names = [jo, lee, kim, sam]
+    expect(roleOf(p, jo)).toBe('participant')
+    expect(roleOf(p, lee)).toBe('team')
+    expect(roleOf(p, sam)).toBe('mentioned')
+    expect(roleOf(p, entry('Port Ellis', { kind: 'place' }))).toBeNull()
+    expect(participantLinks(p)).toEqual([{ id: 'Jo Ames', refs: [{ sourceId: s.id, raw: 'Speaker 1' }] }])
+    const issues = nameIssues(p).map((i) => i.id)
+    expect(issues).toContain('shared:[Interviewer]')
+    expect(issues).toContain('role:Sam')
+    expect(nameIssues(p).find((i) => i.id === 'link:team')?.entryIds).toEqual(['Kim Roe'])
+    p.names = [lee, { ...kim, replacement: '[Team member 2]', speakers: [{ sourceId: s.id, raw: 'Speaker 2' }] }]
+    expect(nameIssues(p).map((i) => i.id)).toEqual([`voice:${s.id}|Speaker 2`])
+    p.names = [entry('A', { replacement: '[Team member 1]' })]
+    expect(standInFor(p, 'team', 'person')).toBe('[Team member 2]')
+    expect(standInFor(p, 'mentioned', 'person')).toBe('[Person 1]')
+  })
+})

@@ -471,6 +471,25 @@ Three things came out of the run:
 - **Missed names:** the advice and remarks answers surfaced three first names the register had missed. They were registered and masked.
 - **Most "sensitive" items are not requests:** they are delicate relationships, so the report shows counts for that question rather than quotes.
 
+### Who is who in the names register
+
+The names register used to be a flat list of people, organisations and places. It is now tied to each interview's speaker list:
+- **Roles:** each person is a *participant*, on the *research team* (the interviewer, or a colleague in the room), or *mentioned*. When no role is set, it is inferred from a linked speaker or from the stand-in.
+- **Speaker links:** "speaks as" links a name to the speaker label it has in each interview, so a name and a voice are known to be one person. Participants can be linked to their own interview's respondent in one click.
+- **Notes:** each name can record who it is and how that is known.
+- **Checks** under *Check who is who* flag three problems:
+  - different people sharing one stand-in;
+  - a role stand-in such as "[Interviewer]" on someone who is only mentioned;
+  - one voice linked to two names.
+
+  They also list team members with no known voice.
+
+On the calibration study, these checks found:
+- two team members and one first name all masked as "[Interviewer]";
+- that first name refers to three different people across the interviews.
+
+The team members now have distinct stand-ins, and are linked to the voices they introduce themselves as. The first name has a neutral stand-in. Two team members named in passing remain unlinked, because the recordings do not say which voice is theirs.
+
 ## Still not ported
 
 - **Speech-to-text and diarisation inside the app.** Transcribe with Whisper / WhisperX / noScribe and import the JSON. `services/transcription` is unchanged.

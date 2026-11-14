@@ -1,4 +1,4 @@
-import type { NameEntry, NameKind, Project, Source } from './types'
+import type { NameEntry, NameKind, NameRole, Project, Source, SpeakerRef } from './types'
 import { segmentsOf } from './model'
 
 // Names across a study: finding the people, organisations and places a
@@ -262,3 +262,88 @@ export function nextReplacement(project: Project, kind: NameKind) {
 
 /** Default for whether a kind of name is masked: people and unclassified names (often first names) are; organisations and places are a decision. */
 export const MASK_BY_DEFAULT: Record<NameKind, boolean> = { person: true, organisation: false, place: false, other: true }
+
+// ---------------------------------------------------------------------------
+// Roles: who a name is in the study, and which speaker they are
+
+export const ROLE_LABEL: Record<NameRole, string> = { participant: 'Participant', team: 'Research team', mentioned: 'Mentioned' }
+
+const ROLE_STAND_IN = /^\[(?:R\d+|P\d+|Participant[^\]]*|Interviewer[^\]]*|Colleague[^\]]*|Team member[^\]]*|Lead[^\]]*)\]$/i
+
+/** The role set on the entry, else the role of a linked speaker, else what its stand-in implies. Only people have roles. */
+export function roleOf(project: Project, e: NameEntry): NameRole | null {
+  if (e.kind !== 'person' && e.kind !== 'other') return null
+  if (e.role) return e.role
+  for (const ref of e.speakers ?? []) {
+    const sp = project.sources.find((s) => s.id === ref.sourceId)?.speakers.find((x) => x.raw === ref.raw)
+    if (sp?.role === 'respondent') return 'participant'
+    if (sp?.role === 'interviewer' || sp?.role === 'observer') return 'team'
+  }
+  if (/^\[(?:R|P)\d+\]$/i.test(e.replacement.trim())) return 'participant'
+  if (/^\[(?:Interviewer|Colleague|Team member|Lead)/i.test(e.replacement.trim())) return 'team'
+  return e.kind === 'person' ? 'mentioned' : null
+}
+
+/** Every speaker in the study, for linking names to voices. */
+export function speakerOptions(project: Project) {
+  return project.sources.flatMap((s) => s.speakers.map((sp) => ({
+    ref: { sourceId: s.id, raw: sp.raw },
+    key: `${s.id}|${sp.raw}`,
+    label: `${s.attributes['Respondent ID']?.trim() || s.name.split(' — ')[0]} · ${sp.name || sp.raw}`,
+    role: sp.role,
+  })))
+}
+
+/** A stand-in that says the role: [Team member 2], or the next [Person n] for someone mentioned. */
+export function standInFor(project: Project, role: NameRole | null, kind: NameKind) {
+  if (role === 'team') {
+    const used = project.names.map((e) => /^\[Team member (\d+)\]$/.exec(e.replacement.trim())?.[1]).filter(Boolean).map(Number)
+    return `[Team member ${used.length ? Math.max(...used) + 1 : 1}]`
+  }
+  if (role === 'participant') return '[Participant]'
+  return nextReplacement(project, kind)
+}
+
+export interface NameIssue { id: string; text: string; entryIds: string[] }
+
+/**
+ * Problems that make an anonymised report misleading: different people sharing
+ * one stand-in, a stand-in that claims a role the entry does not have, and the
+ * same speaker linked to two names.
+ */
+export function nameIssues(project: Project): NameIssue[] {
+  const out: NameIssue[] = []
+  const masked = project.names.filter((e) => e.mask && e.replacement.trim())
+  const byStandIn = new Map<string, NameEntry[]>()
+  for (const e of masked) byStandIn.set(e.replacement.trim(), [...(byStandIn.get(e.replacement.trim()) ?? []), e])
+  for (const [r, es] of byStandIn) if (es.length > 1) out.push({ id: `shared:${r}`, entryIds: es.map((e) => e.id), text: `${es.map((e) => e.name).join(', ')} all become ${r}. If they are different people, give each its own stand-in; if they are one person, make the others spellings of one entry.` })
+  for (const e of masked) {
+    const role = roleOf(project, e)
+    if (ROLE_STAND_IN.test(e.replacement.trim()) && role === 'mentioned') out.push({ id: `role:${e.id}`, entryIds: [e.id], text: `${e.name} is masked as ${e.replacement}, which names a role, but is marked as someone mentioned. Use a neutral stand-in such as ${nextReplacement(project, 'person')}, or set the role.` })
+  }
+  const unlinked = masked.filter((e) => roleOf(project, e) === 'team' && !(e.speakers ?? []).length)
+  if (unlinked.length) out.push({ id: 'link:team', entryIds: unlinked.map((e) => e.id), text: `Research team not linked to a speaker: ${unlinked.map((e) => e.name).join(', ')}. Link each under “speaks as” where you know which voice is theirs; leave it where the recording does not say.` })
+  const seen = new Map<string, NameEntry>()
+  for (const e of project.names) for (const ref of e.speakers ?? []) {
+    const k = `${ref.sourceId}|${ref.raw}`
+    const other = seen.get(k)
+    if (other && other.id !== e.id) out.push({ id: `voice:${k}`, entryIds: [other.id, e.id], text: `${other.name} and ${e.name} are both linked to the same speaker in one interview.` })
+    else seen.set(k, e)
+  }
+  return out
+}
+
+/**
+ * Participants whose stand-in is a respondent ID ([R03]) and who are not yet
+ * linked to a speaker: the respondent speaker of the interview with that ID.
+ */
+export function participantLinks(project: Project): { id: string; refs: SpeakerRef[] }[] {
+  return project.names.flatMap((e) => {
+    if (roleOf(project, e) !== 'participant' || (e.speakers ?? []).length) return []
+    const rid = /^\[(R\d+|P\d+)\]$/i.exec(e.replacement.trim())?.[1]
+    if (!rid) return []
+    const refs = project.sources.filter((s) => (s.attributes['Respondent ID']?.trim() || s.name.split(' — ')[0]).toUpperCase() === rid.toUpperCase())
+      .flatMap((s) => s.speakers.filter((sp) => sp.role === 'respondent').map((sp) => ({ sourceId: s.id, raw: sp.raw })))
+    return refs.length ? [{ id: e.id, refs }] : []
+  })
+}

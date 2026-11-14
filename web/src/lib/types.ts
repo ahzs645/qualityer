@@ -360,11 +360,24 @@ export type NameKind = 'person' | 'organisation' | 'place' | 'other'
  * misheard machine transcriptions) are listed so every mention is found, and
  * `replacement` stands in for it in quotes and exports when anonymising.
  */
+/**
+ * Who a named person is in the study: a participant, a member of the research
+ * team (an interviewer or a colleague in the room), or someone mentioned.
+ */
+export type NameRole = 'participant' | 'team' | 'mentioned'
+
+/** A speaker in one interview, as labelled in its speaker list. */
+export interface SpeakerRef { sourceId: ID; raw: string }
+
 export interface NameEntry {
   id: ID
   name: string
   variants: string[]
   kind: NameKind
+  /** For people. Unset means inferred from linked speakers or the stand-in (see roleOf). */
+  role?: NameRole
+  /** The speakers this person is, interview by interview, so a name and a voice are known to be the same person. */
+  speakers?: SpeakerRef[]
   /** e.g. "[R01]", "[Colleague 1]", "[a health authority]". */
   replacement: string
   /** Replace this name in reports and exports when the study is anonymised. */

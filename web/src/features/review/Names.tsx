@@ -1,10 +1,10 @@
 import { Link } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
-import { ChevronDown, EyeOff, Plus, Trash2 } from 'lucide-react'
-import type { NameEntry, NameKind, Project, Source } from '../../lib/types'
+import { AlertTriangle, ChevronDown, EyeOff, Plus, Trash2, X } from 'lucide-react'
+import type { NameEntry, NameKind, NameRole, Project, Source } from '../../lib/types'
 import { useProject } from '../../lib/store'
 import { excerpt, indexBy } from '../../lib/model'
-import { MASK_BY_DEFAULT, defaultVariants, findNames, maskNames, nameCandidates, nameCounts, nextReplacement, type NameCandidate } from '../../lib/names'
+import { MASK_BY_DEFAULT, ROLE_LABEL, defaultVariants, nextReplacement, findNames, maskNames, nameCandidates, nameCounts, nameIssues, participantLinks, roleOf, speakerOptions, standInFor, type NameCandidate } from '../../lib/names'
 import { addName, addNameVariant, dismissName, removeName, setAnonymise, updateName } from '../../lib/actions'
 import { Badge, Button, Empty, IconButton, Input, Panel, Select, cx } from '../../components/ui'
 
@@ -26,6 +26,7 @@ export function Names() {
   return (
     <div className="space-y-5">
       <AnonymisePanel project={project} masked={masked.length} />
+      <Issues project={project} />
       <Register project={project} counts={counts} />
       <Candidates project={project} />
     </div>
@@ -73,16 +74,30 @@ function Register({ project, counts }: { project: Project; counts: Map<string, M
   const [open, setOpen] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [kind, setKind] = useState<NameKind>('person')
+  const [newRole, setNewRole] = useState<NameRole>('mentioned')
   const [filter, setFilter] = useState('')
-  const rows = project.names.filter((e) => !filter || [e.name, ...e.variants, e.replacement].some((v) => v.toLowerCase().includes(filter.toLowerCase())))
+  const [show, setShow] = useState<NameRole | 'things' | ''>('')
+  const order: Record<string, number> = { participant: 0, team: 1, mentioned: 2 }
+  const rows = project.names
+    .filter((e) => !filter || [e.name, ...e.variants, e.replacement].some((v) => v.toLowerCase().includes(filter.toLowerCase())))
+    .filter((e) => { const r = roleOf(project, e); return !show || (show === 'things' ? !r : r === show) })
+    .map((e, i) => ({ e, i, r: roleOf(project, e) }))
+    .sort((a, b) => (order[a.r ?? ''] ?? 3) - (order[b.r ?? ''] ?? 3) || a.i - b.i)
+    .map((x) => x.e)
+  const tally = (r: NameRole | 'things') => project.names.filter((e) => { const x = roleOf(project, e); return r === 'things' ? !x : x === r }).length
 
   return (
     <Panel title={`Names in this study · ${project.names.length}`} bodyClass="p-0" actions={
       <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter" aria-label="Filter names" className="h-7 w-40 text-xs" />
     }>
       <p className="border-b border-line px-4 py-2 text-xs text-muted">
-        Each name with every spelling the transcripts use (short forms, misheard forms), its stand-in, and how often each interview mentions it. A count across several interviews shows who and what the study keeps coming back to.
+        Each name with every spelling the transcripts use (short forms, misheard forms), who they are in the study, its stand-in, and how often each interview mentions it. Link participants and team members to the speaker they are in each interview, so a name and a voice are known to be the same person.
       </p>
+      <div className="flex flex-wrap gap-1 border-b border-line px-4 py-2 text-xs" role="group" aria-label="Show">
+        {([['', 'All', project.names.length], ['participant', 'Participants', tally('participant')], ['team', 'Research team', tally('team')], ['mentioned', 'Mentioned', tally('mentioned')], ['things', 'Organisations and places', tally('things')]] as const).map(([v, l, n]) => (
+          <button key={v} type="button" aria-pressed={show === v} onClick={() => setShow(v)} className={cx('rounded-full border px-2.5 py-0.5', show === v ? 'border-accent bg-accent-soft text-ink' : 'border-line text-muted hover:text-ink')}>{l} <span className="text-faint">{n}</span></button>
+        ))}
+      </div>
       {project.names.length === 0 ? (
         <Empty title="No names yet">Add suggestions below, or type a name.</Empty>
       ) : (
@@ -93,6 +108,7 @@ function Register({ project, counts }: { project: Project; counts: Map<string, M
                 <th className="px-4 py-2 font-medium">Name</th>
                 <th className="px-2 py-2 font-medium">Other spellings</th>
                 <th className="px-2 py-2 font-medium">Kind</th>
+                <th className="px-2 py-2 font-medium">Who · speaks as</th>
                 <th className="px-2 py-2 font-medium">Stand-in</th>
                 <th className="px-2 py-2 font-medium" title="Replace in exports">Mask</th>
                 {project.sources.map((s) => <th key={s.id} className="px-1.5 py-2 text-right font-medium" title={s.name}>{short(s)}</th>)}
@@ -115,13 +131,19 @@ function Register({ project, counts }: { project: Project; counts: Map<string, M
         e.preventDefault()
         const n = name.trim()
         if (!n) return
-        addName({ name: n, variants: defaultVariants(n, kind), kind, replacement: nextReplacement(project, kind), mask: MASK_BY_DEFAULT[kind], caseSensitive: true, note: '' })
+        const role = kind === 'person' ? newRole : undefined
+        addName({ name: n, variants: defaultVariants(n, kind), kind, role, replacement: standInFor(project, role ?? null, kind), mask: MASK_BY_DEFAULT[kind], caseSensitive: true, note: '' })
         setName('')
       }}>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Add a name, e.g. Jane Doe" aria-label="New name" className="h-8 w-56" />
         <Select value={kind} onChange={(e) => setKind(e.target.value as NameKind)} aria-label="Kind of the new name" className="h-8">
           {KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
         </Select>
+        {kind === 'person' && (
+          <Select value={newRole} onChange={(e) => setNewRole(e.target.value as NameRole)} aria-label="Who the new name is" className="h-8">
+            {(Object.keys(ROLE_LABEL) as NameRole[]).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+          </Select>
+        )}
         <Button size="sm" type="submit" icon={<Plus size={13} />}>Add</Button>
       </form>
     </Panel>
@@ -150,8 +172,9 @@ function NameRow({ project, entry: e, per, total, open, onToggle }: { project: P
             {KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
           </Select>
         </td>
+        <td className="px-2 py-1.5"><RoleCell project={project} entry={e} /></td>
         <td className="px-2 py-1.5">
-          <Input key={e.replacement} className="h-7 w-36" defaultValue={e.replacement} aria-label={`Stand-in for ${e.name}`} onBlur={(ev) => ev.target.value !== e.replacement && updateName(e.id, { replacement: ev.target.value })} />
+          <Input key={e.replacement} className="h-7 w-36 min-w-36" defaultValue={e.replacement} aria-label={`Stand-in for ${e.name}`} onBlur={(ev) => ev.target.value !== e.replacement && updateName(e.id, { replacement: ev.target.value })} />
         </td>
         <td className="px-2 py-1.5 text-center">
           <input type="checkbox" className="mt-1.5" checked={e.mask} onChange={(ev) => updateName(e.id, { mask: ev.target.checked })} aria-label={`Mask ${e.name} in exports`} />
@@ -169,7 +192,9 @@ function NameRow({ project, entry: e, per, total, open, onToggle }: { project: P
       </tr>
       {open && (
         <tr className="border-b border-line bg-sunken/40">
-          <td colSpan={6 + project.sources.length} className="px-4 py-2">
+          <td colSpan={7 + project.sources.length} className="px-4 py-2">
+            <Input key={e.note} defaultValue={e.note} placeholder="Note: who this is, and how you know (e.g. introduces themselves at 00:41 in R03)" aria-label={`Note on ${e.name}`} className="mb-2 h-7 w-full max-w-2xl text-xs"
+              onBlur={(ev) => ev.target.value !== e.note && updateName(e.id, { note: ev.target.value })} />
             <label className="mb-2 flex items-center gap-2 text-xs text-muted">
               <input type="checkbox" checked={e.caseSensitive} onChange={(ev) => updateName(e.id, { caseSensitive: ev.target.checked })} />
               Match capitals exactly (so a surname that is also a word, like Moss, is found only when capitalised)
@@ -250,5 +275,58 @@ function CandidateRow({ project, c, source }: { project: Project; c: NameCandida
       )}
       <Button size="sm" variant="ghost" onClick={() => dismissName(c.text)} aria-label={`${c.text} is not a name`}>Not a name</Button>
     </li>
+  )
+}
+
+/** Who a person is in the study, and which speaker they are in each interview. */
+function RoleCell({ project, entry: e }: { project: Project; entry: NameEntry }) {
+  const role = roleOf(project, e)
+  const options = useMemo(() => speakerOptions(project), [project])
+  if (!role && e.kind !== 'person' && e.kind !== 'other') return <span className="text-xs text-faint">—</span>
+  const linked = (e.speakers ?? []).map((r) => options.find((o) => o.key === `${r.sourceId}|${r.raw}`)).filter((o): o is (typeof options)[number] => !!o)
+  const free = options.filter((o) => !linked.some((l) => l.key === o.key) && (role === 'participant' ? o.role === 'respondent' : role === 'team' ? o.role !== 'respondent' : true))
+  return (
+    <div className="min-w-40 space-y-1">
+      <Select value={e.role ?? ''} onChange={(ev) => updateName(e.id, { role: (ev.target.value || undefined) as NameRole | undefined })} className="h-7 w-full text-xs" aria-label={`Who ${e.name} is`}>
+        <option value="">{role ? `${ROLE_LABEL[role]} (inferred)` : 'Not set'}</option>
+        {(Object.keys(ROLE_LABEL) as NameRole[]).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+      </Select>
+      {role !== 'mentioned' && (
+        <div className="flex flex-wrap items-center gap-1">
+          {linked.map((o) => (
+            <span key={o.key} className="inline-flex items-center gap-0.5 rounded bg-sunken px-1.5 py-0.5 text-[11px]">
+              {o.label}
+              <button type="button" aria-label={`Unlink ${e.name} from ${o.label}`} className="text-faint hover:text-ink" onClick={() => updateName(e.id, { speakers: (e.speakers ?? []).filter((r) => `${r.sourceId}|${r.raw}` !== o.key) })}><X size={11} /></button>
+            </span>
+          ))}
+          {free.length > 0 && (
+            <Select value="" onChange={(ev) => { const o = options.find((x) => x.key === ev.target.value); if (o) updateName(e.id, { speakers: [...(e.speakers ?? []), o.ref] }) }} className="h-6 max-w-36 text-[11px]" aria-label={`Link ${e.name} to a speaker`}>
+              <option value="">+ speaks as…</option>
+              {free.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+            </Select>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Checks that keep an anonymised report from misleading: shared stand-ins, role stand-ins on the wrong people, one voice linked to two names. */
+function Issues({ project }: { project: Project }) {
+  const issues = useMemo(() => nameIssues(project), [project])
+  const links = useMemo(() => participantLinks(project), [project])
+  if (!issues.length && !links.length) return null
+  return (
+    <Panel title={<span className="flex items-center gap-2"><AlertTriangle size={14} className="text-warn" /> Check who is who · {issues.length}</span>} bodyClass="p-0">
+      <ul className="divide-y divide-line text-sm">
+        {links.length > 0 && (
+          <li className="flex flex-wrap items-center gap-2 px-4 py-2">
+            <span className="flex-1">{links.length} participant{links.length === 1 ? ' is' : 's are'} not linked to the respondent speaker in their own interview.</span>
+            <Button size="sm" onClick={() => links.forEach((l) => updateName(l.id, { speakers: l.refs }))}>Link {links.length === 1 ? 'it' : 'them'}</Button>
+          </li>
+        )}
+        {issues.map((i) => <li key={i.id} className="px-4 py-2">{i.text}</li>)}
+      </ul>
+    </Panel>
   )
 }
