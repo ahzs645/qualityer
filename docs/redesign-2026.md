@@ -409,6 +409,52 @@ Claims awaiting a decision are left out of all four, and AI-drafted claims not y
 
 Not built yet from the shortlist: a case-ordered meta-matrix (participants sorted by their overall view) and a quote swarm for a single theme.
 
+## Twelfth pass: charts other tools have, and asides
+
+### Charts
+
+Two catalogues list every chart we could find documented in other tools:
+- [`qda-charts-classic-tools-2026.md`](qda-charts-classic-tools-2026.md): MAXQDA, NVivo, ATLAS.ti, Dedoose, QDA Miner, Quirkos, Leximancer and the open-source tools.
+- [`qda-charts-newer-tools-2026.md`](qda-charts-newer-tools-2026.md): Dovetail, Condens, CoLoop, Reframer, Marvin, Kapiche, Qualtrics and others, plus published practice such as rainbow spreadsheets, spectrum displays and Harvey balls.
+
+Both catalogues agree on three points. Every serious tool can switch a matrix from counting passages to counting participants. Every mark should open its quotes. Clouds, packed bubbles, Sankey diagrams and biplots suggest prevalence that small-n interviews cannot support.
+
+Built from the catalogues:
+
+| Idea (source) | Where it is now |
+|---|---|
+| Code × participant matrix with a unit toggle (MAXQDA Code Matrix Browser, NVivo crosstab, Condens, dscout) | Explore → **Who raised what**. It shows People (the default), Passages, or Share of each person. Columns can be grouped by attribute, showing "2/3" per group |
+| Dominant stance and evidence glyph per cell (CoLoop grid, Evergreen chooser) | The same matrix in Stance mode (coloured dot) and Evidence mode (Harvey ball). The People column shows each participant's stance |
+| Seriation, keeping an optional fixed order (QDA Miner, MAXQDA) | Order rows by "most people first, alike together", or keep codebook order |
+| Written summary on hover (MAXQDA) | Code-group cells show the framework summary for that case |
+| Shared vs unique (NVivo comparison diagram, MAXQDA Two-Cases) | **Shared and unique**, under the matrix |
+| Co-occurrence normalisation (ATLAS.ti c-coefficient), co-occurrence by participant | The Co-occurrence measure can be shared passages, strength (c), or people with the pair |
+| Spectrum per theme, convergence coding, evidence profile, sequence strips | **Where people stand** (eleventh pass) |
+
+Not built:
+- chord diagrams, since the heatmap and network already cover co-occurrence;
+- observed-vs-expected ticks per group (Kapiche);
+- frequency-vs-distinctiveness quadrants (Leximancer);
+- proximity plots (QDA Miner).
+
+The last three need more participants than a calibration round has.
+
+### Asides
+
+Ask now has two areas.
+- **Topic:** questions about what the interviews cover.
+- **Asides:** questions that isolate passages outside the topic. A standard set adds six:
+  - remarks to the interviewer;
+  - comments on the questions and the study;
+  - advice and referrals for the team;
+  - off-the-record and sensitive moments;
+  - promises and follow-ups;
+  - the participant's own position and stake.
+
+Each asides question is sent with an instruction to list every instance as its own bullet, with one verbatim quote per instance. A board shows how many passages each question found in each interview, and lists one participant's asides together. A whole set can go out as one agent pack.
+
+Asides stay out of the framework, the charts, the claim counts and "Participant perspectives". The report gives them their own section, and gives only counts for the off-the-record question, never quotes.
+
 ## Still not ported
 
 - **Speech-to-text and diarisation inside the app.** Transcribe with Whisper / WhisperX / noScribe and import the JSON. `services/transcription` is unchanged.
