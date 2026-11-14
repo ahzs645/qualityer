@@ -1,4 +1,4 @@
-import type { AskAnswer, AskPrompt, Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, NameEntry, Project, Source, WordingCheck } from './types'
+import type { AskAnswer, AskPrompt, SignOff, Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, NameEntry, Project, Source, WordingCheck } from './types'
 import { applySpeakerTrack, joinSegments, splitSegments, type SpeakerInterval } from './listen'
 import { PALETTE, editSource, findCorrections, now, segmentsOf, uid } from './model'
 import { snapshot, store, update } from './store'
@@ -534,4 +534,14 @@ export function saveAskAnswers(answers: AskAnswer[]) {
 
 export function rateAnswer(id: string, change: Partial<Pick<AskAnswer, 'rating' | 'reviewNote'>>) {
   update('rate answer', (p) => ({ ...p, askAnswers: p.askAnswers.map((a) => (a.id === id ? { ...a, ...change } : a)) }))
+}
+
+// Sign-off --------------------------------------------------------------------
+
+export function signOff(s: Omit<SignOff, 'at'>) {
+  update(`sign off as ${s.by}`, (p) => ({ ...p, signoff: { ...s, at: now() } }))
+}
+
+export function withdrawSignOff() {
+  update('withdraw sign-off', (p) => ({ ...p, signoff: null }))
 }

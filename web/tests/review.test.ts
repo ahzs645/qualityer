@@ -284,3 +284,24 @@ describe('report recipes', () => {
     expect(firstSentences('A. B. C.', 5)).toBe('A. B. C.')
   })
 })
+
+describe('sign-off', () => {
+  it('blocks while claims are unchecked, then reads as final and names an AI reviewer as such', async () => {
+    const { signOffBlockers, reportStatus } = await import('../src/lib/report')
+    const { p, s, lab, staff } = study()
+    open(p)
+    expect(signOffBlockers(project()).join(' ')).toContain('AI suggestions have not been decided')
+    confirmClaim(s.id, { start: lab[0], end: lab[1] })
+    rejectClaim(s.id, { start: staff[0], end: staff[1] })
+    const done = { ...project(), sources: project().sources.map((x) => ({ ...x, status: 'done' as const })) }
+    expect(signOffBlockers(done)).toEqual([])
+    const signed = { ...done, signoff: { by: 'Claude (acting reviewer)', role: 'ai' as const, at: done.updatedAt, note: 'Checked every claim.' } }
+    expect(reportStatus(signed)).toContain('an AI acting as the human reviewer. No person has signed off this analysis')
+    const html = reportHTML(signed, recipeOptions('standard'))
+    expect(html).toContain('class="status final"')
+    expect(html).toContain('<h2>Limitations</h2>')
+    expect(reportStatus({ ...signed, signoff: { ...signed.signoff, role: 'person' as const, by: 'A. Analyst' } })).toMatch(/^Final: signed off on .* by A\. Analyst\.$/)
+    const later = { ...signed, updatedAt: new Date(Date.parse(signed.signoff.at) + 120_000).toISOString() }
+    expect(reportStatus(later)).toContain('edited since')
+  })
+})

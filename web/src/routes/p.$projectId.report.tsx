@@ -3,10 +3,11 @@ import { useMemo, useRef, useState } from 'react'
 import { Download, FileText, Printer } from 'lucide-react'
 import { useProject } from '../lib/store'
 import { download, slug } from '../lib/model'
-import { RECIPES, REPORT_SECTIONS, claimsCSV, recipeOptions, reportHTML, reportMarkdown, type Recipe, type ReportOptions } from '../lib/report'
+import { RECIPES, REPORT_SECTIONS, claimsCSV, editedSinceSignOff, recipeOptions, reportHTML, reportMarkdown, signOffBlockers, type Recipe, type ReportOptions } from '../lib/report'
 import { decisionLogCSV } from '../features/review/DecisionLog'
-import { setAnonymise } from '../lib/actions'
-import { Button, PageHeader, Panel, Select, cx } from '../components/ui'
+import { setAnonymise, signOff, withdrawSignOff } from '../lib/actions'
+import type { Project, SignOff } from '../lib/types'
+import { Button, Input, PageHeader, Panel, Select, Textarea, cx } from '../components/ui'
 
 export const Route = createFileRoute('/p/$projectId/report')({ component: Report })
 
@@ -42,6 +43,7 @@ function Report() {
       {error && <p role="alert" className="mb-4 rounded-md bg-bad-soft px-3 py-2 text-sm text-bad">{error}</p>}
       <div className="grid gap-5 lg:grid-cols-[18rem_1fr]">
         <aside className="space-y-4">
+          <SignOffPanel project={project} />
           <Panel title="Recipe" bodyClass="space-y-1.5 p-2">
             {(Object.keys(RECIPES) as Recipe[]).map((r) => (
               <button key={r} type="button" aria-pressed={opts.recipe === r} onClick={() => setOpts(recipeOptions(r, opts.askId))}
@@ -93,5 +95,45 @@ function Report() {
         <iframe ref={frame} title="Report preview" srcDoc={html} sandbox="allow-same-origin allow-modals" className="h-[calc(100vh-11rem)] w-full rounded-lg border border-line bg-white" />
       </div>
     </div>
+  )
+}
+
+/** Signing the analysis off as final, as a person or as an AI standing in for one. Reports say which. */
+function SignOffPanel({ project }: { project: Project }) {
+  const blockers = useMemo(() => (project.signoff ? [] : signOffBlockers(project)), [project])
+  const [by, setBy] = useState(project.coder)
+  const [role, setRole] = useState<SignOff['role']>(/\b(ai|claude|assistant|model|acting)\b/i.test(project.coder) ? 'ai' : 'person')
+  const [note, setNote] = useState('')
+  const so = project.signoff
+  if (so) {
+    return (
+      <Panel title="Sign-off" bodyClass="space-y-2 p-3 text-sm">
+        <p className="rounded-md bg-good-soft px-3 py-2 text-good">
+          Final. Signed off by <b>{so.by}</b>{so.role === 'ai' ? ', an AI acting as the human reviewer' : ''} on {new Date(so.at).toLocaleDateString()}.
+        </p>
+        {so.note && <p className="text-xs text-muted">{so.note}</p>}
+        {editedSinceSignOff(project) && <p className="text-xs text-warn">The study has been edited since. Reports say so; withdraw and sign off again if the changes are part of the final analysis.</p>}
+        <Button size="sm" variant="ghost" onClick={() => confirm('Withdraw the sign-off? Reports will read as a working draft again.') && withdrawSignOff()}>Withdraw sign-off</Button>
+      </Panel>
+    )
+  }
+  return (
+    <Panel title="Sign-off" bodyClass="space-y-2.5 p-3 text-sm">
+      {blockers.length ? (
+        <>
+          <p className="text-xs text-muted">Settle these first:</p>
+          <ul className="list-disc space-y-1 pl-4 text-xs text-bad">{blockers.map((b) => <li key={b}>{b}</li>)}</ul>
+        </>
+      ) : <p className="text-xs text-good">Nothing blocks sign-off. What no reviewer can settle here (recordings not listened to, questions not asked) is listed as limitations.</p>}
+      <Input value={by} onChange={(e) => setBy(e.target.value)} aria-label="Signed off by" className="h-8" />
+      <div className="grid grid-cols-2 gap-0.5 rounded-md bg-sunken p-0.5 text-xs" role="radiogroup" aria-label="Who is signing">
+        {([['person', 'A person'], ['ai', 'An AI acting as reviewer']] as const).map(([v, l]) => (
+          <button key={v} type="button" role="radio" aria-checked={role === v} onClick={() => setRole(v)} className={cx('rounded px-2 py-1', role === v ? 'bg-surface font-medium shadow-sm' : 'text-muted')}>{l}</button>
+        ))}
+      </div>
+      <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="What was checked, and on what basis" aria-label="Sign-off note" className="text-xs" />
+      <Button size="sm" variant="primary" disabled={blockers.length > 0 || !by.trim()} onClick={() => signOff({ by: by.trim(), role, note: note.trim() })}>Sign off as final</Button>
+      {role === 'ai' && <p className="text-[11px] text-muted">Reports will say that an AI signed off, standing in for the human reviewer.</p>}
+    </Panel>
   )
 }

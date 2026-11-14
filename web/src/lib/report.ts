@@ -180,7 +180,41 @@ export function reportData(project: Project) {
 }
 type Data = ReturnType<typeof reportData>
 
+const longDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+
+/** True when the study was changed more than a minute after it was signed off. */
+export const editedSinceSignOff = (p: Project) => !!p.signoff && new Date(p.updatedAt).getTime() - new Date(p.signoff.at).getTime() > 60_000
+
+/**
+ * What has to be settled before the analysis can be signed off as final. Things
+ * no reviewer can settle from the app (listening to recordings, questions not
+ * asked) do not block; they become the report's limitations.
+ */
+export function signOffBlockers(project: Project): string[] {
+  const d = reportData(project)
+  const out: string[] = []
+  if (d.pending.length) out.push(`${d.pending.length} AI suggestions have not been decided.`)
+  if (d.violations.length) out.push(`${d.violations.length} codebook rule issues are open.`)
+  const unchecked = d.sourceRows.reduce((n, r) => n + r.unchecked, 0)
+  if (unchecked) out.push(`${unchecked} AI-drafted claims were accepted without being checked claim by claim.`)
+  const open = project.candidates.filter((c) => c.status === 'open').length
+  if (open) out.push(`${open} candidate code${open === 1 ? '' : 's'} await a decision.`)
+  const notDone = project.sources.filter((s) => s.status !== 'done')
+  if (notDone.length) out.push(`${notDone.length} source${notDone.length === 1 ? ' is' : 's are'} not marked done: ${notDone.map((s) => s.name.split(' — ')[0]).join(', ')}.`)
+  const unmarked = d.coverage.reduce((n, row) => n + row.marks.filter((m) => m.status === 'unmarked').length, 0)
+  if (unmarked) out.push(`${unmarked} guide questions have no coverage mark.`)
+  if (d.corrections) out.push(`${d.corrections} glossary corrections are waiting to be applied.`)
+  return out
+}
+
 function statusLine(d: Data) {
+  const so = d.project.signoff
+  if (so) {
+    const who = so.role === 'ai'
+      ? `${so.by}, an AI acting as the human reviewer. No person has signed off this analysis`
+      : so.by
+    return `Final: signed off on ${longDate(so.at)} by ${who}.${editedSinceSignOff(d.project) ? ' The study has been edited since then.' : ''}`
+  }
   const parts: string[] = []
   if (d.aiClaims) parts.push(`${d.aiChecked} of ${d.aiClaims} AI-drafted claims have been checked by ${d.project.coder}`)
   if (d.pending.length) parts.push(`${d.pending.length} AI suggestions still need a decision`)
@@ -255,7 +289,7 @@ h3{font-size:1rem;margin:1.5rem 0 .4rem}
 p{margin:.5rem 0}
 .lede{font-size:1.05rem;max-width:46rem}
 .meta,.note,figcaption,small{color:var(--muted);font-size:.86rem}
-.status{background:#fbf0d9;border-radius:6px;padding:.6rem .85rem;margin:1rem 0;color:#6b4700}
+.status{background:#fbf0d9;border-radius:6px;padding:.6rem .85rem;margin:1rem 0;color:#6b4700}.status.final{background:#e3f2e6;color:#1f5c2d}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr));gap:.6rem;margin:1rem 0}
 .tile{border:1px solid var(--line);border-radius:8px;padding:.6rem .8rem}
 .tile b{display:block;font-size:1.5rem;line-height:1.2}
@@ -303,10 +337,10 @@ export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPOR
 
   h(`<h1>${esc(project.name)}</h1>`)
   if (project.question) h(`<p class="lede">${esc(project.question)}</p>`)
-  h(`<p class="meta">Analysis report · generated ${esc(generatedAt.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }))} · reviewer ${esc(project.coder)}</p>`)
+  h(`<p class="meta">Analysis report${project.signoff ? ' · final' : ''} · generated ${esc(generatedAt.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }))} · reviewer ${esc(project.coder)}</p>`)
   if (anonymised(project)) h(`<p class="note">${esc(ANON_NOTE)}</p>`)
   if (project.method && opts.recipe !== 'summary') h(`<p class="meta">${esc(project.method)}</p>`)
-  h(`<p class="status">${esc(statusLine(d))}</p>`)
+  h(`<p class="status${project.signoff ? ' final' : ''}">${esc(statusLine(d))}</p>${project.signoff?.note ? `<p class="meta">Sign-off note: ${esc(project.signoff.note)}</p>` : ''}`)
 
   if (opts.glance) {
     h(`<div class="tiles">${[
@@ -437,8 +471,9 @@ export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPOR
     if (project.restricted.length) items.push(`${project.restricted.length} passage${project.restricted.length === 1 ? ' is' : 's are'} marked off the record; ${project.restricted.length === 1 ? 'its' : 'their'} wording is withheld from this report and from quote exports.`)
     const open = project.candidates.filter((c) => c.status === 'open')
     if (open.length) items.push(`${open.length} candidate code${open.length === 1 ? '' : 's'} await a decision: ${esc(open.map((c) => c.name).join('; '))}.`)
-    begin('open', 'Open items')
-    h(`<h2>Open items</h2>${items.length ? `<ul>${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : '<p>Nothing outstanding.</p>'}`)
+    const final = !!project.signoff
+    begin('open', final ? 'Limitations' : 'Open items')
+    h(`<h2>${final ? 'Limitations' : 'Open items'}</h2>${final ? '<p class="note">What the sign-off does not cover.</p>' : ''}${items.length ? `<ul>${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : `<p>${final ? 'None recorded.' : 'Nothing outstanding.'}</p>`}`)
   }
 
   if (opts.memos && project.memos.length) {
@@ -482,10 +517,11 @@ export function reportMarkdown(project: Project, opts: ReportOptions = DEFAULT_R
   const out: string[] = [`# ${project.name}`, '']
   const h = (...s: string[]) => out.push(...s, '')
   if (project.question) h(project.question)
-  h(`Analysis report, generated ${generatedAt.toISOString().slice(0, 10)}. Reviewer: ${project.coder}.`)
+  h(`Analysis report${project.signoff ? ' (final)' : ''}, generated ${generatedAt.toISOString().slice(0, 10)}. Reviewer: ${project.coder}.`)
   if (anonymised(project)) h(`*${ANON_NOTE}*`)
   if (project.method && opts.recipe !== 'summary') h(project.method)
   h(`**${statusLine(d)}**`)
+  if (project.signoff?.note) h(`Sign-off note: ${project.signoff.note}`)
 
   if (opts.glance) h(`${project.sources.length} interviews · ${d.codedClaims} coded claims · ${d.usedCodes} of ${project.codes.length} codes used · ${d.violations.length} rule issues open · ${d.pending.length} suggestions undecided.`)
   if (opts.sources) h('## Sources', table(['Interview', 'Length', 'Words', 'Coded claims', 'AI-drafted', 'Checked by the reviewer', 'Not asked'], d.sourceRows.map((r) => [r.source.name, formatTime(r.duration), r.words, r.claims, r.aiDrafted, r.aiDrafted ? `${r.checked} (${pc(r.checked / r.aiDrafted)})` : 'all', r.notAsked.join(', ') || '—'])))
@@ -541,7 +577,7 @@ export function reportMarkdown(project: Project, opts: ReportOptions = DEFAULT_R
     if (d.corrections) items.push(`${d.corrections} glossary corrections waiting to be applied.`)
     if (d.uncertain) items.push(`${d.uncertain} low-confidence transcript words unchecked.`)
     if (project.restricted.length) items.push(`${project.restricted.length} off-the-record passage(s): wording withheld.`)
-    h('## Open items', items.length ? items.map((i) => `- ${i}`).join('\n') : 'Nothing outstanding.')
+    h(project.signoff ? '## Limitations' : '## Open items', items.length ? items.map((i) => `- ${i}`).join('\n') : project.signoff ? 'None recorded.' : 'Nothing outstanding.')
   }
   if (opts.memos && project.memos.length) {
     h('## Memos and journal')
@@ -579,3 +615,6 @@ export function claimsCSV(project: Project) {
   }
   return '﻿' + forExport(project, toCSV(rows))
 }
+
+/** The status line at the top of every report, for other formats. */
+export const reportStatus = (project: Project) => statusLine(reportData(project))

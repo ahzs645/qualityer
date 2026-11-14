@@ -18,5 +18,6 @@ export function migrate(input: Partial<Project> & { id: string }): Project {
   p.anonymise = p.anonymise ?? false
   p.asks = p.asks ?? []
   p.askAnswers = p.askAnswers ?? []
+  p.signoff = p.signoff ?? null
   return p
 }

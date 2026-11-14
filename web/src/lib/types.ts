@@ -363,6 +363,15 @@ export interface NameEntry {
   note: string
 }
 
+/** The reviewer's sign-off that the analysis is final. */
+export interface SignOff {
+  by: string
+  /** Whether a person signed, or an AI standing in for the human reviewer. Reports say which. */
+  role: 'person' | 'ai'
+  at: string
+  note: string
+}
+
 export interface Project {
   id: ID
   name: string
@@ -399,6 +408,8 @@ export interface Project {
   notNames: string[]
   /** Replace masked names in reports and exports (quotes, source names, summaries, memos). */
   anonymise: boolean
+  /** Set when the reviewer signs the analysis off as final; reports then read as final. */
+  signoff: SignOff | null
   importNotes: string[]
 }
 

@@ -4,7 +4,7 @@ import { codesInGroup, download, formatTime } from './model'
 import { forExport } from './names'
 import { cellKey } from './profile'
 import { turnsOf } from './ai/pipeline'
-import { RECIPES, firstSentences, perspectives, reportData, type ReportOptions } from './report'
+import { RECIPES, firstSentences, perspectives, reportData, reportStatus, type ReportOptions } from './report'
 
 // The report as a PDF document, from the same data and recipe as the HTML.
 // Built with pdfmake, loaded only when someone downloads a PDF.
@@ -47,9 +47,11 @@ export function reportPdfDefinition(project: Project, opts: ReportOptions, gener
   // Title block
   content.push({ text: t(project.name), style: 'title' })
   if (project.question) content.push({ text: t(project.question), style: 'lede' })
-  content.push({ text: `${opts.recipe === 'summary' ? 'Summary' : RECIPES[opts.recipe].label + ' report'} · generated ${generatedAt.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })} · reviewer ${t(project.coder)}`, style: 'note' })
+  content.push({ text: `${opts.recipe === 'summary' ? 'Summary' : RECIPES[opts.recipe].label + ' report'}${project.signoff ? ' · final' : ''} · generated ${generatedAt.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })} · reviewer ${t(project.coder)}`, style: 'note' })
   if (project.anonymise && project.names.some((n) => n.mask)) note('Names are anonymised: people and other masked names are replaced by stand-ins such as [R01] or [Person 1].')
   if (project.method && opts.recipe !== 'summary') note(project.method)
+  content.push({ text: t(reportStatus(project)), fontSize: 9, color: project.signoff ? '#1f5c2d' : '#6b4700', fillColor: project.signoff ? '#e3f2e6' : '#fbf0d9', margin: [0, 2, 0, project.signoff?.note ? 2 : 6] })
+  if (project.signoff?.note) note(`Sign-off note: ${project.signoff.note}`)
 
   if (opts.glance) {
     const tiles: [string | number, string][] = [[project.sources.length, 'interviews'], [d.codedClaims, 'coded claims'], [`${d.usedCodes} of ${project.codes.length}`, 'codes used'], [d.aiClaims ? pc(d.aiChecked / d.aiClaims) : '—', 'AI-drafted claims checked'], [d.violations.length, 'rule issues open']]
@@ -133,8 +135,9 @@ export function reportPdfDefinition(project: Project, opts: ReportOptions, gener
     if (project.restricted.length) items.push(`${project.restricted.length} off-the-record passage(s): wording withheld.`)
     const open = project.candidates.filter((c) => c.status === 'open')
     if (open.length) items.push(`${open.length} candidate code(s) await a decision: ${open.map((c) => c.name).join('; ')}.`)
-    h2('Open items')
-    content.push(items.length ? { ul: items.map(t), style: 'body' } : { text: 'Nothing outstanding.', style: 'body' })
+    h2(project.signoff ? 'Limitations' : 'Open items')
+    if (project.signoff) note('What the sign-off does not cover.')
+    content.push(items.length ? { ul: items.map(t), style: 'body' } : { text: project.signoff ? 'None recorded.' : 'Nothing outstanding.', style: 'body' })
   }
   if (opts.memos && project.memos.length) {
     h2('Memos and journal')
