@@ -3,9 +3,10 @@ import { Fragment, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Check, Download, FileUp, GitBranch, Layers, Lock, MessagesSquare, Play, Plus, Square, ThumbsDown, ThumbsUp, Trash2, Minus } from 'lucide-react'
 import type { AskAnswer, AskArea, AskPrompt, Project, Source } from '../lib/types'
 import { useProject } from '../lib/store'
-import { download, slug, toCSV } from '../lib/model'
+import { download, restrictionAt, slug, toCSV } from '../lib/model'
+import { setRestricted } from '../lib/review'
 import { ASIDE_TEMPLATES, ASK_SETS, ASK_TEMPLATES, askPack, askPackSet, lineage, newPrompt, readAnyAskResponses, refineAdvice, setPrompts, type AskResponses } from '../lib/ai/ask'
-import { asideItems } from '../lib/report'
+import { asideEvidence, asideItems } from '../lib/report'
 import { turnsOf } from '../lib/ai/pipeline'
 import { askWithModel, getAiSettings, saveAiSettings, type AiSettings, type Provider } from '../lib/ai/run'
 import { rateAnswer, removeAsk, saveAsk, saveAskAnswers, saveAsks } from '../lib/actions'
@@ -491,7 +492,7 @@ function AsidesBoard({ project, onSelect }: { project: Project; onSelect: (id: s
                 {list.length > 0 && (
                   <ul className="mt-2 space-y-2">
                     {list.map((it, i) => {
-                      const ev = a!.evidence.find((e) => it.turns.includes(e.turnId))
+                      const ev = asideEvidence(a!.evidence, list.length, i, it.turns)
                       return (
                         <li key={i} className="text-sm">
                           <p>{it.note}</p>
@@ -503,6 +504,7 @@ function AsidesBoard({ project, onSelect }: { project: Project; onSelect: (id: s
                               <span className={cx('font-serif text-muted', ev.match === 'not-found' && 'text-bad line-through')}>“{ev.quote}”</span>
                             </p>
                           )}
+                          {ev && <OffRecord project={project} source={source} turnId={ev.turnId} offer={!!q.sensitive || /off the record|confidential|not (?:be )?quote|attribut|between us/i.test(it.note)} />}
                         </li>
                       )
                     })}
@@ -515,5 +517,21 @@ function AsidesBoard({ project, onSelect }: { project: Project; onSelect: (id: s
         </Panel>
       )}
     </>
+  )
+}
+
+/**
+ * Marks the whole turn off the record (Review's restriction), so every report,
+ * export and quote withholds it, wherever it is quoted from.
+ */
+function OffRecord({ project, source, turnId, offer }: { project: Project; source: Source; turnId: string; offer: boolean }) {
+  const turn = useMemo(() => turnsOf(source).find((t) => t.id === turnId), [source, turnId])
+  if (!turn) return null
+  const r = restrictionAt(project, source.id, turn.start, turn.end)
+  return r ? (
+    <p className="mt-1 flex items-center gap-2 text-xs text-warn"><Lock size={11} /> Off the record: withheld from every report and export{r.reason ? ` (${r.reason})` : ''}.
+      <button type="button" className="text-muted underline hover:text-ink" onClick={() => setRestricted(r.sourceId, { start: r.start, end: r.end }, null)}>Undo</button></p>
+  ) : offer && (
+    <button type="button" className="mt-1 inline-flex items-center gap-1 text-xs text-muted hover:text-warn" onClick={() => setRestricted(source.id, { start: turn.start, end: turn.end }, 'Participant asked; found by Ask → Asides')}><Lock size={11} /> Mark this turn off the record</button>
   )
 }

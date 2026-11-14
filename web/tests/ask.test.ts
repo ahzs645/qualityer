@@ -118,6 +118,10 @@ describe('asides', () => {
   it('reports asides in their own section, sensitive ones as counts only, and keeps them out of perspectives', async () => {
     const { reportMarkdown, recipeOptions, asideItems, perspectives } = await import('../src/lib/report')
     expect(asideItems('Intro.\n- One thing [T0002]\n- **Two** [T0003][T0004]')).toEqual([{ note: 'One thing', turns: ['T0002'] }, { note: 'Two', turns: ['T0003', 'T0004'] }])
+    const { asideEvidence } = await import('../src/lib/report')
+    const two = [{ turnId: 'T1', quote: 'a' }, { turnId: 'T1', quote: 'b' }]
+    expect(asideEvidence(two, 2, 1, ['T1'])?.quote).toBe('b')
+    expect(asideEvidence(two, 3, 2, ['T1'])?.quote).toBe('a')
     const p = study()
     const s = p.sources[0]
     const start = s.text.indexOf('We need more space.')

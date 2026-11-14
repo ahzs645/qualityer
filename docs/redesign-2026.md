@@ -455,6 +455,22 @@ Each asides question is sent with an instruction to list every instance as its o
 
 Asides stay out of the framework, the charts, the claim counts and "Participant perspectives". The report gives them their own section, and gives only counts for the off-the-record question, never quotes.
 
+**On the four calibration interviews** the set was run as one agent pack, with one subagent per interview. It produced 24 answers and 447 passages. Every quote was re-checked by the app on import, and none failed. The passages per question, across all four interviews, were:
+
+| Question | Passages |
+|---|---|
+| Remarks to the interviewer | 114 |
+| Comments on the questions and the study | 58 |
+| Advice and referrals | 131 |
+| Sensitive moments | 33 |
+| Promises | 22 |
+| Own position | 91 |
+
+Three things came out of the run:
+- **Off-the-record requests:** only one explicit request was found, and an earlier review pass had already marked that turn off the record. The board now shows such marks and can set them, so the turn is withheld from every report and export.
+- **Missed names:** the advice and remarks answers surfaced three first names the register had missed. They were registered and masked.
+- **Most "sensitive" items are not requests:** they are delicate relationships, so the report shows counts for that question rather than quotes.
+
 ## Still not ported
 
 - **Speech-to-text and diarisation inside the app.** Transcribe with Whisper / WhisperX / noScribe and import the JSON. `services/transcription` is unchanged.

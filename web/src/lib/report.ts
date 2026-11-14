@@ -84,14 +84,22 @@ export function asides(project: Project) {
     const rows = project.sources.flatMap((s) => {
       const a = project.askAnswers.find((x) => x.promptId === prompt.id && x.sourceId === s.id)
       if (!a) return []
-      const items: AsideItem[] = a.notAddressed ? [] : asideItems(a.text).map(({ note, turns }) => {
-        const e = a.evidence.find((x) => turns.includes(x.turnId) && x.start != null && x.end != null)
+      const parsed = a.notAddressed ? [] : asideItems(a.text)
+      const items: AsideItem[] = parsed.map(({ note, turns }, i) => {
+        const e = asideEvidence(a.evidence, parsed.length, i, turns)
+        if (e && (e.start == null || e.end == null)) return { note, quote: null, time: '' }
         return { note, quote: e ? quotable(project, s, e.start!, e.end!) : null, time: e ? formatTime(timeAt(s, e.start!)) : '' }
       })
       return [{ source: s, answer: a, items }]
     })
     return [{ prompt, sensitive: !!prompt.sensitive, rows }]
   })
+}
+
+/** The quote for item i: by position when there is one quote per item (as the asides mode asks), otherwise the first quote from a cited turn. */
+export function asideEvidence<E extends { turnId: string }>(evidence: E[], items: number, i: number, turns: string[]): E | undefined {
+  if (evidence.length === items && turns.includes(evidence[i].turnId)) return evidence[i]
+  return evidence.find((x) => turns.includes(x.turnId))
 }
 
 /** Bullets of an answer, each with the turns it cites; an answer without bullets is one item. */
