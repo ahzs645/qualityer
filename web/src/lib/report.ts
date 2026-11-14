@@ -164,7 +164,8 @@ export function reportData(project: Project) {
 
   const reviews = project.sources.filter((s) => project.reviewLog.some((e) => e.sourceId === s.id && e.ai)).map((s) => ({
     source: s, summary: summariseDecisions(project, s.id),
-    reviewers: [...new Set(project.reviewLog.filter((e) => e.sourceId === s.id).map((e) => e.by))],
+    reviewers: [...new Set(project.reviewLog.filter((e) => e.sourceId === s.id && e.action !== 'endorse').map((e) => e.by))],
+    endorsers: [...new Set(project.reviewLog.filter((e) => e.sourceId === s.id && e.action === 'endorse').map((e) => e.by))],
   }))
 
   const corrections = project.sources.reduce((n, s) => n + findCorrections(s.text, project.glossary).length, 0)
@@ -446,7 +447,7 @@ export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPOR
     }
     for (const r of d.reviews) {
       const s = r.summary
-      h(`<h3>Review of ${esc(r.source.name.split(' — ')[0])}</h3><p>${esc(r.reviewers.join(', '))} decided ${s.total} AI codings: <b>${s.kept} kept as proposed</b> (${s.total ? pc(s.kept / s.total) : '—'}), <b>${s.recoded} given a different code</b>, <b>${s.rejected} rejected</b>; ${s.added} codings added by the reviewer.</p>`)
+      h(`<h3>Review of ${esc(r.source.name.split(' — ')[0])}</h3><p>${esc(r.reviewers.join(', '))} decided ${s.total} AI codings: <b>${s.kept} kept as proposed</b> (${s.total ? pc(s.kept / s.total) : '—'}), <b>${s.recoded} given a different code</b>, <b>${s.rejected} rejected</b>; ${s.added} codings added by the reviewer.${r.endorsers.length ? ` Endorsed by ${esc(r.endorsers.join(', '))}.` : ''}</p>`)
       const bands = (['high', 'medium', 'low'] as const).filter((b) => s.byBand[b].kept + s.byBand[b].recoded + s.byBand[b].rejected > 0)
       if (bands.length) h(`<table style="width:auto"><thead><tr><th>AI confidence</th><th class="n">Kept</th><th class="n">Changed</th><th class="n">Rejected</th><th class="n">Kept as proposed</th></tr></thead><tbody>${bands.map((b) => { const v = s.byBand[b]; const t = v.kept + v.recoded + v.rejected; return `<tr><td>${b[0].toUpperCase() + b.slice(1)}</td><td class="n">${v.kept}</td><td class="n">${v.recoded}</td><td class="n">${v.rejected}</td><td class="n">${pc(v.kept / t)}</td></tr>` }).join('')}</tbody></table>`)
       if (s.changes.length) h(`<p class="note">Most frequent corrections:</p><ul>${s.changes.slice(0, 8).map((c) => `<li>${c.n} × ${esc(tidy(d.codes.get(c.fromId)?.name ?? '?'))} → ${esc(tidy(d.codes.get(c.toId)?.name ?? '?'))}</li>`).join('')}</ul>`)
@@ -564,7 +565,7 @@ export function reportMarkdown(project: Project, opts: ReportOptions = DEFAULT_R
     }
     for (const r of d.reviews) {
       const s = r.summary
-      h(`### Review of ${r.source.name.split(' — ')[0]}`, `${r.reviewers.join(', ')} decided ${s.total} AI codings: ${s.kept} kept as proposed, ${s.recoded} given a different code, ${s.rejected} rejected; ${s.added} added by the reviewer.`)
+      h(`### Review of ${r.source.name.split(' — ')[0]}`, `${r.reviewers.join(', ')} decided ${s.total} AI codings: ${s.kept} kept as proposed, ${s.recoded} given a different code, ${s.rejected} rejected; ${s.added} added by the reviewer.${r.endorsers.length ? ` Endorsed by ${r.endorsers.join(', ')}.` : ''}`)
       if (s.changes.length) h(s.changes.slice(0, 8).map((c) => `- ${c.n} × ${tidy(d.codes.get(c.fromId)?.name ?? '?')} → ${tidy(d.codes.get(c.toId)?.name ?? '?')}`).join('\n'))
     }
   }

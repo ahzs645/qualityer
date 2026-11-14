@@ -305,3 +305,46 @@ describe('sign-off', () => {
     expect(reportStatus(later)).toContain('edited since')
   })
 })
+
+describe('handing review over', () => {
+  async function reviewed() {
+    const { p, lab } = study()
+    p.coder = 'AI reviewer'
+    open(p)
+    confirmClaim(p.sources[0].id, { start: lab[0], end: lab[1] })
+    const q = { ...project() }
+    q.cells = [{ caseId: 'case', themeId: 't', summary: 'They want a hub. (Checked against the passages by AI, reviewer, 1 May 2026.)', pinned: [] }]
+    q.signoff = { by: 'AI reviewer', role: 'ai', note: '', at: '2026-05-01T00:00:00Z' }
+    return q
+  }
+
+  it('lists reviewers and what each checked', async () => {
+    const { reviewers, reviewerWork } = await import('../src/lib/review')
+    const p = await reviewed()
+    expect(reviewers(p)).toEqual(['AI reviewer'])
+    expect(reviewerWork(p, 'AI reviewer')).toMatchObject({ claims: 1, codings: 3, summaries: 1, signedOff: true })
+  })
+
+  it('re-check puts the claims back in the new reviewer\'s queue and withdraws the sign-off', async () => {
+    const { handOver } = await import('../src/lib/review')
+    const p = handOver(await reviewed(), 'AI reviewer', 'Sam', 'recheck')
+    expect(p.coder).toBe('Sam')
+    expect(p.signoff).toBeNull()
+    expect(buildClaims(p).map((c) => c.state)).toContain('unchecked')
+    expect(p.reviewLog.some((e) => e.action === 'endorse')).toBe(false)
+  })
+
+  it('endorse makes the decisions the new reviewer\'s and keeps who made them first', async () => {
+    const { handOver } = await import('../src/lib/review')
+    const before = await reviewed()
+    const p = handOver(before, 'AI reviewer', 'Sam', 'endorse', '2 May 2026')
+    expect(buildClaims(p).every((c) => c.state !== 'unchecked')).toBe(true)
+    const endorsed = p.reviewLog.filter((e) => e.action === 'endorse')
+    expect(endorsed).toHaveLength(3)
+    expect(endorsed.every((e) => e.by === 'Sam' && e.priorReviewer === 'AI reviewer')).toBe(true)
+    expect(summariseDecisions(p)).toEqual(summariseDecisions(before))
+    expect(p.cells[0].summary).toBe('They want a hub. (Checked against the passages by AI, reviewer, 1 May 2026; endorsed by Sam, 2 May 2026.)')
+    expect(p.signoff).toBeNull()
+    expect(reportMarkdown(p, recipeOptions('full'))).toContain('Endorsed by Sam')
+  })
+})

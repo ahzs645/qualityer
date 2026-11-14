@@ -1,6 +1,6 @@
 import type { Coding, Project, ReviewAction, ReviewEvent } from './types'
 import { comparisonRuns, groupOf, indexBy, now, uid } from './model'
-import { update } from './store'
+import { snapshot, update } from './store'
 
 // Reviewer decisions on claims. Every decision is appended to the project's
 // review log, so the study keeps what the AI proposed and what a person did
@@ -193,4 +193,63 @@ export function setComparisonOnly(runId: string, comparisonOnly: boolean) {
 /** Discards a pass that never produced a coding still in the study, such as a hand-off exported by mistake. */
 export function discardRun(runId: string) {
   update('discard AI pass', (p) => (p.codings.some((c) => c.origin?.runId === runId) ? p : { ...p, aiRuns: p.aiRuns.filter((r) => r.id !== runId) }))
+}
+
+// Handing review over ----------------------------------------------------------
+
+/** What one reviewer has done in a study, for handing it over to another. */
+export function reviewerWork(project: Project, name: string) {
+  return {
+    claims: new Set(project.codings.filter((c) => c.origin && c.status === 'accepted' && c.reviewedBy === name).map((c) => `${c.sourceId}:${c.start}:${c.end}`)).size,
+    codings: project.codings.filter((c) => c.origin && c.status === 'accepted' && c.reviewedBy === name).length,
+    decisions: project.reviewLog.filter((e) => e.by === name && e.action !== 'endorse').length,
+    summaries: project.cells.filter((c) => checkNote(name).test(c.summary)).length,
+    signedOff: project.signoff?.by === name,
+  }
+}
+
+/** Reviewers who checked AI codings or signed the study off, most work first. */
+export function reviewers(project: Project) {
+  const n = new Map<string, number>()
+  for (const c of project.codings) if (c.origin && c.status === 'accepted' && c.reviewedBy) n.set(c.reviewedBy, (n.get(c.reviewedBy) ?? 0) + 1)
+  if (project.signoff && !n.has(project.signoff.by)) n.set(project.signoff.by, 0)
+  return [...n].sort((a, b) => b[1] - a[1]).map(([name]) => name)
+}
+
+/** A summary's trailing check note naming this reviewer, however the name is punctuated ("Claude (acting reviewer)" or "Claude, acting reviewer"). */
+const checkNote = (name: string) => {
+  const words = name.split(/[^\p{L}\p{N}]+/u).filter(Boolean).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  return new RegExp(`\\((Checked[^()]*?${words.join('[^\\p{L}\\p{N}()]+')}[^()]*?)(\\.?)\\)\\s*$`, 'u')
+}
+
+/**
+ * Hands a reviewer's work to another person. Either way the new person becomes
+ * the study's reviewer and a sign-off by someone else is withdrawn, since the
+ * new reviewer has to sign off for themselves.
+ *
+ * - `recheck`: nothing else changes. Every claim the earlier reviewer checked
+ *   reads "accepted, not checked by you" and is back in the review queue; each
+ *   confirmation, change or rejection is logged under the new name.
+ * - `endorse`: the new person takes the earlier decisions on as theirs in one
+ *   step. Each coding is marked reviewed by them and an "endorsed" event records
+ *   who made the decision first; framework check notes say who endorsed them.
+ *   The decision log and the review statistics keep the earlier reviewer's work.
+ */
+export function handOver(p: Project, from: string, to: string, mode: 'recheck' | 'endorse', day = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })): Project {
+  const base = { ...p, coder: to, signoff: p.signoff && p.signoff.by !== to ? null : p.signoff }
+  if (mode === 'recheck') return base
+  const log: ReviewEvent[] = []
+  const codings = p.codings.map((c) => {
+    if (!(c.origin && c.status === 'accepted' && c.reviewedBy === from)) return c
+    log.push(reviewEvent(base, 'endorse', c, { priorReviewer: from, note: `Endorsed in bulk; first checked by ${from}.` }))
+    return { ...c, reviewedBy: to }
+  })
+  const note = checkNote(from)
+  const cells = p.cells.map((cell) => (note.test(cell.summary) ? { ...cell, summary: cell.summary.replace(note, (_m, inner, stop) => `(${inner}; endorsed by ${to}, ${day}${stop})`) } : cell))
+  return { ...base, codings, cells, reviewLog: [...p.reviewLog, ...log] }
+}
+
+export async function takeOverReview(from: string, to: string, mode: 'recheck' | 'endorse') {
+  await snapshot(`Before ${to} takes over review from ${from}`)
+  update(mode === 'endorse' ? `endorse ${from}'s review as ${to}` : `re-check ${from}'s review as ${to}`, (p) => handOver(p, from, to, mode))
 }

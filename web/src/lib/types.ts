@@ -117,7 +117,7 @@ export interface AiRun {
  * proposed, what a person changed and why. Rejecting a suggestion deletes the
  * coding, so this log is the only record of it afterwards.
  */
-export type ReviewAction = 'accept' | 'confirm' | 'recode' | 'reject' | 'add' | 'remove' | 'respan' | 'restrict' | 'unrestrict'
+export type ReviewAction = 'accept' | 'confirm' | 'recode' | 'reject' | 'add' | 'remove' | 'respan' | 'restrict' | 'unrestrict' | 'endorse'
 
 export interface ReviewEvent {
   id: ID

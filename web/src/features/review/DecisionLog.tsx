@@ -9,11 +9,11 @@ import { useProject } from '../../lib/store'
 import { Badge, Button, Empty, Panel, Select, Stat, pct } from '../../components/ui'
 
 const ACTION_LABEL: Record<ReviewAction, string> = {
-  accept: 'Accepted', confirm: 'Confirmed', recode: 'Changed code', reject: 'Rejected', add: 'Added', remove: 'Removed',
+  accept: 'Accepted', confirm: 'Confirmed', recode: 'Changed code', reject: 'Rejected', add: 'Added', remove: 'Removed', endorse: 'Endorsed',
   respan: 'Moved boundaries', restrict: 'Marked off the record', unrestrict: 'Cleared off the record',
 }
 const ACTION_TONE: Record<ReviewAction, 'good' | 'accent' | 'bad' | 'warn' | 'neutral'> = {
-  accept: 'good', confirm: 'good', recode: 'accent', reject: 'bad', add: 'accent', remove: 'bad', respan: 'neutral', restrict: 'warn', unrestrict: 'neutral',
+  accept: 'good', confirm: 'good', recode: 'accent', reject: 'bad', add: 'accent', remove: 'bad', respan: 'neutral', restrict: 'warn', unrestrict: 'neutral', endorse: 'neutral',
 }
 
 export function decisionLogCSV(project: Project) {

@@ -387,6 +387,15 @@ The study was finalised by an AI standing in for the human reviewer, and the rep
   - two misheard spellings, one in a codebook anchor and one in a memo.
   The sign-off was withdrawn, the spellings registered, and the study signed off again. Adding a person to the register now adds their surname as a spelling as well.
 
+## Tenth pass: handing review over to a person
+
+A study reviewed by an AI acting as reviewer can be handed to a person. This is in **Settings → Hand over review**. Choose the earlier reviewer and the new reviewer's name, then pick one of two modes:
+
+- **Re-check (recommended):** the new person becomes the study's reviewer. Every claim the earlier reviewer checked reads as "accepted, not checked by you" and goes back into Review → AI review. Each confirmation, change or rejection is then logged under the new name.
+- **Endorse:** the new person takes the earlier decisions on as their own in one step. Each coding is marked as reviewed by them. An `endorse` event in the decision log records who decided first, and framework check notes gain "endorsed by …". Review statistics are unchanged, because endorsing a decision is not a fresh decision. The report's review section names the endorser.
+
+Either way, a sign-off by the earlier reviewer is withdrawn, since the new person has to sign off for themselves. A snapshot is taken first.
+
 ## Still not ported
 
 - **Speech-to-text and diarisation inside the app.** Transcribe with Whisper / WhisperX / noScribe and import the JSON. `services/transcription` is unchanged.

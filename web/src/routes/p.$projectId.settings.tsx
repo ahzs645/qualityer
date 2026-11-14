@@ -7,6 +7,7 @@ import { deleteProject, deleteSnapshot, listSnapshots } from '../lib/storage'
 import { coders, download, slug } from '../lib/model'
 import { mergeCoderFile, setProject } from '../lib/actions'
 import { migrate } from '../lib/migrate'
+import { reviewerWork, reviewers, takeOverReview } from '../lib/review'
 import { Button, Field, IconButton, Input, PageHeader, Panel, Textarea } from '../components/ui'
 
 export const Route = createFileRoute('/p/$projectId/settings')({ component: Settings })
@@ -46,6 +47,8 @@ function Settings() {
           </Field>
           <datalist id="coder-names">{coders(project).map((c) => <option key={c} value={c} />)}</datalist>
         </Panel>
+
+        <HandOver />
 
         <Panel title="Team">
           <p className="text-sm text-muted">
@@ -132,5 +135,53 @@ function Settings() {
         </Panel>
       </div>
     </div>
+  )
+}
+
+/** Taking over another reviewer's work: re-check it claim by claim, or endorse it in one step. */
+function HandOver() {
+  const project = useProject()
+  const names = reviewers(project)
+  const [from, setFrom] = useState(names[0] ?? '')
+  const [to, setTo] = useState('')
+  const [done, setDone] = useState<string | null>(null)
+  if (!names.length) return null
+  const work = reviewerWork(project, from)
+  const target = to.trim()
+  const ok = !!target && target !== from
+  return (
+    <Panel title="Hand over review">
+      <p className="text-sm text-muted">Take over the review an assistant or a colleague did. The decision log keeps who decided what first; reports name the reviewer now responsible.</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Field label="From">{(id) => (
+          <select id={id} value={from} onChange={(e) => setFrom(e.target.value)} className="h-8.5 w-full rounded-md border border-line-strong bg-surface px-2 text-sm">
+            {names.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        )}</Field>
+        <Field label="To">{(id) => <Input id={id} value={to} onChange={(e) => setTo(e.target.value)} placeholder="Your name" />}</Field>
+      </div>
+      <p className="mt-2 text-xs text-muted">
+        {from}: {work.claims} claims checked ({work.codings} AI codings), {work.decisions} logged decisions, {work.summaries} framework summaries carrying their check note{work.signedOff ? ', and the current sign-off' : ''}.
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-md border border-line p-3">
+          <div className="text-sm font-semibold">Re-check it myself</div>
+          <p className="mt-1 text-xs text-muted">Every claim {from} checked goes back to “accepted, not checked by you” in Review → AI review. Your confirmations, changes and rejections are logged under your name as you go. Recommended.</p>
+          <Button size="sm" variant="primary" className="mt-2" disabled={!ok} onClick={async () => {
+            if (!confirm(`Make ${target} the reviewer and put ${work.claims} claims back in the queue?${work.signedOff ? ' The current sign-off is withdrawn.' : ''}`)) return
+            await takeOverReview(from, target, 'recheck'); setDone(`${target} is now the reviewer. ${work.claims} claims are waiting in Review → AI review.`)
+          }}>Re-check as {target || '…'}</Button>
+        </div>
+        <div className="rounded-md border border-line p-3">
+          <div className="text-sm font-semibold">Endorse it in one step</div>
+          <p className="mt-1 text-xs text-muted">You take {from}'s decisions on as yours. Each is recorded as endorsed by you, first made by {from}; framework check notes add your endorsement. Only do this if you have read the work.</p>
+          <Button size="sm" className="mt-2" disabled={!ok} onClick={async () => {
+            if (!confirm(`Endorse all of ${from}'s review as ${target}? Each of the ${work.codings} codings is logged as endorsed by ${target}, first checked by ${from}.${work.signedOff ? ' The current sign-off is withdrawn; sign off yourself on the Report screen.' : ''}`)) return
+            await takeOverReview(from, target, 'endorse'); setDone(`${target} has endorsed ${from}'s review. Sign off on the Report screen when ready.`)
+          }}>Endorse as {target || '…'}</Button>
+        </div>
+      </div>
+      {done && <p className="mt-3 rounded-md bg-good-soft px-3 py-2 text-sm text-good">{done}</p>}
+    </Panel>
   )
 }
