@@ -40,3 +40,13 @@ describe('who raised what', () => {
     expect(m.cells.get(mkey('g', a.id))!.claims.length).toBe(4)
   })
 })
+
+describe('co-occurrence strength', () => {
+  it('normalises shared passages by passages with either code', async () => {
+    const { cCoefficient } = await import('../src/lib/explore')
+    expect(cCoefficient(0, 5, 5)).toBe(0)
+    expect(cCoefficient(5, 5, 5)).toBe(1)
+    expect(cCoefficient(2, 4, 6)).toBe(0.25)
+    expect(cCoefficient(0, 0, 0)).toBe(0)
+  })
+})

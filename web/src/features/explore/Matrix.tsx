@@ -5,12 +5,17 @@ import { buildMatrix, mkey, patternOrder, type MatrixLevel, type MatrixRow } fro
 import type { Person } from '../../lib/positions'
 import { Panel, Select, Swatch, cx } from '../../components/ui'
 import { Caveat, useTip } from './Positions'
+import { choiceColor } from './colors'
+import { median } from '../../lib/positions'
+import type { Claim } from '../../lib/claims'
 
-type Show = 'people' | 'passages' | 'share'
+type Show = 'people' | 'stance' | 'evidence' | 'passages' | 'share'
 type Order = 'codebook' | 'pattern'
 
 const SHOW_HELP: Record<Show, string> = {
   people: 'A dot where the person raised the code at least once. Counts people, not passages.',
+  stance: "Each person's middle stance on the code, from supportive (blue) to opposed (red).",
+  evidence: 'The strongest evidence each person gave: a full ball is documented, a quarter is opinion.',
   passages: 'Number of coded passages. Longer interviews have more of everything.',
   share: "Each person's passages on the code as a share of all their coded passages, so a talkative person does not dominate.",
 }
@@ -63,13 +68,20 @@ export function CodeMatrix({ project }: { project: Project }) {
     const passages = cs.reduce((n, c) => n + c.claims.length, 0)
     const raised = cs.filter((c) => c.claims.length).length
     const total = col.people.reduce((n, p) => n + (m.totals.get(p.id) ?? 0), 0)
-    return { passages, raised, of: col.people.length, share: total ? passages / total : 0 }
+    return { passages, raised, of: col.people.length, share: total ? passages / total : 0, claims: cs.flatMap((c) => c.claims) }
   }
   const all = rows.flatMap((r) => columns.map((c) => cell(r, c)))
   const maxPassages = Math.max(1, ...all.map((c) => c.passages))
   const maxShare = Math.max(0.0001, ...all.map((c) => c.share))
   const groupsInScope = project.groups.filter((g) => g.kind !== 'evidence' && g.kind !== 'stance')
 
+  const stanceCodes = useMemo(() => { const g = project.groups.find((x) => x.kind === 'stance'); return g ? project.codes.filter((c) => c.groupId === g.id) : [] }, [project])
+  const gradeCodes = useMemo(() => { const g = project.groups.find((x) => x.kind === 'evidence'); return g ? project.codes.filter((c) => c.groupId === g.id) : [] }, [project])
+  const stanceAt = new Map(stanceCodes.map((c, i) => [c.id, i]))
+  const gradeAt = new Map(gradeCodes.map((c, i) => [c.id, i]))
+  const middleStance = (claims: Claim[]) => median(claims.flatMap((c) => c.codings.map((x) => stanceAt.get(x.codeId)).filter((i): i is number => i !== undefined)))
+  const bestGrade = (claims: Claim[]) => { const g = claims.flatMap((c) => c.codings.map((x) => gradeAt.get(x.codeId)).filter((i): i is number => i !== undefined)); return g.length ? Math.min(...g) : null }
+  const short = (name: string) => name.trim().split(/\s{2,}/).join(' ')
   const fill = (t: number) => (t > 0 ? `color-mix(in oklab, var(--viz-seq) ${12 + t * 88}%, var(--surface))` : 'transparent')
   return (
     <Panel
@@ -95,7 +107,7 @@ export function CodeMatrix({ project }: { project: Project }) {
           </Select>
         </label>
         <div className="flex gap-0.5 rounded-md bg-sunken p-0.5" role="radiogroup" aria-label="Show">
-          {([['people', 'People'], ['passages', 'Passages'], ['share', 'Share of each person']] as const).map(([v, l]) => (
+          {([['people', 'People'], ['stance', 'Stance'], ['evidence', 'Evidence'], ['passages', 'Passages'], ['share', 'Share of each person']] as const).map(([v, l]) => (
             <button key={v} type="button" role="radio" aria-checked={show === v} onClick={() => setShow(v)} className={cx('rounded px-2 py-1', show === v ? 'bg-surface font-medium text-ink shadow-sm' : '')}>{l}</button>
           ))}
         </div>
@@ -106,6 +118,14 @@ export function CodeMatrix({ project }: { project: Project }) {
         </label>
         <label className="flex items-center gap-1.5"><input type="checkbox" checked={hideEmpty} onChange={(e) => setHideEmpty(e.target.checked)} /> Hide rows nobody raised</label>
       </div>
+      {(show === 'stance' || show === 'evidence') && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-4 py-2 text-xs text-muted">
+          {show === 'stance'
+            ? stanceCodes.map((c, i) => <span key={c.id} className="inline-flex items-center gap-1.5"><span className="block size-2.5 rounded-full" style={{ background: choiceColor('stance', i, stanceCodes.length) }} />{short(c.name)}</span>)
+            : gradeCodes.map((c, i) => <span key={c.id} className="inline-flex items-center gap-1.5"><Harvey filled={(gradeCodes.length - i) / gradeCodes.length} />{short(c.name)}</span>)}
+          <span className="inline-flex items-center gap-1.5"><span className="text-faint">–</span>raised, not {show === 'stance' ? 'given a stance' : 'graded'}</span>
+        </div>
+      )}
       <div ref={box} className="relative overflow-x-auto" onMouseLeave={hide}>
         <table className="w-full min-w-[36rem] border-collapse text-sm">
           <thead>
@@ -126,15 +146,22 @@ export function CodeMatrix({ project }: { project: Project }) {
                   {columns.map((col) => {
                     const c = cell(row, col)
                     const label = `${row.name.replace(/\s{2,}/, ' ')} · ${col.label}`
+                    const st = middleStance(c.claims)
+                    const gr = bestGrade(c.claims)
                     const body = (
                       <>
                         <div className="font-semibold">{label}</div>
                         {grouped && <div className="mt-1">Raised by {c.raised} of {c.of} {c.of === 1 ? 'person' : 'people'}</div>}
                         <div className="mt-1 text-muted">{c.passages} passage{c.passages === 1 ? '' : 's'} · {Math.round(c.share * 100)}% of {grouped ? 'the group' : 'their'} coded passages</div>
+                        {st !== null && <div className="mt-1">Middle stance: <b>{short(stanceCodes[Math.round(st)].name)}</b></div>}
+                        {gr !== null && <div>Strongest evidence: <b>{short(gradeCodes[gr].name)}</b></div>}
                         {c.passages > 0 && <div className="mt-1 text-faint">Click to read them</div>}
                       </>
                     )
-                    const t = show === 'people' ? c.raised / c.of : show === 'passages' ? c.passages / maxPassages : c.share / maxShare
+                    const t = show === 'people' ? c.raised / c.of : show === 'passages' ? c.passages / maxPassages : show === 'share' ? c.share / maxShare : 0
+                    const glyph = show === 'stance'
+                      ? (st === null ? (c.passages ? <span className="text-[10px] text-faint">–</span> : <span className="block size-1 rounded-full bg-line-strong" />) : <span className="block size-3 rounded-full" style={{ background: choiceColor('stance', Math.round(st), stanceCodes.length) }} />)
+                      : gr === null ? (c.passages ? <span className="text-[10px] text-faint">–</span> : <span className="block size-1 rounded-full bg-line-strong" />) : <Harvey filled={(gradeCodes.length - gr) / gradeCodes.length} />
                     return (
                       <td key={col.id} className="p-0.5 text-center">
                         <button
@@ -143,9 +170,9 @@ export function CodeMatrix({ project }: { project: Project }) {
                           onMouseEnter={(e) => tip(e, body)} onFocus={(e) => tip(e, body)} onBlur={hide}
                           onClick={() => navigate({ to: '/p/$projectId/retrieve', params: { projectId: project.id }, search: { codes: row.codeIds.join(','), sources: col.people.flatMap((p) => p.sourceIds).join(',') } })}
                           className={cx('grid h-6 w-full place-items-center rounded-[3px] text-[11px] tabular-nums', t > 0.55 ? 'text-white' : 'text-muted', c.passages ? 'cursor-pointer' : 'cursor-default')}
-                          style={{ background: show === 'people' && !grouped ? 'transparent' : fill(t) }}
+                          style={{ background: (show === 'people' && !grouped) || show === 'stance' || show === 'evidence' ? 'transparent' : fill(t) }}
                         >
-                          {show === 'people'
+                          {show === 'stance' || show === 'evidence' ? glyph : show === 'people'
                             ? grouped ? (c.raised ? `${c.raised}/${c.of}` : '') : c.raised ? <span className="block size-2.5 rounded-full" style={{ background: 'var(--viz-seq)' }} /> : <span className="block size-1 rounded-full bg-line-strong" />
                             : show === 'passages' ? c.passages || '' : c.passages ? `${Math.round(c.share * 100)}%` : ''}
                         </button>
@@ -155,7 +182,10 @@ export function CodeMatrix({ project }: { project: Project }) {
                   <td className="border-l border-line px-3 py-1">
                     <span className="flex items-center gap-2 text-xs tabular-nums text-muted">
                       <span className="w-7 text-right text-ink">{reach}/{m.people.length}</span>
-                      <span className="flex gap-0.5" aria-hidden>{m.people.map((p, i) => <span key={p.id} className={cx('h-2.5 w-1.5 rounded-[1px]', i < reach ? 'bg-ink/70' : 'bg-line')} />)}</span>
+                      {/* One block per person who raised it, coloured by their middle stance and sorted supportive to opposed; grey blocks are people who did not. */}
+                      <span className="flex gap-0.5" aria-hidden>{m.people.map((p) => middleStance(m.cells.get(mkey(row.id, p.id))!.claims) ?? (m.cells.get(mkey(row.id, p.id))!.claims.length ? -1 : 99)).sort((a, b) => a - b).map((v, i) => (
+                        <span key={i} className="h-2.5 w-1.5 rounded-[1px]" style={{ background: v === 99 ? 'var(--line)' : v < 0 || !stanceCodes.length ? 'var(--muted)' : choiceColor('stance', Math.round(v), stanceCodes.length) }} />
+                      ))}</span>
                     </span>
                   </td>
                 </tr>
@@ -170,5 +200,17 @@ export function CodeMatrix({ project }: { project: Project }) {
         With {m.people.length} participant{m.people.length === 1 ? '' : 's'}, read “People” first: a code raised by {Math.min(3, m.people.length)} of {m.people.length} people is a pattern to check, not a prevalence. Passage counts follow interview length and how finely the passages were cut; “Share of each person” corrects for length only. Claims still awaiting a decision are left out.
       </Caveat>
     </Panel>
+  )
+}
+
+/** A Harvey ball: a circle filled by quarters, for an ordinal grade. */
+function Harvey({ filled }: { filled: number }) {
+  const r = 6, a = filled * 2 * Math.PI
+  const x = 7 + r * Math.sin(a), y = 7 - r * Math.cos(a)
+  return (
+    <svg viewBox="0 0 14 14" className="size-3.5" aria-hidden>
+      <circle cx="7" cy="7" r={r} fill="var(--surface)" stroke="var(--ink)" strokeWidth="1.2" />
+      {filled >= 1 ? <circle cx="7" cy="7" r={r} fill="var(--ink)" /> : filled > 0 && <path d={`M7,7 L7,1 A${r},${r} 0 ${filled > 0.5 ? 1 : 0} 1 ${x},${y} Z`} fill="var(--ink)" />}
+    </svg>
   )
 }

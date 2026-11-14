@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import type { Project } from '../lib/types'
 import { useProject } from '../lib/store'
 import { indexBy, orderedCodes } from '../lib/model'
-import { cooccurrence, topPhrases, topTerms } from '../lib/explore'
+import { cCoefficient, codeSpans, cooccurrence, cooccurrencePeople, topPhrases, topTerms } from '../lib/explore'
 import { Empty, PageHeader, Panel, Select, Tabs, cx } from '../components/ui'
 import { InterviewMap } from '../features/explore/InterviewMap'
 import { Compare } from '../features/explore/Compare'
@@ -79,9 +79,19 @@ function GroupFilter({ value, onChange }: { value: string; onChange: (v: string)
 
 function Heatmap({ project }: { project: Project }) {
   const [group, setGroup] = useState('')
+  const [measure, setMeasure] = useState<'passages' | 'c' | 'people'>('passages')
   const [hover, setHover] = useState<{ a: string; b: string; n: number } | null>(null)
   const counts = useMemo(() => cooccurrence(project), [project])
+  const spans = useMemo(() => codeSpans(project), [project])
+  const people = useMemo(() => (measure === 'people' ? cooccurrencePeople(project) : new Map<string, number>()), [project, measure])
   const get = (a: string, b: string) => counts.get(a < b ? `${a}|${b}` : `${b}|${a}`) ?? 0
+  const value = (a: string, b: string) => {
+    const n = get(a, b)
+    if (measure === 'passages') return n
+    if (measure === 'people') return people.get(a < b ? `${a}|${b}` : `${b}|${a}`) ?? 0
+    return cCoefficient(n, spans.get(a) ?? 0, spans.get(b) ?? 0)
+  }
+  const fmt = (v: number) => (measure === 'c' ? (v ? v.toFixed(2).replace(/^0/, '') : '') : v || '')
   const used = useUsedCodes(project, group)
   // Only codes that share a passage with another code: a grid of 100+ codes is mostly empty cells.
   // Past 40, keep the most connected, in codebook order.
@@ -91,14 +101,20 @@ function Heatmap({ project }: { project: Project }) {
     const keep = new Set([...linked].sort((a, b) => total.get(b.id)! - total.get(a.id)!).slice(0, 40).map((c) => c.id))
     return { codes: linked.filter((c) => keep.has(c.id)), hidden: used.length - keep.size }
   }, [used, counts])
-  const max = Math.max(1, ...codes.flatMap((a) => codes.map((b) => (a.id === b.id ? 0 : get(a.id, b.id)))))
+  const max = Math.max(measure === 'c' ? 0.01 : 1, ...codes.flatMap((a) => codes.map((b) => (a.id === b.id ? 0 : value(a.id, b.id)))))
   const byId = indexBy(project.codes)
+  const nPeople = project.sources.length
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <GroupFilter value={group} onChange={setGroup} />
-        <span className="text-muted">Cells count passages where both codes overlap. Click a cell to read them.</span>
-        <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">0 <span className="h-2.5 w-24 rounded-sm" style={{ background: 'linear-gradient(90deg, color-mix(in oklab, var(--accent) 8%, var(--surface)), var(--accent))' }} /> {max}</span>
+        <Select value={measure} onChange={(e) => setMeasure(e.target.value as typeof measure)} className="h-8" aria-label="Measure">
+          <option value="passages">Shared passages</option>
+          <option value="c">Strength (c-coefficient)</option>
+          <option value="people">People with the pair</option>
+        </Select>
+        <span className="text-muted">{measure === 'passages' ? 'Passages where both codes overlap.' : measure === 'c' ? 'Shared passages over passages with either code: 0 never together, 1 always. Frequent codes no longer dominate.' : `Participants (of ${nPeople}) with at least one passage carrying both codes.`} Click a cell to read them.</span>
+        <span className="ml-auto flex items-center gap-1.5 text-xs text-muted">0 <span className="h-2.5 w-24 rounded-sm" style={{ background: 'linear-gradient(90deg, color-mix(in oklab, var(--accent) 8%, var(--surface)), var(--accent))' }} /> {measure === 'c' ? max.toFixed(2) : max}</span>
       </div>
       <div className="relative overflow-auto rounded-lg border border-line bg-surface p-3">
         <table className="border-separate border-spacing-[2px] text-xs">
@@ -117,7 +133,7 @@ function Heatmap({ project }: { project: Project }) {
               <tr key={a.id}>
                 <th className="max-w-56 truncate pr-2 text-right font-normal text-muted" title={a.name}>{a.name}</th>
                 {codes.map((b) => {
-                  const n = a.id === b.id ? 0 : get(a.id, b.id)
+                  const n = a.id === b.id ? 0 : value(a.id, b.id)
                   return (
                     <td key={b.id} className="p-0">
                       {a.id === b.id ? <div className="size-6" /> : (
@@ -125,14 +141,14 @@ function Heatmap({ project }: { project: Project }) {
                           to="/p/$projectId/retrieve"
                           params={{ projectId: project.id }}
                           search={{ codes: `${a.id},${b.id}`, mode: 'all' }}
-                          onMouseEnter={() => setHover({ a: a.id, b: b.id, n })}
+                          onMouseEnter={() => setHover({ a: a.id, b: b.id, n: get(a.id, b.id) })}
                           onMouseLeave={() => setHover(null)}
-                          onFocus={() => setHover({ a: a.id, b: b.id, n })}
-                          aria-label={`${a.name} and ${b.name}: ${n} passages`}
+                          onFocus={() => setHover({ a: a.id, b: b.id, n: get(a.id, b.id) })}
+                          aria-label={`${a.name} and ${b.name}: ${get(a.id, b.id)} passages`}
                           className={cx('grid size-6 place-items-center rounded-[3px] tabular-nums', n / max > 0.55 ? 'text-accent-ink' : 'text-muted')}
                           style={{ background: n ? `color-mix(in oklab, var(--accent) ${10 + (n / max) * 90}%, var(--surface))` : 'transparent' }}
                         >
-                          {n || ''}
+                          {fmt(n)}
                         </Link>
                       )}
                     </td>
@@ -144,8 +160,8 @@ function Heatmap({ project }: { project: Project }) {
         </table>
         {hover && (
           <div className="pointer-events-none fixed right-6 bottom-6 z-40 max-w-sm rounded-md border border-line bg-surface px-3 py-2 text-sm shadow-lg" role="status">
-            <div className="font-medium">{hover.n} passage{hover.n === 1 ? '' : 's'}</div>
-            <div className="text-xs text-muted">{byId.get(hover.a)?.name} × {byId.get(hover.b)?.name}</div>
+            <div className="font-medium">{hover.n} shared passage{hover.n === 1 ? '' : 's'} · strength {cCoefficient(hover.n, spans.get(hover.a) ?? 0, spans.get(hover.b) ?? 0).toFixed(2)}</div>
+            <div className="text-xs text-muted">{byId.get(hover.a)?.name}: {spans.get(hover.a) ?? 0} passages · {byId.get(hover.b)?.name}: {spans.get(hover.b) ?? 0}</div>
           </div>
         )}
       </div>
