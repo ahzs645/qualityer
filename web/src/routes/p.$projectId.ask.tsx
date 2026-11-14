@@ -3,7 +3,7 @@ import { Fragment, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Check, Download, FileUp, GitBranch, Layers, Lock, MessagesSquare, Play, Plus, Square, ThumbsDown, ThumbsUp, Trash2, Minus } from 'lucide-react'
 import type { AskAnswer, AskArea, AskPrompt, Project, Source } from '../lib/types'
 import { useProject } from '../lib/store'
-import { download, restrictionAt, slug, toCSV } from '../lib/model'
+import { WITHHELD, download, restrictionAt, slug, toCSV } from '../lib/model'
 import { setRestricted } from '../lib/review'
 import { ASIDE_TEMPLATES, ASK_SETS, ASK_TEMPLATES, askPack, askPackSet, lineage, newPrompt, readAnyAskResponses, refineAdvice, setPrompts, type AskResponses } from '../lib/ai/ask'
 import { asideEvidence, asideItems } from '../lib/report'
@@ -144,7 +144,7 @@ function Question({ project, prompt, onSelect }: { project: Project; prompt: Ask
     const rows: string[][] = [['Version', 'Question', 'Interview', 'Not addressed', 'Answer', 'Evidence', 'Rating', 'Reviewer note', 'Model']]
     for (const v of versions) for (const a of project.askAnswers.filter((x) => x.promptId === v.id)) {
       const s = project.sources.find((x) => x.id === a.sourceId)
-      rows.push([`v${v.version}`, v.text, s ? s.name : '', a.notAddressed ? 'yes' : '', a.text, a.evidence.map((e) => `${e.turnId}: “${e.quote}”${e.match === 'not-found' ? ' (not found)' : ''}`).join('\n'), a.rating ?? '', a.reviewNote, a.model])
+      rows.push([`v${v.version}`, v.text, s ? s.name : '', a.notAddressed ? 'yes' : '', a.text, a.evidence.map((e) => `${e.turnId}: “${e.start != null && e.end != null && restrictionAt(project, a.sourceId, e.start, e.end) ? WITHHELD : e.quote}”${e.match === 'not-found' ? ' (not found)' : ''}`).join('\n'), a.rating ?? '', a.reviewNote, a.model])
     }
     download(`${slug(project.name)}-ask-${slug(prompt.title)}.csv`, '﻿' + forExport(project, toCSV(rows)), 'text/csv')
   }
