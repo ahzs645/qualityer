@@ -9,7 +9,7 @@ const short = (name: string) => name.trim().split(/\s{2,}/).join(' ')
 const key = (name: string) => name.trim().split(/\s+/)[0]
 
 /** One floating tooltip per chart, placed next to the mark under the pointer. */
-function useTip() {
+export function useTip() {
   const box = useRef<HTMLDivElement>(null)
   const [tip, setTip] = useState<{ x: number; y: number; body: ReactNode } | null>(null)
   const show = (e: { currentTarget: Element }, body: ReactNode) => {
@@ -328,7 +328,7 @@ function EvidenceByTheme({ project, data }: { project: Project; data: Data }) {
   )
 }
 
-function Caveat({ children }: { children: ReactNode }) {
+export function Caveat({ children }: { children: ReactNode }) {
   return <p className="border-t border-line px-4 py-2.5 text-xs leading-relaxed text-muted">{children}</p>
 }
 

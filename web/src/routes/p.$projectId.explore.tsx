@@ -9,12 +9,13 @@ import { InterviewMap } from '../features/explore/InterviewMap'
 import { Compare } from '../features/explore/Compare'
 import { Profile } from '../features/explore/Profile'
 import { Positions } from '../features/explore/Positions'
+import { CodeMatrix } from '../features/explore/Matrix'
 
-type Tab = 'map' | 'profile' | 'positions' | 'ai' | 'cooccurrence' | 'network' | 'terms'
+type Tab = 'map' | 'matrix' | 'profile' | 'positions' | 'ai' | 'cooccurrence' | 'network' | 'terms'
 
 export const Route = createFileRoute('/p/$projectId/explore')({
   validateSearch: (s: Record<string, unknown>): { tab?: Tab } => ({
-    tab: s.tab === 'density' ? 'map' : ['map', 'profile', 'positions', 'ai', 'cooccurrence', 'network', 'terms'].includes(s.tab as string) ? (s.tab as Tab) : undefined,
+    tab: s.tab === 'density' ? 'map' : ['map', 'matrix', 'profile', 'positions', 'ai', 'cooccurrence', 'network', 'terms'].includes(s.tab as string) ? (s.tab as Tab) : undefined,
   }),
   component: Explore,
 })
@@ -29,6 +30,7 @@ function Explore() {
       <PageHeader title="Explore" />
       <Tabs value={tab} onChange={(t) => navigate({ search: { tab: t } })} items={[
         { value: 'map', label: 'Interview map' },
+        { value: 'matrix', label: 'Who raised what' },
         { value: 'profile', label: 'Cases by domain' },
         { value: 'positions', label: 'Where people stand' },
         { value: 'ai', label: 'AI and you' },
@@ -40,6 +42,7 @@ function Explore() {
         {tab === 'ai' ? <Compare project={project} /> : accepted.length === 0 ? <Panel><Empty title="Nothing coded yet">Charts appear once passages are coded.</Empty></Panel> : (
           <>
             {tab === 'map' && <InterviewMap project={project} />}
+            {tab === 'matrix' && <CodeMatrix project={project} />}
             {tab === 'profile' && <Profile project={project} />}
             {tab === 'positions' && <Positions project={project} />}
             {tab === 'cooccurrence' && <Heatmap project={project} />}
