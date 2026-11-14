@@ -9,7 +9,7 @@ import { InterviewMap } from '../features/explore/InterviewMap'
 import { Compare } from '../features/explore/Compare'
 import { Profile } from '../features/explore/Profile'
 import { Positions } from '../features/explore/Positions'
-import { CodeMatrix } from '../features/explore/Matrix'
+import { CodeMatrix, SharedUnique } from '../features/explore/Matrix'
 
 type Tab = 'map' | 'matrix' | 'profile' | 'positions' | 'ai' | 'cooccurrence' | 'network' | 'terms'
 
@@ -42,7 +42,7 @@ function Explore() {
         {tab === 'ai' ? <Compare project={project} /> : accepted.length === 0 ? <Panel><Empty title="Nothing coded yet">Charts appear once passages are coded.</Empty></Panel> : (
           <>
             {tab === 'map' && <InterviewMap project={project} />}
-            {tab === 'matrix' && <CodeMatrix project={project} />}
+            {tab === 'matrix' && <div className="space-y-5"><CodeMatrix project={project} /><SharedUnique project={project} /></div>}
             {tab === 'profile' && <Profile project={project} />}
             {tab === 'positions' && <Positions project={project} />}
             {tab === 'cooccurrence' && <Heatmap project={project} />}

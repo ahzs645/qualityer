@@ -11,15 +11,15 @@ const key = (name: string) => name.trim().split(/\s+/)[0]
 /** One floating tooltip per chart, placed next to the mark under the pointer. */
 export function useTip() {
   const box = useRef<HTMLDivElement>(null)
-  const [tip, setTip] = useState<{ x: number; y: number; body: ReactNode } | null>(null)
+  const [tip, setTip] = useState<{ x: number; y: number; below: boolean; body: ReactNode } | null>(null)
   const show = (e: { currentTarget: Element }, body: ReactNode) => {
+    // Viewport coordinates, so the scrolling chart container cannot clip the tip.
     const r = e.currentTarget.getBoundingClientRect()
-    const o = box.current?.getBoundingClientRect()
-    if (!o) return
-    setTip({ x: r.left + r.width / 2 - o.left, y: r.top - o.top, body })
+    const below = r.top < 240
+    setTip({ x: Math.min(Math.max(140, r.left + r.width / 2), window.innerWidth - 140), y: below ? r.bottom + 6 : r.top - 6, below, body })
   }
   const layer = tip && (
-    <div role="tooltip" className="pointer-events-none absolute z-10 w-64 -translate-x-1/2 -translate-y-full rounded-md border border-line bg-surface px-3 py-2 text-xs shadow-lg" style={{ left: Math.max(130, tip.x), top: tip.y - 6 }}>
+    <div role="tooltip" className={cx('pointer-events-none fixed z-50 w-64 -translate-x-1/2 rounded-md border border-line bg-surface px-3 py-2 text-xs shadow-lg', !tip.below && '-translate-y-full')} style={{ left: tip.x, top: tip.y }}>
       {tip.body}
     </div>
   )

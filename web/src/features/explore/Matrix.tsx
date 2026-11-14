@@ -87,7 +87,8 @@ export function CodeMatrix({ project }: { project: Project }) {
     if (level !== 'group' || col.people.length !== 1) return ''
     const theme = project.themes.find((t) => t.title === row.name)
     const cell = theme && project.cells.find((c) => c.themeId === theme.id && c.caseId === col.people[0].id)
-    return cell?.summary ? firstSentences(cell.summary.replace(/\s*\((?:Drafted|Checked)[^)]*\)\s*$/i, ''), 2) : ''
+    const text = cell?.summary ? firstSentences(cell.summary.replace(/\s*\((?:Drafted|Checked)[^)]*\)\s*$/i, ''), 2) : ''
+    return text.length > 220 ? `${text.slice(0, 220).replace(/\s+\S*$/, '')}…` : text
   }
   const short = (name: string) => name.trim().split(/\s{2,}/).join(' ')
   const fill = (t: number) => (t > 0 ? `color-mix(in oklab, var(--viz-seq) ${12 + t * 88}%, var(--surface))` : 'transparent')
@@ -221,5 +222,55 @@ function Harvey({ filled }: { filled: number }) {
       <circle cx="7" cy="7" r={r} fill="var(--surface)" stroke="var(--ink)" strokeWidth="1.2" />
       {filled >= 1 ? <circle cx="7" cy="7" r={r} fill="var(--ink)" /> : filled > 0 && <path d={`M7,7 L7,1 A${r},${r} 0 ${filled > 0.5 ? 1 : 0} 1 ${x},${y} Z`} fill="var(--ink)" />}
     </svg>
+  )
+}
+
+/**
+ * Shared and unique: which codes two participants (or two groups) both raised
+ * and which only one did. After NVivo's comparison diagram and MAXQDA's
+ * Two-Cases model, as three lists rather than a node diagram.
+ */
+export function SharedUnique({ project }: { project: Project }) {
+  const [level, setLevel] = useState<MatrixLevel>('code')
+  const m = useMemo(() => buildMatrix(project, level), [project, level])
+  const [a, setA] = useState(m.people[0]?.id ?? '')
+  const [b, setB] = useState(m.people[1]?.id ?? '')
+  const navigate = useNavigate()
+  if (m.people.length < 2) return null
+  const pa = m.people.find((p) => p.id === a) ?? m.people[0]
+  const pb = m.people.find((p) => p.id === b && p.id !== pa.id) ?? m.people.find((p) => p.id !== pa.id)!
+  const n = (row: MatrixRow, id: string) => m.cells.get(mkey(row.id, id))?.claims.length ?? 0
+  const only = (x: Person, y: Person) => m.rows.filter((r) => n(r, x.id) && !n(r, y.id))
+  const both = m.rows.filter((r) => n(r, pa.id) && n(r, pb.id))
+  const open = (row: MatrixRow, ps: Person[]) => navigate({ to: '/p/$projectId/retrieve', params: { projectId: project.id }, search: { codes: row.codeIds.join(','), sources: ps.flatMap((p) => p.sourceIds).join(',') } })
+  const list = (rows: MatrixRow[], ps: Person[], empty: string) => rows.length ? (
+    <ul className="space-y-0.5">
+      {rows.map((r) => (
+        <li key={r.id}>
+          <button type="button" onClick={() => open(r, ps)} className="flex w-full items-center gap-2 rounded px-1.5 py-0.5 text-left text-sm hover:bg-sunken">
+            <Swatch color={r.color} /><span className="min-w-0 flex-1 truncate" title={r.name}>{r.name.replace(/\s{2,}/, ' ')}</span>
+            <span className="text-[11px] tabular-nums text-muted">{ps.map((p) => n(r, p.id)).join(' · ')}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  ) : <p className="px-1.5 text-xs text-faint">{empty}</p>
+  const pick = (value: string, set: (v: string) => void, label: string) => (
+    <Select value={value} onChange={(e) => set(e.target.value)} className="h-7 text-xs" aria-label={label}>{m.people.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</Select>
+  )
+  return (
+    <Panel title="Shared and unique" actions={
+      <div className="flex items-center gap-2 text-xs text-muted">
+        {pick(pa.id, setA, 'First participant')} and {pick(pb.id, setB, 'Second participant')}
+        <Select value={level} onChange={(e) => setLevel(e.target.value as MatrixLevel)} className="h-7 text-xs" aria-label="Compare by"><option value="code">codes</option><option value="group">code groups</option></Select>
+      </div>
+    }>
+      <div className="grid gap-4 p-4 md:grid-cols-3">
+        <div><h3 className="mb-1.5 text-xs font-semibold text-muted uppercase">Only {pa.label} · {only(pa, pb).length}</h3>{list(only(pa, pb), [pa], 'Nothing only this person raised.')}</div>
+        <div className="md:border-x md:border-line md:px-4"><h3 className="mb-1.5 text-xs font-semibold text-muted uppercase">Both · {both.length}</h3>{list(both, [pa, pb], 'Nothing in common.')}</div>
+        <div><h3 className="mb-1.5 text-xs font-semibold text-muted uppercase">Only {pb.label} · {only(pb, pa).length}</h3>{list(only(pb, pa), [pb], 'Nothing only this person raised.')}</div>
+      </div>
+      <Caveat>“Only” means not coded in the other interview, which can mean not asked: check guide coverage before reading an absence as a difference. Numbers are passages in each interview.</Caveat>
+    </Panel>
   )
 }
