@@ -8,12 +8,13 @@ import { Empty, PageHeader, Panel, Select, Tabs, cx } from '../components/ui'
 import { InterviewMap } from '../features/explore/InterviewMap'
 import { Compare } from '../features/explore/Compare'
 import { Profile } from '../features/explore/Profile'
+import { Positions } from '../features/explore/Positions'
 
-type Tab = 'map' | 'profile' | 'ai' | 'cooccurrence' | 'network' | 'terms'
+type Tab = 'map' | 'profile' | 'positions' | 'ai' | 'cooccurrence' | 'network' | 'terms'
 
 export const Route = createFileRoute('/p/$projectId/explore')({
   validateSearch: (s: Record<string, unknown>): { tab?: Tab } => ({
-    tab: s.tab === 'density' ? 'map' : ['map', 'profile', 'ai', 'cooccurrence', 'network', 'terms'].includes(s.tab as string) ? (s.tab as Tab) : undefined,
+    tab: s.tab === 'density' ? 'map' : ['map', 'profile', 'positions', 'ai', 'cooccurrence', 'network', 'terms'].includes(s.tab as string) ? (s.tab as Tab) : undefined,
   }),
   component: Explore,
 })
@@ -29,6 +30,7 @@ function Explore() {
       <Tabs value={tab} onChange={(t) => navigate({ search: { tab: t } })} items={[
         { value: 'map', label: 'Interview map' },
         { value: 'profile', label: 'Cases by domain' },
+        { value: 'positions', label: 'Where people stand' },
         { value: 'ai', label: 'AI and you' },
         { value: 'cooccurrence', label: 'Co-occurrence' },
         { value: 'network', label: 'Network' },
@@ -39,6 +41,7 @@ function Explore() {
           <>
             {tab === 'map' && <InterviewMap project={project} />}
             {tab === 'profile' && <Profile project={project} />}
+            {tab === 'positions' && <Positions project={project} />}
             {tab === 'cooccurrence' && <Heatmap project={project} />}
             {tab === 'network' && <Network project={project} />}
             {tab === 'terms' && <Terms project={project} />}

@@ -396,6 +396,19 @@ A study reviewed by an AI acting as reviewer can be handed to a person. This is 
 
 Either way, a sign-off by the earlier reviewer is withdrawn, since the new person has to sign off for themselves. A snapshot is taken first.
 
+## Eleventh pass: charts of where people stand
+
+[`qual-visualisation-survey-2026.md`](qual-visualisation-survey-2026.md) surveys how qualitative and mixed-methods work graphs coded interviews. Its main rule is that the unit should be the participant, not the passage. A new Explore tab, **Where people stand**, has four charts that follow that rule:
+
+- **Theme by theme:** each participant gets one lane per theme. A large dot marks their middle stance and small dots mark every step they used. A suggested convergence label follows Farmer et al.'s categories: agreement, partial agreement, dissonance, one voice, described with no position, or silence. Clicking a dot opens that person's passages.
+- **Groups:** the same labels within and between groups of participants, grouped by a source attribute such as role level or insider status.
+- **Evidence:** a unit chart, one square per claim, ordered by evidence grade. A people count sits beside it, because more squares means more passages, not more people.
+- **Through the interview:** one panel per participant. The x-axis is how far into the transcript the claim falls, the y-axis is stance, and a running average shows drift.
+
+Claims awaiting a decision are left out of all four, and AI-drafted claims not yet checked are drawn hollow or faded. Each chart carries its caveat. On the four calibration interviews, stance on most themes agreed across people; the main dissonance was between groups on risk. The interview-course panels show sceptical runs where the guide turned to barriers.
+
+Not built yet from the shortlist: a case-ordered meta-matrix (participants sorted by their overall view) and a quote swarm for a single theme.
+
 ## Still not ported
 
 - **Speech-to-text and diarisation inside the app.** Transcribe with Whisper / WhisperX / noScribe and import the JSON. `services/transcription` is unchanged.
