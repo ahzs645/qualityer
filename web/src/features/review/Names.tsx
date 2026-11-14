@@ -4,7 +4,7 @@ import { ChevronDown, EyeOff, Plus, Trash2 } from 'lucide-react'
 import type { NameEntry, NameKind, Project, Source } from '../../lib/types'
 import { useProject } from '../../lib/store'
 import { excerpt, indexBy } from '../../lib/model'
-import { MASK_BY_DEFAULT, findNames, maskNames, nameCandidates, nameCounts, nextReplacement, type NameCandidate } from '../../lib/names'
+import { MASK_BY_DEFAULT, defaultVariants, findNames, maskNames, nameCandidates, nameCounts, nextReplacement, type NameCandidate } from '../../lib/names'
 import { addName, addNameVariant, dismissName, removeName, setAnonymise, updateName } from '../../lib/actions'
 import { Badge, Button, Empty, IconButton, Input, Panel, Select, cx } from '../../components/ui'
 
@@ -115,7 +115,7 @@ function Register({ project, counts }: { project: Project; counts: Map<string, M
         e.preventDefault()
         const n = name.trim()
         if (!n) return
-        addName({ name: n, variants: [], kind, replacement: nextReplacement(project, kind), mask: MASK_BY_DEFAULT[kind], caseSensitive: true, note: '' })
+        addName({ name: n, variants: defaultVariants(n, kind), kind, replacement: nextReplacement(project, kind), mask: MASK_BY_DEFAULT[kind], caseSensitive: true, note: '' })
         setName('')
       }}>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Add a name, e.g. Jane Doe" aria-label="New name" className="h-8 w-56" />
@@ -221,7 +221,7 @@ function Candidates({ project }: { project: Project }) {
 
 function CandidateRow({ project, c, source }: { project: Project; c: NameCandidate; source: Source | undefined }) {
   const [k, setK] = useState<NameKind>(c.kind)
-  const add = () => addName({ name: c.text, variants: [], kind: k, replacement: c.replacement || nextReplacement(project, k), mask: MASK_BY_DEFAULT[k], caseSensitive: true, note: c.reason })
+  const add = () => addName({ name: c.text, variants: defaultVariants(c.text, k), kind: k, replacement: c.replacement || nextReplacement(project, k), mask: MASK_BY_DEFAULT[k], caseSensitive: true, note: c.reason })
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2">
       <div className="min-w-0 flex-1 basis-72">

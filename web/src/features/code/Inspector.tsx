@@ -10,7 +10,7 @@ import {
 import { Badge, Button, IconButton, Input, Select, Swatch, Textarea } from '../../components/ui'
 import { playRange } from '../../lib/player'
 import { setRestricted } from '../../lib/review'
-import { MASK_BY_DEFAULT, findNames, guessKind, nextReplacement } from '../../lib/names'
+import { MASK_BY_DEFAULT, defaultVariants, findNames, guessKind, nextReplacement } from '../../lib/names'
 import type { NameKind } from '../../lib/types'
 import { addName, addNameVariant } from '../../lib/actions'
 
@@ -259,7 +259,7 @@ function NamesHere({ project, text }: { project: Project; text: string }) {
           <Select value={kind} onChange={(e) => setKind(e.target.value as NameKind)} className="h-7 text-xs" aria-label="Kind of name">
             <option value="person">Person</option><option value="organisation">Organisation</option><option value="place">Place</option><option value="other">Other</option>
           </Select>
-          <Button size="sm" onClick={() => addName({ name: trimmed, variants: [], kind, replacement: nextReplacement(project, kind), mask: MASK_BY_DEFAULT[kind], caseSensitive: true, note: 'added from a passage' })}>Add “{trimmed}” to names</Button>
+          <Button size="sm" onClick={() => addName({ name: trimmed, variants: defaultVariants(trimmed, kind), kind, replacement: nextReplacement(project, kind), mask: MASK_BY_DEFAULT[kind], caseSensitive: true, note: 'added from a passage' })}>Add “{trimmed}” to names</Button>
           {(project.names ?? []).length > 0 && (
             <Select value={into} onChange={(e) => { if (e.target.value) { addNameVariant(e.target.value, trimmed); setInto('') } }} className="h-7 max-w-48 text-xs" aria-label="Add as a spelling of">
               <option value="">or a spelling of…</option>

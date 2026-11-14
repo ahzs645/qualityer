@@ -349,6 +349,44 @@ A survey of eleven commercial tools, with sources, is in [feature-gaps-2026-qda-
 3. a pooled overview across Ask answers;
 4. links between passages.
 
+## Added in the ninth pass: signing the analysis off, and who signed it
+
+Reports can now be signed off as final. Settings for this are on the Report screen; the logic is in `signOffBlockers` and `statusLine` in `web/src/lib/report.ts`.
+
+- **Who signs:** the reviewer gives a name and a role: *a person*, or *an AI acting as the human reviewer*.
+- **What blocks it:** sign-off is refused while any of these remain:
+  - undecided suggestions or open rule issues;
+  - AI claims accepted without a claim-by-claim check;
+  - open candidate codes, unmarked guide questions, or glossary corrections not yet applied;
+  - sources not marked done.
+- **What the report says:**
+  - **Status:** a signed-off report reads *Final* and names the signer. When an AI signed, the status line says so and adds that no person has signed off the analysis. A study edited after sign-off is flagged.
+  - **Limitations:** "Open items" becomes "Limitations". These are what no reviewer can settle from the app, such as recordings not listened to or questions not asked.
+  - **Formats:** this applies to the HTML, Markdown and PDF reports alike.
+
+### Finalising the study as the acting reviewer (aggregate numbers only)
+
+The study was finalised by an AI standing in for the human reviewer, and the reports say exactly that.
+
+- **Candidate codes:** both were parked with reasons, since each was raised in a single interview.
+- **Ask answers:** answers were rated after checking.
+- **Sources:** all were marked done.
+- **Framework summaries:** every summary was checked against its full transcript, one checking agent per interview.
+
+| | Summaries checked | Revised | Kinds of error found |
+|---|---|---|---|
+| Earlier interviews (two) | 19 | 7 | the direct answer to the guide question left out; a barrier ranked higher than the respondent ranked it; a "front door" the respondent had explicitly ruled out; a view attributed to the respondent that the interviewer raised |
+| New interviews (two) | 20 | 4 | a detail taken from another interview; a need ranked "above all" that the respondent had questioned; a hoped-for asset described as an existing one |
+
+- **How often summaries were wrong:** 28% of AI-drafted framework summaries had a factual error that a reader of the summary alone could not have caught. That includes summaries written by the reviewer itself.
+- **Record:** each checked summary now ends with a note of who checked it and when.
+- **Re-running Ask:** the instructions were changed so the model does not infer gender, and the Ask question was re-run as a new version rather than its stored answers being edited.
+- **Name leaks:** a check of every export for masked names, before the final sign-off, found five leaks:
+  - surnames used on their own in memos;
+  - a surname alone in an older memo;
+  - two misheard spellings, one in a codebook anchor and one in a memo.
+  The sign-off was withdrawn, the spellings registered, and the study signed off again. Adding a person to the register now adds their surname as a spelling as well.
+
 ## Still not ported
 
 - **Speech-to-text and diarisation inside the app.** Transcribe with Whisper / WhisperX / noScribe and import the JSON. `services/transcription` is unchanged.

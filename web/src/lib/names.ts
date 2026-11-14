@@ -241,6 +241,18 @@ function scanSource(source: Source, onRun: (run: string, midSentence: boolean, b
   }
 }
 
+/**
+ * Spellings to add with a new name. For a person of two or more words, the
+ * surname on its own: memos and summaries often use it ("Ames said…"), and
+ * masking the full name alone would leave it behind.
+ */
+export function defaultVariants(name: string, kind: NameKind): string[] {
+  if (kind !== 'person') return []
+  const words = name.replace(/^(dr|mr|mrs|ms|prof|professor|doctor|president|chief|mayor)\.?\s+/i, '').trim().split(/\s+/)
+  const last = words[words.length - 1]
+  return words.length >= 2 && /^\p{Lu}[\p{L}'’-]{2,}$/u.test(last) ? [last] : []
+}
+
 /** Next stand-in for a kind: "[Person 3]" after "[Person 2]". */
 export function nextReplacement(project: Project, kind: NameKind) {
   const label = { person: 'Person', organisation: 'Organisation', place: 'Place', other: 'Name' }[kind]

@@ -99,3 +99,14 @@ describe('anonymised exports', () => {
     expect(forExport({ ...p, anonymise: false }, 'Jo Ames')).toBe('Jo Ames')
   })
 })
+
+describe('surnames', () => {
+  it('adds a person\'s surname as a spelling, so it is masked on its own too', async () => {
+    const { defaultVariants } = await import('../src/lib/names')
+    expect(defaultVariants('Dr. Jo Ames', 'person')).toEqual(['Ames'])
+    expect(defaultVariants('Jo', 'person')).toEqual([])
+    expect(defaultVariants('Port Ellis', 'place')).toEqual([])
+    const jo = entry('Jo Ames', { variants: defaultVariants('Jo Ames', 'person'), replacement: '[R01]' })
+    expect(maskNames('Ames said so.', [jo])).toBe('[R01] said so.')
+  })
+})
