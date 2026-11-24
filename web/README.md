@@ -35,6 +35,10 @@ src/
   lib/profile.ts     cases by domain, with evidence-grade and stance mix
   lib/report.ts      study report (HTML with tabs, Markdown), recipes, the claims table
   lib/report-pdf.ts  the report as a PDF (pdfmake, loaded on demand)
+  lib/visual-report.ts  the visual brief: charts first (stance, evidence, who raised what, each interview's course), as HTML
+  lib/visual-pdf.ts  the visual brief as a PDF, drawing the same SVG charts
+  lib/scope.ts       exports for all interviews together or one participant (the study narrowed to their interview)
+  lib/export-all.ts  one zip: all interviews, then each participant, in the chosen format
   lib/ai/ask.ts      Ask across interviews: one question per interview, checked evidence, versions
   features/review/   claim-by-claim AI review, decision log
   features/explore/  interview map, cases by domain, AI-against-person comparison

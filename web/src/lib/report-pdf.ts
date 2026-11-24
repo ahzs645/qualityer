@@ -198,10 +198,13 @@ export function reportPdfDefinition(project: Project, opts: ReportOptions, gener
   }
 }
 
-export async function downloadReportPdf(project: Project, opts: ReportOptions, filename: string) {
+export async function reportPdfBlob(project: Project, opts: ReportOptions): Promise<Blob> {
   const [{ default: pdfMake }, { default: vfs }] = await Promise.all([import('pdfmake/build/pdfmake'), import('pdfmake/build/vfs_fonts')])
   ;(pdfMake as unknown as { addVirtualFileSystem: (v: unknown) => void }).addVirtualFileSystem(vfs)
+  return pdfMake.createPdf(reportPdfDefinition(project, opts)).getBlob()
+}
+
+export async function downloadReportPdf(project: Project, opts: ReportOptions, filename: string) {
   // Build a blob and save it like every other export; pdfmake's own download() did not start one.
-  const blob = await pdfMake.createPdf(reportPdfDefinition(project, opts)).getBlob()
-  download(filename, blob, 'application/pdf')
+  download(filename, await reportPdfBlob(project, opts), 'application/pdf')
 }

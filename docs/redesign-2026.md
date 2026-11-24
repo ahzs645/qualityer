@@ -490,6 +490,27 @@ On the calibration study, these checks found:
 
 The team members now have distinct stand-ins, and are linked to the voices they introduce themselves as. The first name has a neutral stand-in. Two team members named in passing remain unlinked, because the recordings do not say which voice is theirs.
 
+### Visual brief, one-participant exports and export everything
+
+The written reports were mostly tables and text, while the useful pictures lived only on the Explore screen. The Report screen now has two new choices:
+
+- **Format → Visual brief** (`web/src/lib/visual-report.ts`, `visual-pdf.ts`). The study as charts first, each with one line on how to read it:
+  - headlines worked out from the coding (agreement and dissonance by theme, best- and least-evidenced theme, where the sceptical talk sits);
+  - where people stand (themes × participants, middle stance and claim count);
+  - stance mix by theme (diverging bars) and evidence behind each theme (100% bars);
+  - who raised what (share of each person's claims per code group);
+  - hopes, worries and conditions, as cards read from the perspectives answer;
+  - stance through each interview, and themes through each interview;
+  - guide coverage, code pairs by c-coefficient, one quote per theme, asides counts and limitations.
+
+  Charts are plain SVG with fixed colours, so the same blocks render as a self-contained HTML page (hover shows the numbers) and as a PDF.
+- **Who it covers → all interviews together, or one participant** (`web/src/lib/scope.ts`). One participant means the study narrowed to their interview, so every format works on it: visual brief, summary, standard, full audit, Markdown and the CSVs. Theme interpretations and study-wide memos are left out, because they describe the other participants too. In the visual brief, the participant is set against the range of the others, and the others are not named.
+- **All interviews + each participant (.zip)** (`web/src/lib/export-all.ts`). One folder for everyone together, then one per participant, in the chosen format. A README in the zip says whether names are masked.
+
+**Names check.** On the calibration study, the anonymised reports still carried short forms of masked people. For example, a first name was registered only as part of a full name, so the first name on its own was never masked. The register's own suggestions also included first names nobody had added or dismissed. `exportNameRisks` (`web/src/lib/names.ts`) now finds both kinds:
+- When anonymising, short forms of masked names block sign-off and are shown under *Anonymise names* on the Report screen.
+- Unreviewed suggestions are counted in open items and limitations.
+
 ## Still not ported
 
 - **Speech-to-text and diarisation inside the app.** Transcribe with Whisper / WhisperX / noScribe and import the JSON. `services/transcription` is unchanged.

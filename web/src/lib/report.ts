@@ -5,7 +5,7 @@ import {
 import { CLAIM_STATE_LABEL, buildClaims, choiceGroups, confidenceBand, summariseDecisions } from './claims'
 import { comparablePasses, compare, humanBaseline } from './compare'
 import { turnsOf } from './ai/pipeline'
-import { forExport } from './names'
+import { exportNameRisks, forExport } from './names'
 import { buildProfile, cellKey, type ProfileCell } from './profile'
 
 // The study report: one document a team can read, print or paste from. It is
@@ -250,6 +250,10 @@ export function signOffBlockers(project: Project): string[] {
   const unmarked = d.coverage.reduce((n, row) => n + row.marks.filter((m) => m.status === 'unmarked').length, 0)
   if (unmarked) out.push(`${unmarked} guide questions have no coverage mark.`)
   if (d.corrections) out.push(`${d.corrections} glossary corrections are waiting to be applied.`)
+  if (anonymised(project)) {
+    const { leaks } = exportNameRisks(project)
+    if (leaks.length) out.push(`${leaks.length} short form${leaks.length === 1 ? '' : 's'} of masked names would appear unmasked in anonymised exports: ${leaks.slice(0, 6).map((c) => c.text).join(', ')}. Add ${leaks.length === 1 ? 'it' : 'them'} as spellings in Review → Names.`)
+  }
   return out
 }
 
@@ -533,6 +537,7 @@ export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPOR
     const unverified = d.accepted.filter((c) => !c.verifiedAt && d.sources.get(c.sourceId)?.media).length
     if (unverified) items.push(`No wording check against the recording is recorded for ${unverified} codings on sources that have audio.`)
     if (project.restricted.length) items.push(`${project.restricted.length} passage${project.restricted.length === 1 ? ' is' : 's are'} marked off the record; ${project.restricted.length === 1 ? 'its' : 'their'} wording is withheld from this report and from quote exports.`)
+    if (anonymised(project)) { const r = exportNameRisks(project); if (r.leaks.length || r.unreviewed) items.push(`Names: ${r.leaks.length ? `${r.leaks.length} short forms of masked names are not masked; ` : ''}${r.unreviewed} capitalised words that may be names have not been reviewed, so read quotes before sharing.`) }
     const open = project.candidates.filter((c) => c.status === 'open')
     if (open.length) items.push(`${open.length} candidate code${open.length === 1 ? '' : 's'} await a decision: ${esc(open.map((c) => c.name).join('; '))}.`)
     const final = !!project.signoff
@@ -651,6 +656,7 @@ export function reportMarkdown(project: Project, opts: ReportOptions = DEFAULT_R
     if (d.corrections) items.push(`${d.corrections} glossary corrections waiting to be applied.`)
     if (d.uncertain) items.push(`${d.uncertain} low-confidence transcript words unchecked.`)
     if (project.restricted.length) items.push(`${project.restricted.length} off-the-record passage(s): wording withheld.`)
+    if (anonymised(project)) { const r = exportNameRisks(project); if (r.leaks.length || r.unreviewed) items.push(`Names: ${r.leaks.length ? `${r.leaks.length} short forms of masked names are not masked; ` : ''}${r.unreviewed} capitalised words that may be names have not been reviewed.`) }
     h(project.signoff ? '## Limitations' : '## Open items', items.length ? items.map((i) => `- ${i}`).join('\n') : project.signoff ? 'None recorded.' : 'Nothing outstanding.')
   }
   if (opts.memos && project.memos.length) {

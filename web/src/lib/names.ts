@@ -347,3 +347,17 @@ export function participantLinks(project: Project): { id: string; refs: SpeakerR
     return refs.length ? [{ id: e.id, refs }] : []
   })
 }
+
+/**
+ * What an anonymised export may still give away. `leaks` are spellings that
+ * are part of a masked person's registered name but are not masked themselves
+ * ("Jo" for "Jo Ames"): every one appears in exports as written.
+ * `unreviewed` counts the other suggestions nobody has added or dismissed yet.
+ */
+export function exportNameRisks(project: Project) {
+  const masked = new Set(project.names.filter((e) => e.mask).map((e) => e.id))
+  const candidates = nameCandidates(project, 1000)
+  const leaks = candidates.filter((c) => c.partOf && masked.has(c.partOf))
+  const people = candidates.filter((c) => !c.partOf && c.kind === 'person')
+  return { leaks, people, unreviewed: candidates.length - leaks.length }
+}

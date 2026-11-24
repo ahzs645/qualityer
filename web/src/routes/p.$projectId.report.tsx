@@ -1,34 +1,58 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useMemo, useRef, useState } from 'react'
-import { Download, FileText, Printer } from 'lucide-react'
+import { Download, FileText, Package, Printer } from 'lucide-react'
 import { useProject } from '../lib/store'
 import { download, slug } from '../lib/model'
 import { RECIPES, REPORT_SECTIONS, claimsCSV, editedSinceSignOff, recipeOptions, reportHTML, reportMarkdown, signOffBlockers, type Recipe, type ReportOptions } from '../lib/report'
 import { decisionLogCSV } from '../features/review/DecisionLog'
+import { DEFAULT_VISUAL, VISUAL_SECTIONS, visualReportHTML, type VisualOptions } from '../lib/visual-report'
+import { ALL, scopeProject, scopeSlug, type Scope } from '../lib/scope'
+import { peopleOf } from '../lib/positions'
 import { setAnonymise, signOff, withdrawSignOff } from '../lib/actions'
+import { exportNameRisks } from '../lib/names'
 import type { Project, SignOff } from '../lib/types'
 import { Button, Input, PageHeader, Panel, Select, Textarea, cx } from '../components/ui'
 
 export const Route = createFileRoute('/p/$projectId/report')({ component: Report })
 
+type Format = 'visual' | Recipe
+
 function Report() {
   const project = useProject()
+  const [format, setFormat] = useState<Format>('visual')
   const [opts, setOpts] = useState<ReportOptions>(() => recipeOptions('standard'))
+  const [visual, setVisual] = useState<VisualOptions>(DEFAULT_VISUAL)
+  const [scope, setScope] = useState<Scope>(ALL)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const frame = useRef<HTMLIFrameElement>(null)
-  const html = useMemo(() => reportHTML(project, opts), [project, opts])
-  const base = `${slug(project.name)}-${opts.recipe === 'standard' ? 'report' : opts.recipe}`
+  const people = useMemo(() => peopleOf(project), [project])
+  // A participant who has since been removed falls back to everyone.
+  const live: Scope = scope.kind === 'person' && !people.some((p) => p.id === scope.personId) ? ALL : scope
+  const scoped = useMemo(() => scopeProject(project, live), [project, live])
+  const isVisual = format === 'visual'
+  const html = useMemo(() => (isVisual ? visualReportHTML(project, visual, live) : reportHTML(scoped, opts)), [isVisual, project, scoped, visual, opts, live])
+  const who = scopeSlug(project, live)
+  const base = `${slug(project.name)}-${who}-${isVisual ? 'visual' : opts.recipe === 'standard' ? 'report' : opts.recipe}`
   const answered = project.asks.filter((a) => project.askAnswers.some((x) => x.promptId === a.id)).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   const masked = project.names.filter((n) => n.mask).length
+  const risks = useMemo(() => (project.anonymise && masked ? exportNameRisks(project) : null), [project, masked])
 
-  const pdf = async () => {
-    setBusy('Building the PDF…')
+  const run = async (label: string, job: () => Promise<void>) => {
+    setBusy(label)
     setError(null)
-    try { await (await import('../lib/report-pdf')).downloadReportPdf(project, opts, `${base}.pdf`) }
-    catch (e) { setError(`The PDF could not be built: ${e instanceof Error ? e.message : String(e)}`) }
-    finally { setBusy(null) }
+    try { await job() } catch (e) { setError(`${label.replace(/…$/, '')} failed: ${e instanceof Error ? e.message : String(e)}`) } finally { setBusy(null) }
   }
+  const pdf = () => run('Building the PDF…', async () => {
+    if (isVisual) await (await import('../lib/visual-pdf')).downloadVisualPdf(project, visual, live, `${base}.pdf`)
+    else await (await import('../lib/report-pdf')).downloadReportPdf(scoped, opts, `${base}.pdf`)
+  })
+  const everything = () => run('Building the zip…', async () => {
+    const { exportAllZip } = await import('../lib/export-all')
+    const zip = await exportAllZip(project, isVisual ? 'visual' : 'written', visual, opts, (done, total) => setBusy(`Building ${Math.min(done + 1, total)} of ${total}…`))
+    download(`${slug(project.name)}-${isVisual ? 'visual-briefs' : 'reports'}-all-and-each.zip`, zip as BlobPart, 'application/zip')
+  })
+  const pick = (f: Format) => { setFormat(f); if (f !== 'visual') setOpts(recipeOptions(f, opts.askId)) }
 
   return (
     <div className="mx-auto max-w-[90rem] px-4 py-6 sm:px-6">
@@ -44,10 +68,30 @@ function Report() {
       <div className="grid gap-5 lg:grid-cols-[18rem_1fr]">
         <aside className="space-y-4">
           <SignOffPanel project={project} />
-          <Panel title="Recipe" bodyClass="space-y-1.5 p-2">
+          <Panel title="Who it covers" bodyClass="space-y-1.5 p-2">
+            <button type="button" aria-pressed={live.kind === 'all'} onClick={() => setScope(ALL)}
+              className={cx('block w-full rounded-md border px-3 py-2 text-left', live.kind === 'all' ? 'border-accent bg-accent-soft' : 'border-transparent hover:bg-sunken')}>
+              <span className="text-sm font-semibold">All interviews together</span>
+              <span className="mt-0.5 block text-xs text-muted">{people.length} participants side by side.</span>
+            </button>
+            <label className={cx('block rounded-md border px-3 py-2', live.kind === 'person' ? 'border-accent bg-accent-soft' : 'border-transparent')}>
+              <span className="text-sm font-semibold">One participant</span>
+              <Select value={live.kind === 'person' ? live.personId : ''} onChange={(e) => setScope(e.target.value ? { kind: 'person', personId: e.target.value } : ALL)} className="mt-1 h-8 w-full text-xs" aria-label="Participant">
+                <option value="">Choose…</option>
+                {people.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+              </Select>
+              <span className="mt-1 block text-xs text-muted">Their interview only. Charts set them against the others without naming anyone; writing about the other participants is left out.</span>
+            </label>
+          </Panel>
+          <Panel title="Format" bodyClass="space-y-1.5 p-2">
+            <button type="button" aria-pressed={isVisual} onClick={() => pick('visual')}
+              className={cx('block w-full rounded-md border px-3 py-2 text-left', isVisual ? 'border-accent bg-accent-soft' : 'border-transparent hover:bg-sunken')}>
+              <span className="text-sm font-semibold">Visual brief</span>
+              <span className="mt-0.5 block text-xs text-muted">Charts first: where people stand, stance and evidence by theme, who raised what, each interview's course, hopes and worries, one quote per theme.</span>
+            </button>
             {(Object.keys(RECIPES) as Recipe[]).map((r) => (
-              <button key={r} type="button" aria-pressed={opts.recipe === r} onClick={() => setOpts(recipeOptions(r, opts.askId))}
-                className={cx('block w-full rounded-md border px-3 py-2 text-left', opts.recipe === r ? 'border-accent bg-accent-soft' : 'border-transparent hover:bg-sunken')}>
+              <button key={r} type="button" aria-pressed={format === r} onClick={() => pick(r)}
+                className={cx('block w-full rounded-md border px-3 py-2 text-left', format === r ? 'border-accent bg-accent-soft' : 'border-transparent hover:bg-sunken')}>
                 <span className="text-sm font-semibold">{RECIPES[r].label}</span>
                 <span className="mt-0.5 block text-xs text-muted">{RECIPES[r].description}</span>
               </button>
@@ -58,7 +102,14 @@ function Report() {
               <input type="checkbox" className="mt-1" checked={project.anonymise} disabled={!masked} onChange={(e) => setAnonymise(e.target.checked)} />
               <span>Anonymise names <span className="block text-xs text-muted">{masked ? `${masked} names masked in every format.` : 'No masked names yet.'} <Link to="/p/$projectId/review" params={{ projectId: project.id }} search={{ tab: 'names' }} className="text-accent hover:underline">Names</Link></span></span>
             </label>
-            {opts.perspectives && (
+            {risks && (risks.leaks.length > 0 || risks.unreviewed > 0) && (
+              <p role="status" className={cx('rounded-md px-2.5 py-2 text-xs', risks.leaks.length ? 'bg-bad-soft text-bad' : 'bg-sunken text-muted')}>
+                {risks.leaks.length > 0 && <>Not masked: {risks.leaks.slice(0, 5).map((c) => `${c.text} (${c.total}×)`).join(', ')}{risks.leaks.length > 5 ? ` and ${risks.leaks.length - 5} more` : ''}, short forms of masked names. </>}
+                {risks.unreviewed > 0 && <>{risks.unreviewed} capitalised words that may be names{risks.people.length ? `, such as ${risks.people.slice(0, 3).map((c) => c.text).join(', ')},` : ''} have not been added or dismissed. </>}
+                <Link to="/p/$projectId/review" params={{ projectId: project.id }} search={{ tab: 'names' }} className="font-medium underline">Review names</Link> before sharing.
+              </p>
+            )}
+            {!isVisual && opts.perspectives && (
               <label className="block">
                 <span className="text-xs font-medium text-muted">Participant perspectives from</span>
                 {answered.length ? (
@@ -69,26 +120,34 @@ function Report() {
                 ) : <span className="mt-1 block text-xs text-muted">No answers yet. <Link to="/p/$projectId/ask" params={{ projectId: project.id }} className="text-accent hover:underline">Ask across interviews</Link></span>}
               </label>
             )}
-            <label className="flex items-center gap-2"><input type="checkbox" checked={opts.tabs} onChange={(e) => setOpts({ ...opts, tabs: e.target.checked })} /> Sections as tabs (HTML)</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={opts.bars} onChange={(e) => setOpts({ ...opts, bars: e.target.checked })} /> Grade and stance bars</label>
-            <label className="flex items-center gap-2">Quotes per framework cell
-              <Select value={String(Math.min(opts.quotesPerCell, 99))} onChange={(e) => setOpts({ ...opts, quotesPerCell: Number(e.target.value) })} className="h-7 text-xs" aria-label="Quotes per framework cell">
-                {[0, 1, 2, 3, 99].map((n) => <option key={n} value={n}>{n === 99 ? 'all' : n}</option>)}
-              </Select>
-            </label>
+            {!isVisual && <>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={opts.tabs} onChange={(e) => setOpts({ ...opts, tabs: e.target.checked })} /> Sections as tabs (HTML)</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={opts.bars} onChange={(e) => setOpts({ ...opts, bars: e.target.checked })} /> Grade and stance bars</label>
+              <label className="flex items-center gap-2">Quotes per framework cell
+                <Select value={String(Math.min(opts.quotesPerCell, 99))} onChange={(e) => setOpts({ ...opts, quotesPerCell: Number(e.target.value) })} className="h-7 text-xs" aria-label="Quotes per framework cell">
+                  {[0, 1, 2, 3, 99].map((n) => <option key={n} value={n}>{n === 99 ? 'all' : n}</option>)}
+                </Select>
+              </label>
+            </>}
           </Panel>
-          <Panel title="Sections" bodyClass="p-3">
+          <Panel title={isVisual ? 'Charts' : 'Sections'} bodyClass="p-3">
             <ul className="space-y-1.5">
-              {REPORT_SECTIONS.map(([id, label]) => (
-                <li key={id}><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={opts[id]} onChange={(e) => setOpts({ ...opts, [id]: e.target.checked })} />{label}</label></li>
-              ))}
+              {isVisual
+                ? VISUAL_SECTIONS.map(([id, label]) => (
+                  <li key={id}><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={visual[id]} onChange={(e) => setVisual({ ...visual, [id]: e.target.checked })} />{label}</label></li>
+                ))
+                : REPORT_SECTIONS.map(([id, label]) => (
+                  <li key={id}><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={opts[id]} onChange={(e) => setOpts({ ...opts, [id]: e.target.checked })} />{label}</label></li>
+                ))}
             </ul>
           </Panel>
           <Panel title="Other formats">
             <div className="flex flex-col items-start gap-2">
-              <Button size="sm" icon={<Download size={13} />} onClick={() => download(`${base}.md`, reportMarkdown(project, opts), 'text/markdown')}>Markdown</Button>
-              <Button size="sm" icon={<Download size={13} />} onClick={() => download(`${slug(project.name)}-claims.csv`, claimsCSV(project), 'text/csv')}>Claims table (CSV)</Button>
-              <Button size="sm" icon={<Download size={13} />} disabled={!project.reviewLog.length} onClick={() => download(`${slug(project.name)}-review-decisions.csv`, decisionLogCSV(project), 'text/csv')}>Review decisions (CSV)</Button>
+              <Button size="sm" variant="primary" icon={<Package size={13} />} disabled={!!busy} onClick={everything}>All interviews + each participant (.zip)</Button>
+              <p className="text-xs text-muted">{isVisual ? 'The visual brief as HTML and PDF' : 'This report as HTML, PDF and Markdown, with its claims table,'} for everyone together and for each of the {people.length} participants.</p>
+              {!isVisual && <Button size="sm" icon={<Download size={13} />} onClick={() => download(`${base}.md`, reportMarkdown(scoped, opts), 'text/markdown')}>Markdown</Button>}
+              <Button size="sm" icon={<Download size={13} />} onClick={() => download(`${slug(project.name)}-${who}-claims.csv`, claimsCSV(scoped), 'text/csv')}>Claims table (CSV)</Button>
+              <Button size="sm" icon={<Download size={13} />} disabled={!scoped.reviewLog.length} onClick={() => download(`${slug(project.name)}-${who}-review-decisions.csv`, decisionLogCSV(scoped), 'text/csv')}>Review decisions (CSV)</Button>
             </div>
           </Panel>
         </aside>
@@ -111,7 +170,9 @@ function SignOffPanel({ project }: { project: Project }) {
         <p className="rounded-md bg-good-soft px-3 py-2 text-good">
           Final. Signed off by <b>{so.by}</b>{so.role === 'ai' ? ', an AI acting as the human reviewer' : ''} on {new Date(so.at).toLocaleDateString()}.
         </p>
-        {so.note && <p className="text-xs text-muted">{so.note}</p>}
+        {so.note && (so.note.length > 220
+          ? <details className="text-xs text-muted"><summary className="cursor-pointer">{so.note.slice(0, 160).replace(/\s+\S*$/, '')} …</summary><p className="mt-1">{so.note}</p></details>
+          : <p className="text-xs text-muted">{so.note}</p>)}
         {editedSinceSignOff(project) && <p className="text-xs text-warn">The study has been edited since. Reports say so; withdraw and sign off again if the changes are part of the final analysis.</p>}
         <Button size="sm" variant="ghost" onClick={() => confirm('Withdraw the sign-off? Reports will read as a working draft again.') && withdrawSignOff()}>Withdraw sign-off</Button>
       </Panel>
