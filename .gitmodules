@@ -1,0 +1,3 @@
+[submodule "vendor/document-kit"]
+	path = vendor/document-kit
+	url = https://github.com/ahzs645/document-kit.git

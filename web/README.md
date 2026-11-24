@@ -3,6 +3,7 @@
 This folder is the rebuilt interview analysis app: Vite 8, React 19, TanStack Router (file-based routes, hash history), TanStack Table v9, TanStack Virtual and TanStack Store, styled with Tailwind CSS v4. Projects are saved in the browser's IndexedDB. Use export to keep a copy.
 
 ```sh
+git submodule update --init ../vendor/document-kit   # once; npm scripts build it
 cd web
 npm ci
 npm run dev        # http://localhost:5173
@@ -39,6 +40,14 @@ src/
   lib/visual-pdf.ts  the visual brief as a PDF, drawing the same SVG charts
   lib/scope.ts       exports for all interviews together or one participant (the study narrowed to their interview)
   lib/export-all.ts  one zip: all interviews, then each participant, in the chosen format
+  lib/kit/           Word and PDF through document-kit (../vendor/document-kit, a git submodule):
+    recipes.json       the report recipes (visual brief, summary, standard, full audit, participant casebook)
+    components.json    the components they are built from
+    data.ts            the study as the plain values a recipe prints, charts as PNG
+    documents.ts       the library: shipped recipes plus a study's own (copy, edit, share, import)
+    render.ts          recipe → Word → PDF and page pictures (loaded on demand)
+    browser.ts         fonts served by the app, and SVG charts drawn to PNG
+  features/report/   the Report screen's Word and PDF panel and page preview
   lib/ai/ask.ts      Ask across interviews: one question per interview, checked evidence, versions
   features/review/   claim-by-claim AI review, decision log
   features/explore/  interview map, cases by domain, AI-against-person comparison

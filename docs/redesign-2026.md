@@ -511,6 +511,16 @@ The written reports were mostly tables and text, while the useful pictures lived
 - When anonymising, short forms of masked names block sign-off and are shown under *Anonymise names* on the Report screen.
 - Unreviewed suggestions are counted in open items and limitations.
 
+### Word and PDF with document-kit
+
+Reports now also come as Word files and PDFs built with document-kit, a git submodule at `vendor/document-kit`. The details are in [document-recipes.md](document-recipes.md).
+
+- **Recipes.** Each report is a JSON recipe. Summary and Full audit *extend* Standard. A fifth recipe, the participant casebook, puts everyone together first, then gives each participant pages of their own. The visual brief's charts go into the documents as pictures.
+- **One code path for values.** The app works out every value, and the recipes only print them. One-participant exports render the same recipes against that participant's data.
+- **Own recipes.** A study can keep its own recipes: copies that extend a shipped one, changed on the Report screen, shared as files and imported. They are saved with the study.
+- **Preview and left-to-complete.** The Report screen previews the laid-out pages. After each build it lists what the document leaves blank, such as a framework cell with no summary.
+- **Kept alongside.** The HTML reports and the pdfmake PDFs stay, as the kit's own rules ask, until the kit's output is proven the same.
+
 ## Still not ported
 
 - **Speech-to-text and diarisation inside the app.** Transcribe with Whisper / WhisperX / noScribe and import the JSON. `services/transcription` is unchanged.

@@ -4,10 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "kit": "node scripts/ensure-kit.mjs",
+    "predev": "node scripts/ensure-kit.mjs",
     "dev": "vite --host 0.0.0.0",
+    "prebuild": "node scripts/ensure-kit.mjs",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
+    "pretypecheck": "node scripts/ensure-kit.mjs",
     "typecheck": "tsc --noEmit",
+    "pretest": "node scripts/ensure-kit.mjs",
     "test": "vitest run"
   },
   "dependencies": {
@@ -16,6 +21,7 @@
     "@tanstack/react-store": "^0.11.2",
     "@tanstack/react-table": "^9.3.1",
     "@tanstack/react-virtual": "^3.14.26",
+    "document-kit": "file:../vendor/document-kit",
     "fflate": "^0.8.3",
     "lucide-react": "^1.71.0",
     "pdfjs-dist": "^5.7.284",

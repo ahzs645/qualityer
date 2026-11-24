@@ -126,7 +126,7 @@ export function perspectives(project: Project, askId: string | null) {
   return { prompt, rows, models: [...new Set(rows.map((r) => r.answer.model))] }
 }
 
-const COVERAGE_TEXT: Record<CoverageStatus, string> = { unmarked: 'Not marked', answered: 'Answered', partial: 'Partly', 'no-view': 'Asked, no view', 'not-asked': 'Not asked' }
+export const COVERAGE_TEXT: Record<CoverageStatus, string> = { unmarked: 'Not marked', answered: 'Answered', partial: 'Partly', 'no-view': 'Asked, no view', 'not-asked': 'Not asked' }
 const EVIDENCE = ['#083f3c', '#176f69', '#2f9c92', '#6fc2b8']
 const STANCE = ['#1c5cab', '#86b6ef', '#b5b3aa', '#ef9f9e', '#d03b3b']
 const mixColor = (kind: GroupKind, i: number, n: number) => {
@@ -224,7 +224,7 @@ export function reportData(project: Project) {
     codedClaims: claims.filter((c) => c.codings.some((x) => x.status === 'accepted')).length,
   }
 }
-type Data = ReturnType<typeof reportData>
+export type Data = ReturnType<typeof reportData>
 
 const longDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 
@@ -273,7 +273,7 @@ function statusLine(d: Data) {
 }
 
 /** What became of an AI pass, for the audit table. */
-function runUse(d: Data, runId: string, comparisonOnly: boolean) {
+export function runUse(d: Data, runId: string, comparisonOnly: boolean) {
   if (d.project.aiRuns.find((r) => r.id === runId)?.kind === 'grades') return comparisonOnly ? 'Held-out test of evidence grade and stance' : 'Grades on existing claims'
   if (comparisonOnly) return 'Comparison with a human coder only'
   const left = d.project.codings.filter((c) => c.origin?.runId === runId)
@@ -283,17 +283,40 @@ function runUse(d: Data, runId: string, comparisonOnly: boolean) {
   return waiting ? `In review: ${waiting} suggestions undecided` : 'Reviewed claim by claim'
 }
 
+/** What is still open (or, once signed off, what the sign-off does not cover), as plain sentences. */
+export function openItems(project: Project, d: Data = reportData(project)): string[] {
+  const items: string[] = []
+  if (d.pending.length) items.push(`${d.pending.length} AI suggestions have not been decided.`)
+  for (const r of d.sourceRows) if (r.unchecked) items.push(`${r.source.name.split(' — ')[0]}: ${r.unchecked} AI-drafted claims were accepted but not checked by ${project.coder}.`)
+  const rules = indexBy(project.rules)
+  const byRule = new Map<string, number>()
+  for (const v of d.violations) byRule.set(v.ruleId, (byRule.get(v.ruleId) ?? 0) + 1)
+  for (const [id, n] of byRule) items.push(`${n} passage${n === 1 ? '' : 's'} break the rule “${rules.get(id) ? describeRule(rules.get(id)!, d.groups) : 'rule'}”.`)
+  for (const r of d.sourceRows) if (r.notAsked.length) items.push(`${r.source.name.split(' — ')[0]} was not asked ${r.notAsked.join(', ')}; absence of codes there is not absence of a view.`)
+  const unmarked = d.coverage.reduce((n, row) => n + row.marks.filter((m) => m.status === 'unmarked').length, 0)
+  if (unmarked) items.push(`${unmarked} guide questions have no coverage mark yet.`)
+  if (d.corrections) items.push(`${d.corrections} transcript corrections from the glossary are waiting to be applied.`)
+  if (d.uncertain) items.push(`${d.uncertain} low-confidence words in machine transcripts have not been checked against the recordings.`)
+  const unverified = d.accepted.filter((c) => !c.verifiedAt && d.sources.get(c.sourceId)?.media).length
+  if (unverified) items.push(`No wording check against the recording is recorded for ${unverified} codings on sources that have audio.`)
+  if (project.restricted.length) items.push(`${project.restricted.length} passage${project.restricted.length === 1 ? ' is' : 's are'} marked off the record; ${project.restricted.length === 1 ? 'its' : 'their'} wording is withheld from this report and from quote exports.`)
+  if (anonymised(project)) { const r = exportNameRisks(project); if (r.leaks.length || r.unreviewed) items.push(`Names: ${r.leaks.length ? `${r.leaks.length} short forms of masked names are not masked; ` : ''}${r.unreviewed} capitalised words that may be names have not been reviewed, so read quotes before sharing.`) }
+  const open = project.candidates.filter((c) => c.status === 'open')
+  if (open.length) items.push(`${open.length} candidate code${open.length === 1 ? '' : 's'} await a decision: ${open.map((c) => c.name).join('; ')}.`)
+  return items
+}
+
 // ---------------------------------------------------------------------------
 // HTML
 
-const anonymised = (p: Project) => p.anonymise && (p.names ?? []).some((e) => e.mask)
-const ANON_NOTE = 'Names are anonymised: people and other masked names in quotes, titles, summaries and memos are replaced by stand-ins such as [R01] or [Person 1].'
+export const anonymised = (p: Project) => p.anonymise && (p.names ?? []).some((e) => e.mask)
+export const ANON_NOTE = 'Names are anonymised: people and other masked names in quotes, titles, summaries and memos are replaced by stand-ins such as [R01] or [Person 1].'
 
 /** Tag colour for an overall label such as "supportive with conditions". */
 const labelTone = (label: string) => /oppos|scepti|skepti/i.test(label) ? 'not-asked' : /mixed|cautio/i.test(label) ? 'partial' : /enthusias/i.test(label) ? 'answered' : 'no-view'
 
 /** The case (or respondent ID) a source belongs to. */
-const caseOf = (project: Project, sourceId: string) => project.cases.find((k) => k.sourceIds.includes(sourceId))?.name ?? project.sources.find((x) => x.id === sourceId)?.name.split(' — ')[0] ?? ''
+export const caseOf = (project: Project, sourceId: string) => project.cases.find((k) => k.sourceIds.includes(sourceId))?.name ?? project.sources.find((x) => x.id === sourceId)?.name.split(' — ')[0] ?? ''
 
 /** The first sentences of a summary, marked when cut. */
 export function firstSentences(text: string, n: number) {
@@ -522,24 +545,7 @@ export function reportHTML(project: Project, opts: ReportOptions = DEFAULT_REPOR
   }
 
   if (opts.open) {
-    const items: string[] = []
-    if (d.pending.length) items.push(`${d.pending.length} AI suggestions have not been decided.`)
-    for (const r of d.sourceRows) if (r.unchecked) items.push(`${esc(r.source.name.split(' — ')[0])}: ${r.unchecked} AI-drafted claims were accepted but not checked by ${esc(project.coder)}.`)
-    const rules = indexBy(project.rules)
-    const byRule = new Map<string, number>()
-    for (const v of d.violations) byRule.set(v.ruleId, (byRule.get(v.ruleId) ?? 0) + 1)
-    for (const [id, n] of byRule) items.push(`${n} passage${n === 1 ? '' : 's'} break the rule “${esc(rules.get(id) ? describeRule(rules.get(id)!, d.groups) : 'rule')}”.`)
-    for (const r of d.sourceRows) if (r.notAsked.length) items.push(`${esc(r.source.name.split(' — ')[0])} was not asked ${esc(r.notAsked.join(', '))}; absence of codes there is not absence of a view.`)
-    const unmarked = d.coverage.reduce((n, row) => n + row.marks.filter((m) => m.status === 'unmarked').length, 0)
-    if (unmarked) items.push(`${unmarked} guide questions have no coverage mark yet.`)
-    if (d.corrections) items.push(`${d.corrections} transcript corrections from the glossary are waiting to be applied.`)
-    if (d.uncertain) items.push(`${d.uncertain} low-confidence words in machine transcripts have not been checked against the recordings.`)
-    const unverified = d.accepted.filter((c) => !c.verifiedAt && d.sources.get(c.sourceId)?.media).length
-    if (unverified) items.push(`No wording check against the recording is recorded for ${unverified} codings on sources that have audio.`)
-    if (project.restricted.length) items.push(`${project.restricted.length} passage${project.restricted.length === 1 ? ' is' : 's are'} marked off the record; ${project.restricted.length === 1 ? 'its' : 'their'} wording is withheld from this report and from quote exports.`)
-    if (anonymised(project)) { const r = exportNameRisks(project); if (r.leaks.length || r.unreviewed) items.push(`Names: ${r.leaks.length ? `${r.leaks.length} short forms of masked names are not masked; ` : ''}${r.unreviewed} capitalised words that may be names have not been reviewed, so read quotes before sharing.`) }
-    const open = project.candidates.filter((c) => c.status === 'open')
-    if (open.length) items.push(`${open.length} candidate code${open.length === 1 ? '' : 's'} await a decision: ${esc(open.map((c) => c.name).join('; '))}.`)
+    const items = openItems(project, d).map(esc)
     const final = !!project.signoff
     begin('open', final ? 'Limitations' : 'Open items')
     h(`<h2>${final ? 'Limitations' : 'Open items'}</h2>${final ? '<p class="note">What the sign-off does not cover.</p>' : ''}${items.length ? `<ul>${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : `<p>${final ? 'None recorded.' : 'Nothing outstanding.'}</p>`}`)

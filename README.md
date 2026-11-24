@@ -8,6 +8,8 @@ Research Weave: a modular TanStack Start app for qualitative interview analysis,
 
 Use Node.js 24.
 
+The rebuilt app in `web/` uses [document-kit](https://github.com/ahzs645/document-kit) as a git submodule for Word and PDF reports. Clone with `git clone --recurse-submodules`, or run `git submodule update --init vendor/document-kit` in an existing clone. See [docs/document-recipes.md](docs/document-recipes.md).
+
 ```sh
 npm ci
 npm run build

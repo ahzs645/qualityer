@@ -51,3 +51,39 @@ export async function exportAllZip(
   ].join('\n'))
   return zipSync(files, { level: 6 })
 }
+
+/**
+ * One document-kit recipe for everyone together and for each participant, as Word files and PDFs, in one zip.
+ * `layOutPdf` turns a Word file into PDF bytes (the browser's fonts in the app, files from disk in tests).
+ */
+export async function exportAllDocumentsZip(
+  project: Project, recipeId: string,
+  build: (scope: Scope) => Promise<{ docx: Uint8Array; recipe: { name: string } }>,
+  layOutPdf: (docx: Uint8Array) => Promise<Uint8Array>,
+  onProgress: (done: number, total: number) => void = () => {},
+): Promise<Uint8Array> {
+  const scopes: Scope[] = [ALL, ...peopleOf(project).map((p): Scope => ({ kind: 'person', personId: p.id }))]
+  const files: Zippable = {}
+  const base = slug(project.name)
+  let recipeName = recipeId
+  for (const [i, scope] of scopes.entries()) {
+    onProgress(i, scopes.length)
+    const folder = i === 0 ? '0-all-interviews' : `${i}-${scopeSlug(project, scope)}`
+    const name = `${base}-${scopeSlug(project, scope)}-${slug(recipeId.replace(/^rw-/, ''))}`
+    const doc = await build(scope)
+    recipeName = doc.recipe.name
+    files[`${folder}/${name}.docx`] = [doc.docx, { level: 0 }]
+    files[`${folder}/${name}.pdf`] = await layOutPdf(doc.docx)
+  }
+  onProgress(scopes.length, scopes.length)
+  const anon = project.anonymise && project.names.some((n) => n.mask)
+  files['README.txt'] = strToU8([
+    project.name, '',
+    `${recipeName}, as Word documents and PDFs made with document-kit, generated ${new Date().toISOString().slice(0, 10)}.`,
+    '0-all-interviews: every interview together. Each numbered folder after it: one participant.',
+    'The Word files can be edited; the PDFs are laid out from the same Word files.',
+    anon ? 'Names are anonymised: masked names are replaced by stand-ins. Read the files before sharing them.' : 'Names are NOT anonymised. Do not share these files outside the research team.',
+    'Off-the-record passages are withheld from every file.',
+  ].join('\n'))
+  return zipSync(files, { level: 6 })
+}

@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Download, FileText, Package, Printer } from 'lucide-react'
 import { useProject } from '../lib/store'
 import { download, slug } from '../lib/model'
@@ -10,12 +10,17 @@ import { ALL, scopeProject, scopeSlug, type Scope } from '../lib/scope'
 import { peopleOf } from '../lib/positions'
 import { setAnonymise, signOff, withdrawSignOff } from '../lib/actions'
 import { exportNameRisks } from '../lib/names'
+import type { JsonObject, RecipeToCompleteItem } from 'document-kit/recipe'
+import { recipeById, recipeOptions as kitOptions } from '../lib/kit/documents'
+import { Documents, PagePreview } from '../features/report/Documents'
 import type { Project, SignOff } from '../lib/types'
 import { Button, Input, PageHeader, Panel, Select, Textarea, cx } from '../components/ui'
 
 export const Route = createFileRoute('/p/$projectId/report')({ component: Report })
 
 type Format = 'visual' | Recipe
+/** The document-kit recipe that matches each on-screen format. */
+const KIT_FOR: Record<Format, string> = { visual: 'rw-visual', summary: 'rw-summary', standard: 'rw-standard', full: 'rw-full' }
 
 function Report() {
   const project = useProject()
@@ -26,6 +31,11 @@ function Report() {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const frame = useRef<HTMLIFrameElement>(null)
+  const [kitRecipe, setKitRecipe] = useState<string>(KIT_FOR.visual)
+  const [view, setView] = useState<'html' | 'pages'>('html')
+  const [toComplete, setToComplete] = useState<RecipeToCompleteItem[] | null>(null)
+  const [pages, setPages] = useState<{ pages: string[]; glyphDefs: string | null } | null>(null)
+  const [laying, setLaying] = useState(false)
   const people = useMemo(() => peopleOf(project), [project])
   // A participant who has since been removed falls back to everyone.
   const live: Scope = scope.kind === 'person' && !people.some((p) => p.id === scope.personId) ? ALL : scope
@@ -52,7 +62,60 @@ function Report() {
     const zip = await exportAllZip(project, isVisual ? 'visual' : 'written', visual, opts, (done, total) => setBusy(`Building ${Math.min(done + 1, total)} of ${total}…`))
     download(`${slug(project.name)}-${isVisual ? 'visual-briefs' : 'reports'}-all-and-each.zip`, zip as BlobPart, 'application/zip')
   })
-  const pick = (f: Format) => { setFormat(f); if (f !== 'visual') setOpts(recipeOptions(f, opts.askId)) }
+  const pick = (f: Format) => { setFormat(f); setKitRecipe(KIT_FOR[f]); if (f !== 'visual') setOpts(recipeOptions(f, opts.askId)) }
+
+  // document-kit. The section checkboxes apply to the recipe that matches the chosen format; other recipes keep their own.
+  const recipeId = recipeById(project, kitRecipe) ? kitRecipe : KIT_FOR[format]
+  const overlay = useMemo((): JsonObject | undefined => {
+    if (recipeId !== KIT_FOR[format]) return undefined
+    const base = (kitOptions(project, recipeId).show ?? {}) as Record<string, boolean>
+    const boxes: Record<string, boolean> = isVisual ? visual : (Object.fromEntries(REPORT_SECTIONS.map(([id]) => [id, opts[id]])) as Record<string, boolean>)
+    return { show: Object.fromEntries(Object.keys(base).map((k) => [k, k in boxes ? boxes[k] : base[k]])), ...(isVisual ? {} : { quotesPerCell: opts.quotesPerCell, bars: opts.bars }) }
+  }, [project, recipeId, format, isVisual, visual, opts])
+  const kit = async () => {
+    const [render, browser] = await Promise.all([import('../lib/kit/render'), import('../lib/kit/browser')])
+    const build = (sc: Scope) => render.buildDocument(project, recipeId, sc, { rasterize: browser.rasterize, options: overlay, askId: isVisual ? null : opts.askId })
+    return { build, layOut: (docx: Uint8Array) => render.layOut(docx, browser.browserFonts(), project.name) }
+  }
+  const kitBase = `${slug(project.name)}-${who}-${recipeId.replace(/^rw-/, '')}`
+  const word = () => run('Building the Word file…', async () => {
+    const doc = await (await kit()).build(live)
+    setToComplete(doc.toComplete)
+    download(`${kitBase}.docx`, doc.docx as BlobPart, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+  })
+  const kitPdf = () => run('Laying out the PDF…', async () => {
+    const k = await kit()
+    const doc = await k.build(live)
+    setToComplete(doc.toComplete)
+    download(`${kitBase}.pdf`, (await k.layOut(doc.docx)).pdf() as BlobPart, 'application/pdf')
+  })
+  const kitZip = () => run('Building the zip…', async () => {
+    const k = await kit()
+    const { exportAllDocumentsZip } = await import('../lib/export-all')
+    const zip = await exportAllDocumentsZip(project, recipeId, k.build, async (docx) => (await k.layOut(docx)).pdf(), (done, total) => setBusy(`Building ${Math.min(done + 1, total)} of ${total}…`))
+    download(`${slug(project.name)}-${recipeId.replace(/^rw-/, '')}-all-and-each.zip`, zip as BlobPart, 'application/zip')
+  })
+
+  // The page preview: the same layout the PDF gets, rebuilt shortly after anything it depends on changes.
+  useEffect(() => {
+    if (view !== 'pages') return
+    let stale = false
+    setLaying(true)
+    const timer = setTimeout(async () => {
+      try {
+        const k = await kit()
+        const doc = await k.build(live)
+        const laid = await k.layOut(doc.docx)
+        const p = laid.pages()
+        if (stale) return
+        setToComplete(doc.toComplete)
+        setPages({ pages: [...p.pages], glyphDefs: p.glyphDefs ?? null })
+      } catch (e) { if (!stale) setError(`The pages could not be laid out: ${e instanceof Error ? e.message : String(e)}`) }
+      finally { if (!stale) setLaying(false) }
+    }, 400)
+    return () => { stale = true; clearTimeout(timer) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, project, recipeId, overlay, live, opts.askId])
 
   return (
     <div className="mx-auto max-w-[90rem] px-4 py-6 sm:px-6">
@@ -141,6 +204,7 @@ function Report() {
                 ))}
             </ul>
           </Panel>
+          <Documents project={project} recipeId={recipeId} onRecipe={setKitRecipe} overlay={overlay} busy={busy} onWord={word} onPdf={kitPdf} onZip={kitZip} toComplete={toComplete} onError={setError} />
           <Panel title="Other formats">
             <div className="flex flex-col items-start gap-2">
               <Button size="sm" variant="primary" icon={<Package size={13} />} disabled={!!busy} onClick={everything}>All interviews + each participant (.zip)</Button>
@@ -151,7 +215,19 @@ function Report() {
             </div>
           </Panel>
         </aside>
-        <iframe ref={frame} title="Report preview" srcDoc={html} sandbox="allow-same-origin allow-modals" className="h-[calc(100vh-11rem)] w-full rounded-lg border border-line bg-white" />
+        <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <div className="grid grid-cols-2 gap-0.5 rounded-md bg-sunken p-0.5 text-xs" role="radiogroup" aria-label="Preview">
+              {([['html', 'Web page'], ['pages', 'Word and PDF pages']] as const).map(([v, l]) => (
+                <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => setView(v)} className={cx('rounded px-2.5 py-1', view === v ? 'bg-surface font-medium shadow-sm' : 'text-muted')}>{l}</button>
+              ))}
+            </div>
+            {view === 'pages' && <span className="text-xs text-muted">{laying ? 'Laying out…' : pages ? `${pages.pages.length} pages · ${recipeById(project, recipeId)?.name ?? ''}` : ''}</span>}
+          </div>
+          {view === 'html'
+            ? <iframe ref={frame} title="Report preview" srcDoc={html} sandbox="allow-same-origin allow-modals" className="h-[calc(100vh-13rem)] w-full rounded-lg border border-line bg-white" />
+            : <PagePreview pages={pages?.pages ?? null} glyphDefs={pages?.glyphDefs ?? null} building={laying} />}
+        </div>
       </div>
     </div>
   )

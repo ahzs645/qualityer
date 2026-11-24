@@ -1,4 +1,4 @@
-import type { AskAnswer, AskPrompt, SignOff, Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, NameEntry, Project, Source, WordingCheck } from './types'
+import type { AskAnswer, AskPrompt, ReportRecipes, SignOff, Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, NameEntry, Project, Source, WordingCheck } from './types'
 import { applySpeakerTrack, joinSegments, splitSegments, type SpeakerInterval } from './listen'
 import { PALETTE, editSource, findCorrections, now, segmentsOf, uid } from './model'
 import { snapshot, store, update } from './store'
@@ -507,6 +507,10 @@ export function removeName(id: string) {
 /** Rules a suggestion out, so it is not suggested again. */
 export function dismissName(text: string) {
   update(`not a name: ${text}`, (p) => ({ ...p, notNames: [...new Set([...(p.notNames ?? []), text])] }))
+}
+
+export function setReportRecipes(recipes: ReportRecipes | null, label: string) {
+  update(label, (p) => ({ ...p, reportRecipes: recipes }))
 }
 
 export function setAnonymise(on: boolean) {

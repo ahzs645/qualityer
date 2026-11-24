@@ -396,6 +396,14 @@ export interface SignOff {
   note: string
 }
 
+/** document-kit's library overrides (`LibraryOverrides`), kept as plain JSON so the model does not depend on the kit. */
+export interface ReportRecipes {
+  kind: 'library-overrides'
+  version: number
+  components?: Record<string, unknown>
+  recipes?: Record<string, unknown>
+}
+
 export interface Project {
   id: ID
   name: string
@@ -432,6 +440,11 @@ export interface Project {
   notNames: string[]
   /** Replace masked names in reports and exports (quotes, source names, summaries, memos). */
   anonymise: boolean
+  /**
+   * The study's own document recipes and components (document-kit library overrides): copies of the shipped report
+   * recipes changed for this study, or recipes imported from a file. Travels with the study in every export.
+   */
+  reportRecipes?: ReportRecipes | null
   /** Set when the reviewer signs the analysis off as final; reports then read as final. */
   signoff: SignOff | null
   importNotes: string[]

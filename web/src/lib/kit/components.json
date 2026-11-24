@@ -1,0 +1,1472 @@
+[
+  {
+    "kind": "component",
+    "id": "rw-title",
+    "title": "Title block",
+    "description": "The study's title and question, what the document is and whom it covers, the anonymisation note and the sign-off status.",
+    "params": {
+      "study": {
+        "required": true
+      },
+      "label": {
+        "default": "Analysis report"
+      },
+      "method": {
+        "default": true,
+        "description": "Print the study's method."
+      }
+    },
+    "blocks": [
+      {
+        "type": "paragraph",
+        "style": "title",
+        "align": "left",
+        "content": "{{ params.study.title }}"
+      },
+      {
+        "if": "params.study.question",
+        "then": [
+          {
+            "type": "paragraph",
+            "style": "subtitle",
+            "align": "left",
+            "content": "{{ params.study.question }}"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "style": "note",
+        "content": "{{ params.label }} · {{ params.study.scope }} · generated {{ params.study.generated }} · reviewer {{ params.study.reviewer }}"
+      },
+      {
+        "if": "params.study.anonNote",
+        "then": [
+          {
+            "type": "paragraph",
+            "style": "note",
+            "content": "{{ params.study.anonNote }}"
+          }
+        ]
+      },
+      {
+        "if": "params.study.personNote",
+        "then": [
+          {
+            "type": "paragraph",
+            "style": "note",
+            "content": "{{ params.study.personNote }}"
+          }
+        ]
+      },
+      {
+        "if": "params.method and params.study.method",
+        "then": [
+          {
+            "type": "paragraph",
+            "style": "note",
+            "content": "{{ params.study.method }}"
+          }
+        ]
+      },
+      {
+        "if": "params.study.final",
+        "then": [
+          {
+            "use": "notice",
+            "with": {
+              "text": "{{ params.study.status }}",
+              "fill": "e3f2e6",
+              "rule": "1f5c2d"
+            }
+          }
+        ],
+        "else": [
+          {
+            "use": "notice",
+            "with": {
+              "text": "{{ params.study.status }}"
+            }
+          }
+        ]
+      },
+      {
+        "if": "params.study.signoffNote",
+        "then": [
+          {
+            "type": "paragraph",
+            "style": "note",
+            "content": "Sign-off note: {{ params.study.signoffNote }}"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "id": "rw-tiles",
+    "title": "Figures at a glance",
+    "description": "A row of large numbers, each with what it counts under it.",
+    "params": {
+      "tiles": {
+        "required": true
+      }
+    },
+    "blocks": [
+      {
+        "type": "table",
+        "keepTogether": true,
+        "borders": {
+          "inner": {
+            "style": "single",
+            "width": 0.5,
+            "color": "dedcd4"
+          },
+          "outer": {
+            "style": "single",
+            "width": 0.5,
+            "color": "dedcd4"
+          }
+        },
+        "cellPadding": {
+          "top": 6,
+          "bottom": 6,
+          "left": 8,
+          "right": 8
+        },
+        "rows": [
+          {
+            "cells": [
+              {
+                "for": "t in params.tiles",
+                "do": [
+                  {
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "{{ t.value }}",
+                        "bold": true,
+                        "size": 16
+                      },
+                      {
+                        "type": "break"
+                      },
+                      {
+                        "type": "text",
+                        "text": "{{ t.label }}",
+                        "size": 8,
+                        "color": "5d6662"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "id": "rw-bullets",
+    "title": "Bullet list",
+    "description": "A heading, a short note and a bulleted list of sentences.",
+    "params": {
+      "heading": {
+        "default": null
+      },
+      "level": {
+        "default": 2
+      },
+      "intro": {
+        "default": null
+      },
+      "items": {
+        "default": []
+      },
+      "none": {
+        "default": null,
+        "description": "Printed instead of the list when there is nothing in it."
+      }
+    },
+    "blocks": [
+      {
+        "if": "params.heading",
+        "then": [
+          {
+            "type": "heading",
+            "level": "{{ params.level }}",
+            "content": "{{ params.heading }}"
+          }
+        ]
+      },
+      {
+        "if": "params.intro",
+        "then": [
+          {
+            "type": "paragraph",
+            "style": "note",
+            "content": "{{ params.intro }}"
+          }
+        ]
+      },
+      {
+        "if": "params.items",
+        "then": [
+          {
+            "type": "list",
+            "items": [
+              {
+                "for": "item in params.items",
+                "do": [
+                  "{{ item }}"
+                ]
+              }
+            ]
+          }
+        ],
+        "else": [
+          {
+            "if": "params.none",
+            "then": [
+              {
+                "type": "paragraph",
+                "content": "{{ params.none }}"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "id": "rw-table",
+    "title": "Table with a heading",
+    "description": "A heading, a short note and a table given as { columns, rows }.",
+    "params": {
+      "heading": {
+        "default": null
+      },
+      "level": {
+        "default": 2
+      },
+      "intro": {
+        "default": null
+      },
+      "table": {
+        "required": true
+      },
+      "widths": {
+        "default": null
+      },
+      "size": {
+        "default": null
+      }
+    },
+    "blocks": [
+      {
+        "if": "params.heading",
+        "then": [
+          {
+            "type": "heading",
+            "level": "{{ params.level }}",
+            "content": "{{ params.heading }}"
+          }
+        ]
+      },
+      {
+        "if": "params.intro",
+        "then": [
+          {
+            "type": "paragraph",
+            "style": "note",
+            "content": "{{ params.intro }}"
+          }
+        ]
+      },
+      {
+        "use": "data-table",
+        "with": {
+          "columns": "{{ params.table.columns }}",
+          "rows": "{{ params.table.rows }}",
+          "widths": "{{ params.widths }}",
+          "size": "{{ params.size }}"
+        }
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "id": "rw-chart",
+    "title": "Chart",
+    "description": "A heading, how to read the chart, and the chart as a picture. Left out when the data has no picture.",
+    "params": {
+      "heading": {
+        "default": null
+      },
+      "level": {
+        "default": 2
+      },
+      "intro": {
+        "default": null
+      },
+      "image": {
+        "default": null
+      },
+      "caption": {
+        "default": null
+      },
+      "height": {
+        "default": 360
+      },
+      "width": {
+        "default": null,
+        "description": "Widest the chart may be, points."
+      }
+    },
+    "blocks": [
+      {
+        "if": "params.image",
+        "then": [
+          {
+            "if": "params.heading",
+            "then": [
+              {
+                "type": "heading",
+                "level": "{{ params.level }}",
+                "content": "{{ params.heading }}"
+              }
+            ]
+          },
+          {
+            "if": "params.intro",
+            "then": [
+              {
+                "type": "paragraph",
+                "style": "note",
+                "content": "{{ params.intro }}",
+                "keepWithNext": true
+              }
+            ]
+          },
+          {
+            "use": "figure",
+            "with": {
+              "image": "{{ params.image }}",
+              "caption": "{{ params.caption }}",
+              "numbered": false,
+              "height": "{{ params.height }}",
+              "width": "{{ params.width }}"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "id": "rw-chart-grid",
+    "title": "Small multiples",
+    "description": "Charts side by side, one per participant, under a heading.",
+    "params": {
+      "heading": {
+        "default": null
+      },
+      "level": {
+        "default": 2
+      },
+      "intro": {
+        "default": null
+      },
+      "items": {
+        "default": []
+      },
+      "columns": {
+        "default": 2
+      },
+      "height": {
+        "default": 170
+      }
+    },
+    "blocks": [
+      {
+        "if": "params.items",
+        "then": [
+          {
+            "if": "params.heading",
+            "then": [
+              {
+                "type": "heading",
+                "level": "{{ params.level }}",
+                "content": "{{ params.heading }}"
+              }
+            ]
+          },
+          {
+            "if": "params.intro",
+            "then": [
+              {
+                "type": "paragraph",
+                "style": "note",
+                "content": "{{ params.intro }}",
+                "keepWithNext": true
+              }
+            ]
+          },
+          {
+            "type": "figureGrid",
+            "columns": "{{ params.columns }}",
+            "itemHeight": "{{ params.height }}",
+            "items": [
+              {
+                "for": "it in params.items",
+                "do": [
+                  {
+                    "image": "{{ it.image }}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "id": "rw-cards",
+    "title": "Hopes, worries and conditions",
+    "description": "One entry per participant: their overall label, the lead sentence and headed lists (hopes, worries, conditions, their own role).",
+    "params": {
+      "heading": {
+        "default": null
+      },
+      "level": {
+        "default": 2
+      },
+      "intro": {
+        "default": null
+      },
+      "cards": {
+        "default": []
+      },
+      "nameLevel": {
+        "default": 3
+      }
+    },
+    "blocks": [
+      {
+        "if": "params.cards",
+        "then": [
+          {
+            "if": "params.heading",
+            "then": [
+              {
+                "type": "heading",
+                "level": "{{ params.level }}",
+                "content": "{{ params.heading }}"
+              }
+            ]
+          },
+          {
+            "if": "params.intro",
+            "then": [
+              {
+                "type": "paragraph",
+                "style": "note",
+                "content": "{{ params.intro }}"
+              }
+            ]
+          },
+          {
+            "for": "c in params.cards",
+            "do": [
+              {
+                "type": "heading",
+                "level": "{{ params.nameLevel }}",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{{ c.name }}"
+                  },
+                  {
+                    "if": "c.tag",
+                    "then": [
+                      {
+                        "type": "text",
+                        "text": "  {{ c.tag }}",
+                        "color": "1f6f6b",
+                        "italic": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "if": "c.lead",
+                "then": [
+                  {
+                    "type": "paragraph",
+                    "content": "{{ c.lead }}"
+                  }
+                ]
+              },
+              {
+                "for": "part in c.parts",
+                "do": [
+                  {
+                    "if": "part.heading",
+                    "then": [
+                      {
+                        "type": "paragraph",
+                        "keepWithNext": true,
+                        "spacing": {
+                          "before": 4,
+                          "after": 2
+                        },
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "{{ part.heading }}",
+                            "bold": true,
+                            "size": 9,
+                            "color": "5d6662",
+                            "allCaps": true
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list",
+                    "items": [
+                      {
+                        "for": "item in part.items",
+                        "do": [
+                          "{{ item }}"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "id": "rw-perspectives",
+    "title": "Participant perspectives",
+    "description": "The answers to one question put to every interview: each participant's label, lead and headed lists, in full or in brief.",
+    "params": {
+      "data": {
+        "required": true
+      },
+      "detail": {
+        "default": "full",
+        "description": "full: every item with its quotes; brief: the words before each quote."
+      },
+      "heading": {
+        "default": "Participant perspectives"
+      }
+    },
+    "variants": {
+      "brief": {
+        "title": "Brief",
+        "with": {
+          "detail": "brief"
+        }
+      }
+    },
+    "blocks": [
+      {
+        "type": "heading",
+        "level": 2,
+        "content": "{{ params.heading }}"
+      },
+      {
+        "type": "paragraph",
+        "style": "note",
+        "content": "{{ params.data.note }}"
+      },
+      {
+        "if": "params.detail == \"full\"",
+        "then": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Question: ",
+                "bold": true
+              },
+              {
+                "type": "text",
+                "text": "{{ params.data.question }}",
+                "italic": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "for": "p in params.data.people",
+        "do": [
+          {
+            "type": "heading",
+            "level": 3,
+            "content": [
+              {
+                "type": "text",
+                "text": "{{ p.name }}"
+              },
+              {
+                "if": "p.tag",
+                "then": [
+                  {
+                    "type": "text",
+                    "text": "  {{ p.tag }}",
+                    "color": "1f6f6b",
+                    "italic": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "if": "params.detail == \"brief\"",
+            "then": [
+              {
+                "if": "p.leadShort",
+                "then": [
+                  {
+                    "type": "paragraph",
+                    "content": "{{ p.leadShort }}"
+                  }
+                ]
+              },
+              {
+                "for": "part in p.brief",
+                "do": [
+                  {
+                    "if": "part.heading",
+                    "then": [
+                      {
+                        "type": "paragraph",
+                        "keepWithNext": true,
+                        "spacing": {
+                          "before": 4,
+                          "after": 2
+                        },
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "{{ part.heading }}",
+                            "bold": true,
+                            "size": 9,
+                            "color": "5d6662",
+                            "allCaps": true
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list",
+                    "items": [
+                      {
+                        "for": "item in part.items",
+                        "do": [
+                          "{{ item }}"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "else": [
+              {
+                "if": "p.lead",
+                "then": [
+                  {
+                    "type": "paragraph",
+                    "content": "{{ p.lead }}"
+                  }
+                ]
+              },
+              {
+                "for": "part in p.full",
+                "do": [
+                  {
+                    "if": "part.heading",
+                    "then": [
+                      {
+                        "type": "paragraph",
+                        "keepWithNext": true,
+                        "spacing": {
+                          "before": 4,
+                          "after": 2
+                        },
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "{{ part.heading }}",
+                            "bold": true,
+                            "size": 9,
+                            "color": "5d6662",
+                            "allCaps": true
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list",
+                    "items": [
+                      {
+                        "for": "item in part.items",
+                        "do": [
+                          "{{ item }}"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "id": "rw-asides",
+    "title": "Asides and the interview itself",
+    "description": "Passages outside the topic questions, question by question. A sensitive question (off-the-record requests) gives counts only.",
+    "params": {
+      "asides": {
+        "required": true
+      },
+      "detail": {
+        "default": "full",
+        "description": "full: each item with its quote; brief: the items alone."
+      }
+    },
+    "variants": {
+      "brief": {
+        "title": "Brief",
+        "with": {
+          "detail": "brief"
+        }
+      }
+    },
+    "blocks": [
+      {
+        "type": "heading",
+        "level": 2,
+        "content": "Asides and the interview itself"
+      },
+      {
+        "type": "paragraph",
+        "style": "note",
+        "content": "Passages outside the topic questions, picked out by asking each interview separately: remarks to the interviewer, comments on the questions, advice, promises and the participant's own stake. They are kept apart from the framework and the charts. Every quote was checked against the transcript."
+      },
+      {
+        "for": "q in params.asides",
+        "do": [
+          {
+            "type": "heading",
+            "level": 3,
+            "content": "{{ q.title }}"
+          },
+          {
+            "if": "q.sensitive",
+            "then": [
+              {
+                "type": "paragraph",
+                "content": "{{ q.counts }}."
+              },
+              {
+                "type": "paragraph",
+                "style": "note",
+                "content": "Not quoted here: these are passages a participant may have asked to keep off the record. Check each on the Ask screen and honour the request before quoting anything near it."
+              }
+            ],
+            "else": [
+              {
+                "for": "pr in q.people",
+                "do": [
+                  {
+                    "type": "paragraph",
+                    "keepWithNext": true,
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "{{ pr.name }}",
+                        "bold": true
+                      }
+                    ]
+                  },
+                  {
+                    "if": "pr.items",
+                    "then": [
+                      {
+                        "type": "list",
+                        "items": [
+                          {
+                            "for": "it in pr.items",
+                            "do": [
+                              {
+                                "if": "params.detail == \"full\" and it.quote",
+                                "then": [
+                                  {
+                                    "content": "{{ it.note }}",
+                                    "items": [
+                                      {
+                                        "content": [
+                                          {
+                                            "type": "text",
+                                            "text": "“{{ it.quote }}”",
+                                            "italic": true
+                                          },
+                                          {
+                                            "if": "it.time",
+                                            "then": [
+                                              {
+                                                "type": "text",
+                                                "text": " ({{ it.time }})",
+                                                "color": "5d6662"
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ],
+                                "else": [
+                                  {
+                                    "content": "{{ it.note }}"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "else": [
+                      {
+                        "type": "paragraph",
+                        "style": "note",
+                        "content": "None found."
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "id": "rw-framework",
+    "title": "Framework matrix",
+    "description": "One summary per case and theme with the quotes pinned as its evidence. Brief: two sentences and fewer quotes per case, as findings by theme.",
+    "params": {
+      "themes": {
+        "required": true
+      },
+      "detail": {
+        "default": "full"
+      },
+      "quotes": {
+        "default": 3,
+        "description": "Pinned quotes printed per case and theme."
+      },
+      "bars": {
+        "default": true,
+        "description": "Print each case's evidence-grade and stance counts."
+      }
+    },
+    "variants": {
+      "brief": {
+        "title": "Findings by theme",
+        "with": {
+          "detail": "brief",
+          "quotes": 1,
+          "bars": false
+        }
+      }
+    },
+    "blocks": [
+      {
+        "if": "params.detail == \"brief\"",
+        "then": [
+          {
+            "type": "heading",
+            "level": 2,
+            "content": "Findings by theme"
+          },
+          {
+            "type": "paragraph",
+            "style": "note",
+            "content": "For each theme, what each interview said, with one quote."
+          }
+        ],
+        "else": [
+          {
+            "type": "heading",
+            "level": 2,
+            "content": "Framework matrix"
+          },
+          {
+            "type": "paragraph",
+            "style": "note",
+            "content": "One summary per case and theme, with the quotes pinned as its evidence."
+          }
+        ]
+      },
+      {
+        "for": "t in params.themes",
+        "do": [
+          {
+            "type": "heading",
+            "level": 3,
+            "content": "{{ t.title }}"
+          },
+          {
+            "if": "t.interpretation",
+            "then": [
+              {
+                "type": "paragraph",
+                "content": "{{ t.interpretation }}"
+              }
+            ]
+          },
+          {
+            "for": "c in t.cells",
+            "do": [
+              {
+                "if": "params.detail == \"brief\"",
+                "then": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "{{ c.name }}. ",
+                        "bold": true
+                      },
+                      {
+                        "type": "text",
+                        "text": "{{ c.short | missing \"placeholder\" \"summary\" }}"
+                      }
+                    ]
+                  }
+                ],
+                "else": [
+                  {
+                    "type": "heading",
+                    "level": 4,
+                    "content": "{{ c.name }}"
+                  },
+                  {
+                    "if": "params.bars and c.mix",
+                    "then": [
+                      {
+                        "type": "paragraph",
+                        "style": "small",
+                        "content": "{{ c.mix }}"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": "{{ c.summary | missing \"placeholder\" \"summary\" }}"
+                  }
+                ]
+              },
+              {
+                "for": "q in c.quotes",
+                "do": [
+                  {
+                    "if": "loop.number <= params.quotes",
+                    "then": [
+                      {
+                        "type": "paragraph",
+                        "indent": {
+                          "left": 18
+                        },
+                        "keepLinesTogether": true,
+                        "borders": {
+                          "left": {
+                            "style": "single",
+                            "width": 1.5,
+                            "color": "dedcd4",
+                            "space": 6
+                          }
+                        },
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "{{ q.text }}",
+                            "italic": true
+                          },
+                          {
+                            "if": "q.cite",
+                            "then": [
+                              {
+                                "type": "text",
+                                "text": "  {{ q.cite }}",
+                                "size": 8,
+                                "color": "5d6662"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "id": "rw-quotes",
+    "title": "One quote per theme",
+    "description": "For each theme, a quote pinned as its evidence (and, for one participant, their summary).",
+    "params": {
+      "heading": {
+        "default": "One quote per theme"
+      },
+      "level": {
+        "default": 2
+      },
+      "intro": {
+        "default": null
+      },
+      "quotes": {
+        "default": []
+      }
+    },
+    "blocks": [
+      {
+        "if": "params.quotes",
+        "then": [
+          {
+            "type": "heading",
+            "level": "{{ params.level }}",
+            "content": "{{ params.heading }}"
+          },
+          {
+            "if": "params.intro",
+            "then": [
+              {
+                "type": "paragraph",
+                "style": "note",
+                "content": "{{ params.intro }}"
+              }
+            ]
+          },
+          {
+            "for": "q in params.quotes",
+            "do": [
+              {
+                "type": "paragraph",
+                "keepWithNext": true,
+                "spacing": {
+                  "before": 6,
+                  "after": 2
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{{ q.title }}",
+                    "bold": true,
+                    "color": "1f6f6b"
+                  }
+                ]
+              },
+              {
+                "if": "q.summary",
+                "then": [
+                  {
+                    "type": "paragraph",
+                    "keepWithNext": true,
+                    "content": "{{ q.summary }}"
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "indent": {
+                  "left": 18
+                },
+                "keepLinesTogether": true,
+                "borders": {
+                  "left": {
+                    "style": "single",
+                    "width": 1.5,
+                    "color": "1f6f6b",
+                    "space": 6
+                  }
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "{{ q.text }}",
+                    "italic": true
+                  },
+                  {
+                    "type": "text",
+                    "text": "  {{ q.cite }}",
+                    "size": 8,
+                    "color": "5d6662"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "id": "rw-ai",
+    "title": "AI assistance and review",
+    "description": "The AI passes, calibration against a human coder and what the reviewer decided.",
+    "params": {
+      "ai": {
+        "required": true
+      }
+    },
+    "blocks": [
+      {
+        "type": "heading",
+        "level": 2,
+        "content": "AI assistance and review"
+      },
+      {
+        "if": "params.ai.runs",
+        "then": [
+          {
+            "use": "data-table",
+            "with": {
+              "columns": "{{ params.ai.runs.columns }}",
+              "rows": "{{ params.ai.runs.rows }}",
+              "size": 8
+            }
+          }
+        ]
+      },
+      {
+        "for": "c in params.ai.calibrations",
+        "do": [
+          {
+            "type": "paragraph",
+            "content": "{{ c }}"
+          }
+        ]
+      },
+      {
+        "for": "r in params.ai.reviews",
+        "do": [
+          {
+            "type": "heading",
+            "level": 3,
+            "content": "{{ r.title }}"
+          },
+          {
+            "type": "paragraph",
+            "content": "{{ r.text }}"
+          },
+          {
+            "if": "r.changes",
+            "then": [
+              {
+                "type": "paragraph",
+                "style": "note",
+                "content": "Most frequent corrections:"
+              },
+              {
+                "type": "list",
+                "items": [
+                  {
+                    "for": "ch in r.changes",
+                    "do": [
+                      "{{ ch }}"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "id": "rw-memos",
+    "title": "Memos and journal",
+    "params": {
+      "memos": {
+        "required": true
+      }
+    },
+    "blocks": [
+      {
+        "type": "heading",
+        "level": 2,
+        "content": "Memos and journal"
+      },
+      {
+        "for": "m in params.memos",
+        "do": [
+          {
+            "type": "heading",
+            "level": 3,
+            "content": "{{ m.title }}"
+          },
+          {
+            "type": "paragraph",
+            "style": "note",
+            "content": "{{ m.meta }}"
+          },
+          {
+            "for": "para in m.paragraphs",
+            "do": [
+              {
+                "type": "paragraph",
+                "content": "{{ para }}"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "id": "rw-codebook",
+    "title": "Codebook",
+    "params": {
+      "groups": {
+        "required": true
+      }
+    },
+    "blocks": [
+      {
+        "type": "heading",
+        "level": 2,
+        "content": "Codebook"
+      },
+      {
+        "for": "g in params.groups",
+        "do": [
+          {
+            "type": "heading",
+            "level": 3,
+            "content": "{{ g.title }}"
+          },
+          {
+            "use": "data-table",
+            "with": {
+              "columns": [
+                "Code",
+                "Definition",
+                "Include",
+                "Exclude"
+              ],
+              "rows": "{{ g.rows }}",
+              "widths": [
+                2,
+                3,
+                3,
+                3
+              ],
+              "size": 7.5
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "component",
+    "id": "rw-person",
+    "title": "One participant",
+    "description": "A participant on pages of their own: figures, headlines, where they stand against the others, what they talked about, their interview's course, hopes and worries, and a quote per theme.",
+    "params": {
+      "person": {
+        "required": true
+      }
+    },
+    "blocks": [
+      {
+        "type": "heading",
+        "level": 1,
+        "content": "{{ params.person.name }}",
+        "pageBreakBefore": true
+      },
+      {
+        "if": "params.person.attributes",
+        "then": [
+          {
+            "type": "paragraph",
+            "style": "note",
+            "content": "{{ params.person.attributes }}"
+          }
+        ]
+      },
+      {
+        "use": "rw-tiles",
+        "with": {
+          "tiles": "{{ params.person.tiles }}"
+        }
+      },
+      {
+        "use": "rw-bullets",
+        "with": {
+          "items": "{{ params.person.headlines }}"
+        }
+      },
+      {
+        "use": "rw-chart",
+        "with": {
+          "heading": "Where they stand",
+          "intro": "Their middle stance on each theme (ringed dot) against the spread of the other participants, who are not named.",
+          "image": "{{ params.person.charts.stance }}",
+          "height": 260,
+          "width": 500
+        }
+      },
+      {
+        "use": "rw-chart",
+        "with": {
+          "heading": "What they talked about",
+          "intro": "Their share of coded claims per code group (bar) against the average of the others (tick).",
+          "image": "{{ params.person.charts.raised }}",
+          "height": 260,
+          "width": 500
+        }
+      },
+      {
+        "use": "rw-chart",
+        "with": {
+          "heading": "Stance through the interview",
+          "image": "{{ params.person.charts.through }}",
+          "height": 170,
+          "width": 500
+        }
+      },
+      {
+        "use": "rw-chart",
+        "with": {
+          "heading": "Themes through the interview",
+          "image": "{{ params.person.charts.themes }}",
+          "height": 240,
+          "width": 500
+        }
+      },
+      {
+        "if": "params.person.card",
+        "then": [
+          {
+            "type": "heading",
+            "level": 2,
+            "content": [
+              {
+                "type": "text",
+                "text": "Hopes, worries and conditions"
+              },
+              {
+                "if": "params.person.card.tag",
+                "then": [
+                  {
+                    "type": "text",
+                    "text": "  {{ params.person.card.tag }}",
+                    "color": "1f6f6b",
+                    "italic": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "if": "params.person.card.lead",
+            "then": [
+              {
+                "type": "paragraph",
+                "content": "{{ params.person.card.lead }}"
+              }
+            ]
+          },
+          {
+            "for": "part in params.person.card.parts",
+            "do": [
+              {
+                "if": "part.heading",
+                "then": [
+                  {
+                    "type": "paragraph",
+                    "keepWithNext": true,
+                    "spacing": {
+                      "before": 4,
+                      "after": 2
+                    },
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "{{ part.heading }}",
+                        "bold": true,
+                        "size": 9,
+                        "color": "5d6662",
+                        "allCaps": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "list",
+                "items": [
+                  {
+                    "for": "item in part.items",
+                    "do": [
+                      "{{ item }}"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "use": "rw-quotes",
+        "with": {
+          "heading": "Theme by theme",
+          "quotes": "{{ params.person.quotes }}"
+        }
+      }
+    ]
+  }
+]

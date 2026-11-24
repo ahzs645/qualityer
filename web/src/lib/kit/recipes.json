@@ -1,0 +1,755 @@
+[
+  {
+    "kind": "recipe",
+    "id": "rw-standard",
+    "name": "Standard report",
+    "description": "The analysis: interviews and coverage, perspectives and asides, the framework with its pinned evidence, cases by domain, flagged figures and what is still open.",
+    "document": {
+      "metadata": {
+        "title": "{{ study.title }}",
+        "subject": "Qualitative analysis report"
+      },
+      "theme": {
+        "body": {
+          "font": "Calibri",
+          "size": 10.5,
+          "color": "1d2221",
+          "after": 5,
+          "line": 1.15
+        },
+        "title": {
+          "size": 22,
+          "bold": true,
+          "after": 6,
+          "align": "left"
+        },
+        "subtitle": {
+          "size": 12.5,
+          "color": "1d2221",
+          "after": 8,
+          "align": "left"
+        },
+        "headings": [
+          {
+            "size": 17,
+            "bold": true,
+            "color": "1f6f6b",
+            "before": 20,
+            "after": 6
+          },
+          {
+            "size": 14,
+            "bold": true,
+            "color": "1f6f6b",
+            "before": 18,
+            "after": 5
+          },
+          {
+            "size": 11.5,
+            "bold": true,
+            "before": 12,
+            "after": 3
+          },
+          {
+            "size": 10.5,
+            "bold": true,
+            "before": 8,
+            "after": 2
+          },
+          {
+            "size": 10.5,
+            "italic": true,
+            "before": 6,
+            "after": 2
+          },
+          {
+            "size": 10,
+            "italic": true,
+            "before": 6,
+            "after": 2
+          }
+        ],
+        "note": {
+          "size": 8.5,
+          "color": "5d6662",
+          "after": 5
+        },
+        "small": {
+          "size": 8,
+          "color": "5d6662",
+          "after": 3
+        },
+        "table": {
+          "size": 8.5,
+          "headerFill": "e2f0ee",
+          "groupFill": "f4f3ef"
+        },
+        "page": {
+          "paper": "a4",
+          "orientation": "portrait",
+          "margins": {
+            "top": 60,
+            "right": 54,
+            "bottom": 60,
+            "left": 54,
+            "header": 30,
+            "footer": 30
+          }
+        }
+      }
+    },
+    "options": {
+      "label": "Analysis report",
+      "quotesPerCell": 3,
+      "bars": true,
+      "show": {
+        "glance": true,
+        "sources": true,
+        "coverage": true,
+        "perspectives": true,
+        "asides": true,
+        "framework": true,
+        "profile": true,
+        "codes": false,
+        "figures": true,
+        "ai": false,
+        "open": true,
+        "memos": false,
+        "codebook": false,
+        "toComplete": false
+      }
+    },
+    "sections": [
+      {
+        "id": "body",
+        "header": [
+          {
+            "use": "running-header",
+            "with": {
+              "left": "{{ study.title }}",
+              "right": "{{ study.scope }}"
+            }
+          }
+        ],
+        "footer": [
+          {
+            "use": "page-footer",
+            "with": {
+              "text": "Research Weave · {{ study.generated }}"
+            }
+          }
+        ],
+        "parts": [
+          {
+            "use": "rw-title",
+            "id": "title",
+            "with": {
+              "study": "{{ study }}",
+              "label": "{{ options.label }}"
+            }
+          },
+          {
+            "use": "rw-tiles",
+            "id": "glance",
+            "if": "options.show.glance",
+            "with": {
+              "tiles": "{{ glance.tiles }}"
+            }
+          },
+          {
+            "use": "rw-table",
+            "id": "sources",
+            "if": "options.show.sources",
+            "with": {
+              "heading": "Sources",
+              "table": "{{ sources }}",
+              "widths": [
+                4,
+                1.1,
+                1.1,
+                1.1,
+                1.1,
+                1.4,
+                1.6
+              ],
+              "size": 8
+            }
+          },
+          {
+            "use": "rw-table",
+            "id": "coverage",
+            "if": "options.show.coverage and coverage",
+            "with": {
+              "heading": "Interview guide coverage",
+              "intro": "“Not asked” is kept apart from “asked, no view”, so a missing code is not read as a missing opinion.",
+              "table": "{{ coverage }}",
+              "size": 7.5
+            }
+          },
+          {
+            "use": "rw-perspectives",
+            "id": "perspectives",
+            "if": "options.show.perspectives and perspectives",
+            "with": {
+              "data": "{{ perspectives }}"
+            }
+          },
+          {
+            "use": "rw-asides",
+            "id": "asides",
+            "if": "options.show.asides and asides",
+            "with": {
+              "asides": "{{ asides }}"
+            }
+          },
+          {
+            "use": "rw-framework",
+            "id": "framework",
+            "if": "options.show.framework and framework",
+            "with": {
+              "themes": "{{ framework }}",
+              "quotes": "{{ options.quotesPerCell }}",
+              "bars": "{{ options.bars }}"
+            }
+          },
+          {
+            "use": "rw-table",
+            "id": "profile",
+            "if": "options.show.profile and profile",
+            "with": {
+              "heading": "Cases by domain",
+              "intro": "Coded claims per domain, with the evidence grades and stances they carry. Counts describe the coding, not how common a view is.",
+              "table": "{{ profile }}",
+              "size": 7.5
+            }
+          },
+          {
+            "use": "rw-table",
+            "id": "codes",
+            "if": "options.show.codes and codeCounts",
+            "with": {
+              "heading": "Code counts",
+              "intro": "Claims carrying each code, per case. Codes never applied are left out.",
+              "table": "{{ codeCounts }}",
+              "size": 7.5
+            }
+          },
+          {
+            "use": "rw-table",
+            "id": "figures",
+            "if": "options.show.figures and figures",
+            "with": {
+              "heading": "Flagged figures",
+              "intro": "Figures and costable facts flagged while coding, with the extraction row recorded for each. Respondent figures are recall unless the basis says otherwise.",
+              "table": "{{ figures }}",
+              "size": 7.5
+            }
+          },
+          {
+            "use": "rw-ai",
+            "id": "ai",
+            "if": "options.show.ai and ai",
+            "with": {
+              "ai": "{{ ai }}"
+            }
+          },
+          {
+            "use": "rw-bullets",
+            "id": "open",
+            "if": "options.show.open",
+            "with": {
+              "heading": "{{ open.title }}",
+              "intro": "{{ open.intro }}",
+              "items": "{{ open.items }}",
+              "none": "Nothing outstanding."
+            }
+          },
+          {
+            "use": "rw-memos",
+            "id": "memos",
+            "if": "options.show.memos and memos",
+            "with": {
+              "memos": "{{ memos }}"
+            }
+          },
+          {
+            "use": "rw-codebook",
+            "id": "codebook",
+            "if": "options.show.codebook and codebook",
+            "with": {
+              "groups": "{{ codebook }}"
+            }
+          },
+          {
+            "use": "to-complete",
+            "id": "to-complete",
+            "if": "options.show.toComplete",
+            "with": {
+              "title": "Left to complete",
+              "level": 2,
+              "none": "Nothing in this document is left blank."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "recipe",
+    "id": "rw-summary",
+    "name": "Summary",
+    "description": "For partners: who was interviewed, what each said, the main findings by theme with one quote, and what is still open.",
+    "extends": "rw-standard",
+    "options": {
+      "label": "Summary",
+      "quotesPerCell": 1,
+      "bars": false,
+      "show": {
+        "glance": true,
+        "sources": false,
+        "coverage": false,
+        "perspectives": true,
+        "asides": false,
+        "framework": true,
+        "profile": false,
+        "codes": false,
+        "figures": false,
+        "ai": false,
+        "open": true,
+        "memos": false,
+        "codebook": false,
+        "toComplete": false
+      }
+    },
+    "changes": [
+      {
+        "set": "title",
+        "with": {
+          "method": false
+        }
+      },
+      {
+        "set": "perspectives",
+        "variant": "brief"
+      },
+      {
+        "set": "framework",
+        "variant": "brief"
+      }
+    ]
+  },
+  {
+    "kind": "recipe",
+    "id": "rw-full",
+    "name": "Full audit",
+    "description": "Everything, including code counts, the AI audit trail, memos, the codebook and what is left to complete.",
+    "extends": "rw-standard",
+    "options": {
+      "label": "Full audit",
+      "quotesPerCell": 99,
+      "bars": true,
+      "show": {
+        "glance": true,
+        "sources": true,
+        "coverage": true,
+        "perspectives": true,
+        "asides": true,
+        "framework": true,
+        "profile": true,
+        "codes": true,
+        "figures": true,
+        "ai": true,
+        "open": true,
+        "memos": true,
+        "codebook": true,
+        "toComplete": true
+      }
+    }
+  },
+  {
+    "kind": "recipe",
+    "id": "rw-visual",
+    "name": "Visual brief",
+    "description": "Charts first, on landscape pages: where people stand, stance and evidence by theme, who raised what, hopes and worries, each interview's course, coverage and one quote per theme.",
+    "document": {
+      "metadata": {
+        "title": "{{ study.title }} — visual brief",
+        "subject": "Visual brief"
+      },
+      "theme": {
+        "body": {
+          "font": "Calibri",
+          "size": 10.5,
+          "color": "1d2221",
+          "after": 5,
+          "line": 1.15
+        },
+        "title": {
+          "size": 22,
+          "bold": true,
+          "after": 6,
+          "align": "left"
+        },
+        "subtitle": {
+          "size": 12.5,
+          "color": "1d2221",
+          "after": 8,
+          "align": "left"
+        },
+        "headings": [
+          {
+            "size": 17,
+            "bold": true,
+            "color": "1f6f6b",
+            "before": 18,
+            "after": 6
+          },
+          {
+            "size": 14,
+            "bold": true,
+            "color": "1f6f6b",
+            "before": 14,
+            "after": 4
+          },
+          {
+            "size": 11.5,
+            "bold": true,
+            "before": 10,
+            "after": 3
+          },
+          {
+            "size": 10.5,
+            "bold": true,
+            "before": 8,
+            "after": 2
+          },
+          {
+            "size": 10.5,
+            "italic": true,
+            "before": 6,
+            "after": 2
+          },
+          {
+            "size": 10,
+            "italic": true,
+            "before": 6,
+            "after": 2
+          }
+        ],
+        "note": {
+          "size": 9,
+          "color": "5d6662",
+          "after": 5
+        },
+        "table": {
+          "size": 9,
+          "headerFill": "e2f0ee",
+          "groupFill": "f4f3ef"
+        },
+        "page": {
+          "paper": "a4",
+          "orientation": "landscape",
+          "margins": {
+            "top": 48,
+            "right": 48,
+            "bottom": 48,
+            "left": 48,
+            "header": 24,
+            "footer": 24
+          }
+        }
+      }
+    },
+    "options": {
+      "show": {
+        "headlines": true,
+        "stance": true,
+        "mix": true,
+        "evidence": true,
+        "raised": true,
+        "perspectives": true,
+        "through": true,
+        "themes": true,
+        "coverage": true,
+        "pairs": true,
+        "quotes": true,
+        "asides": true,
+        "open": true
+      },
+      "label": "Visual brief"
+    },
+    "sections": [
+      {
+        "id": "body",
+        "header": [
+          {
+            "use": "running-header",
+            "with": {
+              "left": "{{ study.title }}",
+              "right": "{{ options.label }} · {{ study.scope }}"
+            }
+          }
+        ],
+        "footer": [
+          {
+            "use": "page-footer",
+            "with": {
+              "text": "Research Weave · {{ study.generated }}"
+            }
+          }
+        ],
+        "parts": [
+          {
+            "use": "rw-title",
+            "id": "title",
+            "with": {
+              "study": "{{ study }}",
+              "label": "{{ options.label }}",
+              "method": false
+            }
+          },
+          {
+            "use": "rw-tiles",
+            "id": "glance",
+            "with": {
+              "tiles": "{{ glance.tiles }}"
+            }
+          },
+          {
+            "use": "rw-bullets",
+            "id": "headlines",
+            "if": "options.show.headlines",
+            "with": {
+              "items": "{{ headlines }}"
+            }
+          },
+          {
+            "use": "rw-chart",
+            "id": "stance",
+            "if": "options.show.stance",
+            "pageBreakBefore": true,
+            "with": {
+              "heading": "Where people stand",
+              "intro": "{{ notes.stance }}",
+              "image": "{{ charts.stance }}",
+              "height": 400,
+              "width": 740
+            }
+          },
+          {
+            "use": "rw-chart",
+            "id": "mix",
+            "if": "options.show.mix",
+            "pageBreakBefore": true,
+            "with": {
+              "heading": "Stance mix by theme",
+              "intro": "{{ notes.mix }}",
+              "image": "{{ charts.mix }}",
+              "height": 330,
+              "width": 740
+            }
+          },
+          {
+            "use": "rw-chart",
+            "id": "evidence",
+            "if": "options.show.evidence",
+            "pageBreakBefore": true,
+            "with": {
+              "heading": "Evidence behind each theme",
+              "intro": "{{ notes.evidence }}",
+              "image": "{{ charts.evidence }}",
+              "height": 330,
+              "width": 740
+            }
+          },
+          {
+            "use": "rw-chart",
+            "id": "raised",
+            "if": "options.show.raised",
+            "pageBreakBefore": true,
+            "with": {
+              "heading": "Who raised what",
+              "intro": "{{ notes.raised }}",
+              "image": "{{ charts.raised }}",
+              "height": 380,
+              "width": 740
+            }
+          },
+          {
+            "use": "rw-cards",
+            "id": "perspectives",
+            "if": "options.show.perspectives",
+            "with": {
+              "heading": "Hopes, worries and conditions",
+              "intro": "{{ notes.perspectives }}",
+              "cards": "{{ cards }}"
+            }
+          },
+          {
+            "use": "rw-chart-grid",
+            "id": "through",
+            "if": "options.show.through",
+            "pageBreakBefore": true,
+            "with": {
+              "heading": "Stance through each interview",
+              "intro": "{{ notes.through }}",
+              "items": "{{ charts.through }}",
+              "columns": "{{ layout.columns }}",
+              "height": "{{ layout.throughHeight }}"
+            }
+          },
+          {
+            "use": "rw-chart-grid",
+            "id": "themes",
+            "if": "options.show.themes",
+            "pageBreakBefore": true,
+            "with": {
+              "heading": "Themes through each interview",
+              "intro": "{{ notes.themes }}",
+              "items": "{{ charts.themes }}",
+              "columns": "{{ layout.columns }}",
+              "height": "{{ layout.themesHeight }}"
+            }
+          },
+          {
+            "use": "rw-chart",
+            "id": "coverage",
+            "if": "options.show.coverage",
+            "pageBreakBefore": true,
+            "with": {
+              "heading": "Interview guide coverage",
+              "intro": "{{ notes.coverage }}",
+              "image": "{{ charts.coverage }}",
+              "height": 380,
+              "width": 740
+            }
+          },
+          {
+            "use": "rw-chart",
+            "id": "pairs",
+            "if": "options.show.pairs",
+            "with": {
+              "heading": "Codes that travel together",
+              "intro": "{{ notes.pairs }}",
+              "image": "{{ charts.pairs }}",
+              "height": 260,
+              "width": 740
+            }
+          },
+          {
+            "use": "rw-quotes",
+            "id": "quotes",
+            "if": "options.show.quotes",
+            "with": {
+              "heading": "One quote per theme",
+              "intro": "{{ notes.quotes }}",
+              "quotes": "{{ quotes }}"
+            }
+          },
+          {
+            "use": "rw-chart",
+            "id": "asides",
+            "if": "options.show.asides",
+            "with": {
+              "heading": "Asides",
+              "intro": "{{ notes.asides }}",
+              "image": "{{ charts.asides }}",
+              "height": 220,
+              "width": 740
+            }
+          },
+          {
+            "use": "rw-bullets",
+            "id": "asides-one",
+            "if": "options.show.asides and asideItems",
+            "with": {
+              "heading": "Asides",
+              "intro": "Passages outside the topic questions, kept apart from the charts.",
+              "items": "{{ asideItems }}"
+            }
+          },
+          {
+            "use": "rw-bullets",
+            "id": "open",
+            "if": "options.show.open",
+            "with": {
+              "heading": "Limitations",
+              "items": "{{ limitations }}"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "recipe",
+    "id": "rw-casebook",
+    "name": "Participant casebook",
+    "description": "Every interview together, then each participant on pages of their own (portrait): their figures, where they stand against the others, what they talked about, the course of their interview, their hopes and worries, and a quote per theme.",
+    "extends": "rw-visual",
+    "options": {
+      "show": {
+        "headlines": true,
+        "stance": true,
+        "mix": false,
+        "evidence": false,
+        "raised": true,
+        "perspectives": false,
+        "through": false,
+        "themes": false,
+        "coverage": false,
+        "pairs": false,
+        "quotes": false,
+        "asides": false,
+        "open": true
+      },
+      "label": "Participant casebook"
+    },
+    "changes": [
+      {
+        "setSection": "body",
+        "page": {
+          "paper": "a4",
+          "orientation": "portrait",
+          "margins": {
+            "top": 54,
+            "right": 48,
+            "bottom": 54,
+            "left": 48,
+            "header": 26,
+            "footer": 26
+          }
+        }
+      },
+      {
+        "set": "stance",
+        "with": {
+          "width": 500,
+          "height": 300
+        }
+      },
+      {
+        "set": "raised",
+        "with": {
+          "width": 500,
+          "height": 300
+        }
+      },
+      {
+        "add": {
+          "use": "rw-person",
+          "id": "person",
+          "for": "person in casebook",
+          "with": {
+            "person": "{{ person }}"
+          }
+        },
+        "before": "open"
+      },
+      {
+        "set": "open",
+        "pageBreakBefore": true
+      }
+    ]
+  }
+]
