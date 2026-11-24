@@ -56,3 +56,6 @@ export function scopeSlug(project: Project, scope: Scope) {
   const p = personOf(project, scope)
   return p ? p.label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'participant' : 'all-interviews'
 }
+
+/** The key a scope's hand edits are kept under: "all", or "person:<id>". */
+export const scopeKey = (scope: Scope) => (scope.kind === 'person' ? `person:${scope.personId}` : 'all')

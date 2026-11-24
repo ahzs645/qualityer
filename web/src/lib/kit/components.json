@@ -509,7 +509,8 @@
                 "then": [
                   {
                     "type": "paragraph",
-                    "content": "{{ c.lead }}"
+                    "content": "{{ c.lead }}",
+                    "id": "card {{ c.name }}"
                   }
                 ]
               },
@@ -646,7 +647,8 @@
                 "then": [
                   {
                     "type": "paragraph",
-                    "content": "{{ p.leadShort }}"
+                    "content": "{{ p.leadShort }}",
+                    "id": "lead-brief {{ p.name }}"
                   }
                 ]
               },
@@ -696,7 +698,8 @@
                 "then": [
                   {
                     "type": "paragraph",
-                    "content": "{{ p.lead }}"
+                    "content": "{{ p.lead }}",
+                    "id": "lead {{ p.name }}"
                   }
                 ]
               },
@@ -972,7 +975,8 @@
                         "type": "text",
                         "text": "{{ c.short | missing \"placeholder\" \"summary\" }}"
                       }
-                    ]
+                    ],
+                    "id": "short {{ t.title }} / {{ c.name }}"
                   }
                 ],
                 "else": [
@@ -993,7 +997,8 @@
                   },
                   {
                     "type": "paragraph",
-                    "content": "{{ c.summary | missing \"placeholder\" \"summary\" }}"
+                    "content": "{{ c.summary | missing \"placeholder\" \"summary\" }}",
+                    "id": "summary {{ t.title }} / {{ c.name }}"
                   }
                 ]
               },
@@ -1109,7 +1114,8 @@
                   {
                     "type": "paragraph",
                     "keepWithNext": true,
-                    "content": "{{ q.summary }}"
+                    "content": "{{ q.summary }}",
+                    "id": "theme summary {{ q.title }}"
                   }
                 ]
               },
@@ -1415,7 +1421,8 @@
             "then": [
               {
                 "type": "paragraph",
-                "content": "{{ params.person.card.lead }}"
+                "content": "{{ params.person.card.lead }}",
+                "id": "card {{ params.person.name }}"
               }
             ]
           },

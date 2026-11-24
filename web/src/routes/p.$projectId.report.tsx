@@ -6,13 +6,15 @@ import { download, slug } from '../lib/model'
 import { RECIPES, REPORT_SECTIONS, claimsCSV, editedSinceSignOff, recipeOptions, reportHTML, reportMarkdown, signOffBlockers, type Recipe, type ReportOptions } from '../lib/report'
 import { decisionLogCSV } from '../features/review/DecisionLog'
 import { DEFAULT_VISUAL, VISUAL_SECTIONS, visualReportHTML, type VisualOptions } from '../lib/visual-report'
-import { ALL, scopeProject, scopeSlug, type Scope } from '../lib/scope'
+import { ALL, personOf, scopeKey, scopeProject, scopeSlug, type Scope } from '../lib/scope'
 import { peopleOf } from '../lib/positions'
 import { setAnonymise, signOff, withdrawSignOff } from '../lib/actions'
 import { exportNameRisks } from '../lib/names'
 import type { JsonObject, RecipeToCompleteItem } from 'document-kit/recipe'
 import { recipeById, recipeOptions as kitOptions } from '../lib/kit/documents'
 import { Documents, PagePreview } from '../features/report/Documents'
+import { EditWording } from '../features/report/EditWording'
+import type { DocumentEdits } from '../lib/kit/render'
 import type { Project, SignOff } from '../lib/types'
 import { Button, Input, PageHeader, Panel, Select, Textarea, cx } from '../components/ui'
 
@@ -32,7 +34,9 @@ function Report() {
   const [error, setError] = useState<string | null>(null)
   const frame = useRef<HTMLIFrameElement>(null)
   const [kitRecipe, setKitRecipe] = useState<string>(KIT_FOR.visual)
-  const [view, setView] = useState<'html' | 'pages'>('html')
+  const [view, setView] = useState<'html' | 'pages' | 'edit'>('html')
+  const [docEdits, setDocEdits] = useState<DocumentEdits | null>(null)
+  const [markEdits, setMarkEdits] = useState(false)
   const [toComplete, setToComplete] = useState<RecipeToCompleteItem[] | null>(null)
   const [pages, setPages] = useState<{ pages: string[]; glyphDefs: string | null } | null>(null)
   const [laying, setLaying] = useState(false)
@@ -74,9 +78,11 @@ function Report() {
   }, [project, recipeId, format, isVisual, visual, opts])
   const kit = async () => {
     const [render, browser] = await Promise.all([import('../lib/kit/render'), import('../lib/kit/browser')])
-    const build = (sc: Scope) => render.buildDocument(project, recipeId, sc, { rasterize: browser.rasterize, options: overlay, askId: isVisual ? null : opts.askId })
+    const build = (sc: Scope) => render.buildDocument(project, recipeId, sc, { rasterize: browser.rasterize, options: overlay, askId: isVisual ? null : opts.askId, markEdits })
     return { build, layOut: (docx: Uint8Array) => render.layOut(docx, browser.browserFonts(), project.name) }
   }
+  const scopeLabel = personOf(project, live)?.label ?? 'all interviews together'
+  const editCount = Object.keys(project.reportEdits?.[scopeKey(live)] ?? {}).length
   const kitBase = `${slug(project.name)}-${who}-${recipeId.replace(/^rw-/, '')}`
   const word = () => run('Building the Word file…', async () => {
     const doc = await (await kit()).build(live)
@@ -96,26 +102,29 @@ function Report() {
     download(`${slug(project.name)}-${recipeId.replace(/^rw-/, '')}-all-and-each.zip`, zip as BlobPart, 'application/zip')
   })
 
-  // The page preview: the same layout the PDF gets, rebuilt shortly after anything it depends on changes.
+  // The page preview (the same layout the PDF gets) and the wording to edit, rebuilt shortly after anything they
+  // depend on changes. Editing needs the document's text only, so it skips the layout.
   useEffect(() => {
-    if (view !== 'pages') return
+    if (view === 'html') return
     let stale = false
     setLaying(true)
     const timer = setTimeout(async () => {
       try {
         const k = await kit()
         const doc = await k.build(live)
-        const laid = await k.layOut(doc.docx)
-        const p = laid.pages()
         if (stale) return
         setToComplete(doc.toComplete)
+        setDocEdits(doc.edits)
+        if (view !== 'pages') return
+        const p = (await k.layOut(doc.docx)).pages()
+        if (stale) return
         setPages({ pages: [...p.pages], glyphDefs: p.glyphDefs ?? null })
       } catch (e) { if (!stale) setError(`The pages could not be laid out: ${e instanceof Error ? e.message : String(e)}`) }
       finally { if (!stale) setLaying(false) }
     }, 400)
     return () => { stale = true; clearTimeout(timer) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, project, recipeId, overlay, live, opts.askId])
+  }, [view, project, recipeId, overlay, live, opts.askId, markEdits])
 
   return (
     <div className="mx-auto max-w-[90rem] px-4 py-6 sm:px-6">
@@ -217,16 +226,17 @@ function Report() {
         </aside>
         <div className="min-w-0 space-y-2">
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <div className="grid grid-cols-2 gap-0.5 rounded-md bg-sunken p-0.5 text-xs" role="radiogroup" aria-label="Preview">
-              {([['html', 'Web page'], ['pages', 'Word and PDF pages']] as const).map(([v, l]) => (
+            <div className="grid grid-cols-3 gap-0.5 rounded-md bg-sunken p-0.5 text-xs" role="radiogroup" aria-label="Preview">
+              {([['html', 'Web page'], ['pages', 'Word and PDF pages'], ['edit', 'Edit wording']] as const).map(([v, l]) => (
                 <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => setView(v)} className={cx('rounded px-2.5 py-1', view === v ? 'bg-surface font-medium shadow-sm' : 'text-muted')}>{l}</button>
               ))}
             </div>
             {view === 'pages' && <span className="text-xs text-muted">{laying ? 'Laying out…' : pages ? `${pages.pages.length} pages · ${recipeById(project, recipeId)?.name ?? ''}` : ''}</span>}
+            {view !== 'edit' && editCount > 0 && <span className="text-xs text-muted">{editCount} hand edit{editCount === 1 ? '' : 's'} apply to the Word and PDF documents for {scopeLabel}.</span>}
           </div>
-          {view === 'html'
-            ? <iframe ref={frame} title="Report preview" srcDoc={html} sandbox="allow-same-origin allow-modals" className="h-[calc(100vh-13rem)] w-full rounded-lg border border-line bg-white" />
-            : <PagePreview pages={pages?.pages ?? null} glyphDefs={pages?.glyphDefs ?? null} building={laying} />}
+          {view === 'html' && <iframe ref={frame} title="Report preview" srcDoc={html} sandbox="allow-same-origin allow-modals" className="h-[calc(100vh-13rem)] w-full rounded-lg border border-line bg-white" />}
+          {view === 'pages' && <PagePreview pages={pages?.pages ?? null} glyphDefs={pages?.glyphDefs ?? null} building={laying} />}
+          {view === 'edit' && <EditWording project={project} scopeKey={scopeKey(live)} scopeLabel={scopeLabel} edits={docEdits} building={laying} mark={markEdits} onMark={setMarkEdits} />}
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { createFontProvider, type FontProvider } from 'document-kit/layout'
 import type { Rasterize } from './data'
+import { indexedPng } from './png'
 
 // Browser-only helpers for document-kit: the bundled open fonts, served as the app's own assets (the kit never
 // fetches anything), and charts drawn from SVG to PNG on a canvas for Word, which does not take SVG pictures.
@@ -19,12 +20,26 @@ export function browserFonts(): FontProvider {
   return provider
 }
 
-/** Draws an SVG chart at twice its size on a white background and returns PNG bytes. */
-export const rasterize: Rasterize = async (svg, width, height) => {
+const drawn = new Map<string, Promise<Awaited<ReturnType<Rasterize>>>>()
+
+/**
+ * Draws an SVG chart at twice its size on white and returns it as a 256-colour PNG (see ./png.ts): as sharp as the
+ * canvas's own PNG at about a quarter of the size, with no alpha channel. The same chart is drawn once a session.
+ */
+export const rasterize: Rasterize = (svg, width, height) => {
+  const key = `${width}x${height}:${svg}`
+  if (!drawn.has(key)) {
+    if (drawn.size > 200) drawn.delete(drawn.keys().next().value!)
+    drawn.set(key, draw(svg, width, height).catch(() => null))
+  }
+  return drawn.get(key)!
+}
+
+async function draw(svg: string, width: number, height: number) {
   const scale = 2
   const img = new Image()
   img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
-  try { await img.decode() } catch { return null }
+  await img.decode()
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(width * scale)
   canvas.height = Math.round(height * scale)
@@ -33,6 +48,6 @@ export const rasterize: Rasterize = async (svg, width, height) => {
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
-  return blob ? { bytes: new Uint8Array(await blob.arrayBuffer()), width: canvas.width, height: canvas.height } : null
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+  return { bytes: indexedPng(pixels, canvas.width, canvas.height), width: canvas.width, height: canvas.height }
 }

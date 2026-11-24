@@ -60,6 +60,48 @@ because Word files do not take SVG. When no canvas is available, as in the tests
 - **Left to complete:** after each build, the screen lists what the document left blank. For example, a framework
   cell with no summary prints `[summary]` and is listed.
 
+## Editing the wording by hand
+
+The **Edit wording** tab on the Report screen lists every value the chosen document prints: paragraphs, list items
+and table cells. You can filter them by part, search them, or show only the edited ones. To change one, rewrite it and
+save it.
+
+- **Kept with the study.** Edits are saved in `project.reportEdits`, for the scope the document covers: all
+  interviews together, or one participant. Each edit is applied every time a Word file or PDF is made for that scope,
+  including in the zip export.
+- **Shared between recipes.** An edit is keyed by part and place, not by recipe (document-kit's hand edits,
+  `renderRecipe(…, { edits })`). So the Standard report and the Full audit share an edit to a framework summary. The
+  Summary prints the brief summary, which is a separate place.
+- **Stable places.** The framework summaries, perspective leads and theme summaries carry block ids such as
+  `summary 03 Barriers / R02`. An edit stays on its summary when themes or quotes are added around it.
+- **Generated wording that changes.** With each edit, the app saves what the document printed at the time. If that
+  generated wording later changes (a summary is rewritten, or the data moves on), the edit is flagged. The flag shows
+  the old and new wording, and **Keep my edit** accepts it.
+- **Edits with no place.** An edit whose place is gone, such as a theme that was removed, is listed as having no place.
+  It is kept until removed, and it is never applied somewhere else.
+- **Highlighting.** **Highlight edits in Word and PDF** marks edited wording in cyan, for checking a draft.
+- **Masked names.** Edits are masked like everything else when the study is anonymised. They change only the Word and
+  PDF documents, not the analysis or the web page report.
+
+## File size
+
+Charts are drawn at twice their size, so they stay sharp in print. Two things keep the files small:
+
+- **Charts as 256-colour PNGs.** Charts are written as 8-bit palette PNGs (`web/src/lib/kit/png.ts`), not the canvas's
+  32-bit ones. They are just as sharp, have no alpha channel, and are about a quarter of the size.
+- **Compacted PDFs** (`web/src/lib/kit/pdf-compact.ts`). The kit's PDF writer stores each page's drawing uncompressed
+  and expands palette pictures to full RGB. The app rewrites the kit's PDF with the drawing deflated and charts stored
+  with a PDF palette (`/Indexed`). Both changes are lossless, and the text and the pages render the same. A file the
+  compactor does not recognise is left as it is.
+
+On the four-interview calibration study:
+
+| File | Before | After |
+|---|---|---|
+| Participant casebook, Word | 1.85 MB | 0.59 MB |
+| Participant casebook, PDF | 1.56 MB | 0.74 MB |
+| Standard report, PDF (51 pages) | 1.90 MB | 0.43 MB |
+
 ## Your own recipes
 
 **Make my own** copies the chosen recipe as an *extension*. The copy names the recipe it was based on, so later fixes

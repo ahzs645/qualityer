@@ -47,7 +47,9 @@ src/
     documents.ts       the library: shipped recipes plus a study's own (copy, edit, share, import)
     render.ts          recipe → Word → PDF and page pictures (loaded on demand)
     browser.ts         fonts served by the app, and SVG charts drawn to PNG
-  features/report/   the Report screen's Word and PDF panel and page preview
+    png.ts             charts as 256-colour PNGs (no alpha), a quarter of the canvas's size
+    pdf-compact.ts     the kit's PDF with page drawing deflated and charts stored with a palette
+  features/report/   the Report screen's Word and PDF panel, page preview and Edit wording
   lib/ai/ask.ts      Ask across interviews: one question per interview, checked evidence, versions
   features/review/   claim-by-claim AI review, decision log
   features/explore/  interview map, cases by domain, AI-against-person comparison

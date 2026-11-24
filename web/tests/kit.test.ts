@@ -79,6 +79,47 @@ describe('Word and PDF for everyone and each participant', () => {
   }, 120_000)
 })
 
+describe('hand edits', () => {
+  const at = '2026-11-24T12:00:00Z'
+  it('applies a saved edit, keeps it per scope, marks it on request and flags changed wording', async () => {
+    let p = demoProject()
+    const first = await buildDocument(p, 'rw-standard', { kind: 'all' }, { rasterize })
+    const target = first.edits.targets.find((t) => t.label.startsWith('#summary '))!
+    expect(target).toBeTruthy()
+    p = { ...p, reportEdits: { all: { [target.key]: { text: 'Our own wording for this cell.', original: target.original, by: 'Tester', at } } } }
+
+    const edited = await buildDocument(p, 'rw-standard', { kind: 'all' }, { rasterize })
+    expect(edited.edits.targets.find((t) => t.key === target.key)?.edited).toBe('Our own wording for this cell.')
+    expect(edited.edits.stale).toEqual([])
+    expect((await layOut(edited.docx, fonts)).pages().pageText.join(' ')).toContain('Our own wording for this cell.')
+
+    // Kept for everyone together, not for one participant's documents.
+    const person = await buildDocument(p, 'rw-standard', { kind: 'person', personId: peopleOf(p)[0].id }, { rasterize })
+    expect(person.edits.targets.some((t) => t.edited !== undefined)).toBe(false)
+
+    // The full audit prints the same part, so it takes the same edit.
+    const full = await buildDocument(p, 'rw-full', { kind: 'all' }, { rasterize })
+    expect(full.edits.targets.find((t) => t.key === target.key)?.edited).toBe('Our own wording for this cell.')
+
+    // Highlighted in the Word file only when asked.
+    const xml = async (docx: Uint8Array) => strFromU8(unzipSync(docx)['word/document.xml'])
+    expect(await xml(edited.docx)).not.toContain('w:highlight w:val="cyan"')
+    expect(await xml((await buildDocument(p, 'rw-standard', { kind: 'all' }, { rasterize, markEdits: true })).docx)).toContain('w:highlight w:val="cyan"')
+
+    // When the generated wording under an edit changes, the edit is flagged.
+    p = { ...p, reportEdits: { all: { [target.key]: { ...p.reportEdits!.all[target.key], original: 'What it used to say.' } } } }
+    expect((await buildDocument(p, 'rw-standard', { kind: 'all' }, { rasterize })).edits.stale).toEqual([target.key])
+  }, 120_000)
+
+  it('keeps an edit whose place is gone as an orphan, never applying it elsewhere', async () => {
+    const p = demoProject()
+    const key = 'framework|#summary No such theme / Nobody|paragraph|'
+    const doc = await buildDocument({ ...p, reportEdits: { all: { [key]: { text: 'Lost', original: 'x', by: 'Tester', at } } } }, 'rw-standard', { kind: 'all' }, { rasterize })
+    expect(doc.edits.orphans).toEqual([key])
+    expect(doc.edits.targets.some((t) => t.edited === 'Lost')).toBe(false)
+  }, 60_000)
+})
+
 describe("a study's own recipes", () => {
   it('copies, edits, shares and removes one', () => {
     let p = demoProject()

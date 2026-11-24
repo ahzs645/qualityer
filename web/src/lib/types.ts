@@ -404,6 +404,22 @@ export interface ReportRecipes {
   recipes?: Record<string, unknown>
 }
 
+/** One hand edit of a document's printed wording. */
+export interface ReportEdit {
+  /** The person's own words; empty blanks the value (printed blank and listed to complete). */
+  text: string
+  /** What the document printed when the edit was made, so a later change to the generated wording can be flagged. */
+  original: string | null
+  by: string
+  at: string
+}
+
+/**
+ * Hand edits by whom the document covers ("all", or "person:<id>" for one participant), then by document-kit's edit
+ * key (part, place, kind, label). Keys name no recipe, so recipes that share a part share its edits.
+ */
+export type ReportEdits = Record<string, Record<string, ReportEdit>>
+
 export interface Project {
   id: ID
   name: string
@@ -445,6 +461,8 @@ export interface Project {
    * recipes changed for this study, or recipes imported from a file. Travels with the study in every export.
    */
   reportRecipes?: ReportRecipes | null
+  /** Hand edits of the wording in Word and PDF documents, kept across regenerations (see ReportEdits). */
+  reportEdits?: ReportEdits | null
   /** Set when the reviewer signs the analysis off as final; reports then read as final. */
   signoff: SignOff | null
   importNotes: string[]

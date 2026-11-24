@@ -1,4 +1,4 @@
-import type { AskAnswer, AskPrompt, ReportRecipes, SignOff, Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, NameEntry, Project, Source, WordingCheck } from './types'
+import type { AskAnswer, AskPrompt, ReportEdit, ReportRecipes, SignOff, Candidate, Code, CodeGroup, Coding, CoverageStatus, Memo, NameEntry, Project, Source, WordingCheck } from './types'
 import { applySpeakerTrack, joinSegments, splitSegments, type SpeakerInterval } from './listen'
 import { PALETTE, editSource, findCorrections, now, segmentsOf, uid } from './model'
 import { snapshot, store, update } from './store'
@@ -511,6 +511,20 @@ export function dismissName(text: string) {
 
 export function setReportRecipes(recipes: ReportRecipes | null, label: string) {
   update(label, (p) => ({ ...p, reportRecipes: recipes }))
+}
+
+/** Sets or (with null) removes hand edits of a document's wording for one scope. */
+export function setReportEdits(scopeKey: string, changes: Record<string, ReportEdit | null>, label: string) {
+  update(label, (p) => {
+    const mine = { ...(p.reportEdits?.[scopeKey] ?? {}) }
+    for (const [key, edit] of Object.entries(changes)) {
+      if (edit) mine[key] = edit
+      else delete mine[key]
+    }
+    const all = { ...(p.reportEdits ?? {}), [scopeKey]: mine }
+    if (!Object.keys(mine).length) delete all[scopeKey]
+    return { ...p, reportEdits: Object.keys(all).length ? all : null }
+  })
 }
 
 export function setAnonymise(on: boolean) {
