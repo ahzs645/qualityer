@@ -6,7 +6,6 @@ import { ALL, scopeKey, type Scope } from '../scope'
 import { forExport } from '../names'
 import { recipeData, type Rasterize } from './data'
 import { compileFor } from './documents'
-import { compactPdf } from './pdf-compact'
 
 // From a study to a document: a recipe rendered against the study's data, written as a Word file, and laid out
 // as a PDF or page pictures. The layout engine is large, so the Report screen loads this module on demand.
@@ -66,8 +65,8 @@ export async function layOut(docx: Uint8Array, fonts: FontProvider, title?: stri
   const laid = await layoutDocx(docx, { fonts })
   return {
     pageCount: laid.pageCount,
-    /** The PDF, with its page drawing deflated and its charts stored with a palette (see ./pdf-compact.ts). */
-    pdf: () => compactPdf(laid.toPdf({ info: title ? { title } : undefined }).bytes),
+    /** The PDF. document-kit writes it compact: page drawing deflated, palette charts kept as palettes. */
+    pdf: () => laid.toPdf({ info: title ? { title } : undefined }).bytes,
     pages: () => laid.toPages({ sharedGlyphs: true }),
     losses: laid.losses,
   }

@@ -526,9 +526,9 @@ Reports now also come as Word files and PDFs built with document-kit, a git subm
 Two follow-ups to the document-kit reports, both described in [document-recipes.md](document-recipes.md):
 
 - **Edit wording.** People can change the wording of the Word and PDF documents by hand. Edits are kept with the study for each scope and survive regeneration. An edit is flagged when the generated wording under it changes, and an edit whose place is gone is kept and listed, never applied elsewhere.
-- **Smaller files.** Charts are written as 256-colour PNGs. The kit's PDFs are compacted: page drawing is deflated and charts are stored with a palette. On the calibration study, the casebook went from 1.85 MB to 0.59 MB (Word) and from 1.56 MB to 0.74 MB (PDF). A 51-page standard report went from 1.90 MB to 0.43 MB.
+- **Smaller files.** Charts are written as 256-colour PNGs. The kit's PDFs are compacted: page drawing is deflated and charts are stored with a palette. On the calibration study, the casebook went from 1.85 MB to 0.59 MB (Word) and from 1.56 MB to 0.78 MB (PDF). A 51-page standard report went from 1.90 MB to 0.43 MB.
 
-The PDF compaction works around the kit writing page content without compression. That belongs in document-kit itself, where it is a one-line change. The app's compactor stays harmless once the kit compresses its output: it only touches streams that have no filter.
+The PDF compaction first worked around the kit writing page content without compression. It now lives in document-kit itself (its change 16: compressed page drawing, palette pictures kept as palettes), the submodule points at that commit, and the app-side compactor is gone.
 
 ## Still not ported
 

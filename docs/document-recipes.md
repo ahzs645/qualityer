@@ -89,17 +89,17 @@ Charts are drawn at twice their size, so they stay sharp in print. Two things ke
 
 - **Charts as 256-colour PNGs.** Charts are written as 8-bit palette PNGs (`web/src/lib/kit/png.ts`), not the canvas's
   32-bit ones. They are just as sharp, have no alpha channel, and are about a quarter of the size.
-- **Compacted PDFs** (`web/src/lib/kit/pdf-compact.ts`). The kit's PDF writer stores each page's drawing uncompressed
-  and expands palette pictures to full RGB. The app rewrites the kit's PDF with the drawing deflated and charts stored
-  with a PDF palette (`/Indexed`). Both changes are lossless, and the text and the pages render the same. A file the
-  compactor does not recognise is left as it is.
+- **Compact PDFs from the kit.** document-kit writes each page's drawing deflated and keeps a 256-colour chart as a
+  palette (`/Indexed`) image (its change 16, `docs/ream-upstream.md` in the kit). Earlier the app rewrote the kit's
+  PDFs to the same effect; that workaround was removed once the kit did it itself. `web/tests/pdf-size.test.ts` checks
+  the kit still does.
 
 On the four-interview calibration study:
 
 | File | Before | After |
 |---|---|---|
 | Participant casebook, Word | 1.85 MB | 0.59 MB |
-| Participant casebook, PDF | 1.56 MB | 0.74 MB |
+| Participant casebook, PDF | 1.56 MB | 0.78 MB |
 | Standard report, PDF (51 pages) | 1.90 MB | 0.43 MB |
 
 ## Your own recipes
