@@ -12,21 +12,23 @@
     "build:pages": "vite build --config vite.pages.config.js --mode pages",
     "ci": "node scripts/check.mjs",
     "prebuild:pages": "node scripts/prepare-ocr-assets.mjs",
-    "predev:vite": "node scripts/prepare-ocr-assets.mjs"
+    "predev:vite": "node scripts/prepare-ocr-assets.mjs",
+    "test:browser": "node tests/browser-smoke.mjs && node tests/browser-case-attribute.mjs && node tests/browser-consistency.mjs && node tests/browser-long-waveform.mjs && node tests/browser-coding-selection.mjs"
   },
   "dependencies": {
     "@tanstack/react-router": "1.170.41",
     "@tanstack/react-start": "1.168.60",
+    "@tesseract.js-data/eng": "1.0.0",
     "drizzle-orm": "^0.44.6",
     "fflate": "^0.8.2",
     "lucide-react": "^0.468.0",
     "mammoth": "^1.10.0",
+    "mp4box": "^2.4.1",
     "pdfjs-dist": "^5.4.149",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "sql.js": "^1.13.0",
-    "tesseract.js": "7.0.0",
-    "@tesseract.js-data/eng": "1.0.0"
+    "tesseract.js": "7.0.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.62.5",

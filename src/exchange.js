@@ -15,7 +15,7 @@ import {importRefi} from './refi-import.mjs';
 import {normalizeQualCoder,qualCoderTables} from './qualcoder-import.mjs';
 import {emptyState,validateState,uid,cp} from './domain.mjs';
 const xmlEsc=s=>String(s??'').replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[c]));
-export function download(name,content,type='application/json'){const blob=content instanceof Blob?content:new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+export function download(name,content,type='application/json'){if(typeof content==='string'&&/^text\/csv/i.test(type)&&!content.startsWith('\ufeff'))content='\ufeff'+content;const blob=content instanceof Blob?content:new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 export function csv(rows){return rows.map(row=>row.map(value=>'"'+String(value??'').replaceAll('"','""')+'"').join(',')).join('\r\n');}
 export {exportCSV} from './coded-excerpts-export.mjs';
 export {exportQDC,exportQDPX} from './refi.mjs';

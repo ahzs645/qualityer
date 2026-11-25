@@ -48,6 +48,7 @@ function overlapping(row,chunks){if(!isDisjoint(chunks))return chunks.filter(c=>
 export function chunksForRow(row,chunks){return overlapping(row,chunks).map(c=>{const start=Math.max(row.start,c.start),end=Math.min(row.end,c.end);return {...c,start,end,text:slice(c.text,start-c.start,end-c.start)};});}
 export function speakerTimeline(doc,track='regular'){
  const run=doc.diarization;
+ if(run&&!doc.mediaKey)return {rows:[],kind:'unavailable',message:'No recording is attached to this source in this project, so speaker intervals cannot be played.'};
  if(run&&run.recordingKey!==doc.mediaKey)return {rows:[],kind:'stale',message:'Speaker track belongs to another recording. Review it before playback.'};
  if(run){const rows=(run[track]||[]).filter(r=>Number.isFinite(r.timeStart)&&Number.isFinite(r.timeEnd)&&r.timeStart>=0&&r.timeEnd>r.timeStart),machineEstimated=run.provenance?.machineEstimated===true;return {rows,kind:'diarization',machineEstimated,message:rows.length?(machineEstimated?'Estimated voice separation; anonymous labels and mixed segments require recording review.':'Supplied speaker separation; identities require review.')+(run.provenance?.overlapDetection===false?' Overlapping speech was not detected by this method; these tracks do not establish that overlap is absent.':''):'No intervals in this speaker track.'};}
  const rows=(doc.turns||[]).filter(t=>canSeekTurn(doc,t)&&Number.isFinite(t.timeEnd)&&t.timeEnd>t.timeStart);

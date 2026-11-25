@@ -18,7 +18,7 @@ test('waveform peaks are stored per recording version, editor-only, validated an
   p=await (await request(path+'/operate','POST',{revision:p.revision,operation:{type:'coding.create',data:{documentId:'a',kind:'media',codeIds:['c'],timeStart:1,timeEnd:2,text:'Synthetic range'}}})).json();
   const media=await request(path+'/media/tone');const etag=media.headers.get('ETag');assert.ok(etag);assert.equal((await media.arrayBuffer()).byteLength,tone.length);
   const samples=new Float32Array(8000*4).map((_,i)=>.5*Math.sin(i/7)),peaks=quantizePeaks([samples],{sampleRate:8000,duration:4,recordingKey:id+'/tone',etag,size:tone.length});
-  assert.equal((await request(path+'/media-peaks/tone')).status,404,'missing peaks fall back to decoding');
+  assert.equal((await request(path+'/media-peaks/tone')).status,204,'missing peaks fall back to decoding without an error response');{const head=await request(path+'/media/tone','HEAD');assert.equal(head.status,200);assert.equal(head.headers.get('accept-ranges'),'bytes');assert.ok(Number(head.headers.get('content-length'))>0);assert.equal((await request(path+'/media/nothing','HEAD')).status,404);}
   const ok=await request(path+'/media-peaks/tone','PUT',peaks);assert.equal(ok.status,200,await ok.clone().text());
   assert.ok(await bucket.head('peaks/'+id+'/tone.json'),'stored under the project peaks prefix');
   const got=await request(path+'/media-peaks/tone');assert.equal(got.status,200);assert.deepEqual(await got.json(),peaks);
@@ -41,6 +41,6 @@ test('waveform peaks are stored per recording version, editor-only, validated an
   const viewerRetime=await request(path+'/operate','POST',{revision:p.revision,operation:{type:'coding.media.retime',data:{id:coding.id,timeStart:1,timeEnd:3,recordingKey:id+'/tone',previousTimeStart:1,previousTimeEnd:2}}},'viewer');assert.equal(viewerRetime.status,403);
   const saved=await retime(3.5);assert.equal(saved.status,200);p=await saved.json();assert.deepEqual([p.state.codings[0].timeStart,p.state.codings[0].timeEnd],[1,3.5]);
   // Replacing the bytes changes the etag, so stale peaks are no longer served.
-  await bucket.put(id+'/tone',new Uint8Array(4100),{httpMetadata:{contentType:'audio/wav'}});assert.equal((await request(path+'/media-peaks/tone')).status,404);
+  await bucket.put(id+'/tone',new Uint8Array(4100),{httpMetadata:{contentType:'audio/wav'}});assert.equal((await request(path+'/media-peaks/tone')).status,204,'peaks for a replaced recording version are not served');
  }finally{await mf.dispose();}
 });

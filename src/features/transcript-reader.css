@@ -2,3 +2,12 @@
 @media(max-width:560px){.transcript-reading-controls{gap:10px}.transcript-reading-controls>span{width:100%}.transcript-row-meta{gap:8px}.transcript-reading-row{padding-left:9px}.transcript-row-meta>button:last-child{min-height:38px}.transcript-time{min-height:38px!important}.workspace-timeline{padding:9px 14px}.code-legend.compact{max-height:108px}.speaker-badge{font-size:.8125rem}.code-color-controls{padding:8px 14px}.document-subbar .code-color-controls{padding:0}}
 .touch-selection-bar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:40;display:flex;justify-content:center;pointer-events:none}
 .touch-selection-bar button{pointer-events:auto;min-height:48px;padding:0 22px;border-radius:24px;box-shadow:0 6px 20px rgba(16,42,56,.25)}
+
+/* Compact transcript rows on desktop: label, speaker, state and Select on one line so more of the interview fits on screen. */
+@media (min-width:801px) and (not (pointer:coarse)){
+ .transcript-reader .transcript-reading-row{padding:6px 0 7px 12px;margin:0 0 8px}
+ .transcript-reader .transcript-row-meta{flex-wrap:nowrap;margin-bottom:3px;gap:8px}
+ .transcript-reader .transcript-row-meta>span:first-child{min-width:0;white-space:nowrap}
+ .transcript-reader .transcript-row-meta .speaker-assignment-state{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto}
+ .transcript-reader .transcript-row-meta>button:last-child{min-height:26px;padding:1px 8px;flex:none}
+}

@@ -26,7 +26,7 @@
 .wc-tip{position:absolute;transform:translate(-50%,calc(-100% - 6px));pointer-events:none;background:#14232c;color:#fff;border-radius:6px;padding:6px 9px;font-size:.8125rem;display:grid;gap:2px;max-width:min(260px,90%);box-shadow:0 3px 10px rgba(0,0,0,.25);z-index:2;white-space:nowrap}
 .wc-tip small{color:#c9d6dd;white-space:normal}
 .wc-dark .wc-tip{background:#f3f6f8;color:#14232c}.wc-dark .wc-tip small{color:#3d5260}
-.wc-empty{padding:40px 16px;text-align:center;color:#6e7f8b}
+.wc-empty{padding:40px 16px;text-align:center;color:#54656f}
 .wc-dark .wc-empty{color:#c3ccd5}
 .wc-bars{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 .wc-bars li{display:flex;gap:6px;align-items:center;min-width:0}
